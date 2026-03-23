@@ -1,8 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { locations, categories, Category, Location, routes } from '../data/locations';
-import { Search, MapPin, Coffee, Utensils, Hammer, BookOpen, Users, Landmark, Globe, Navigation, Map } from 'lucide-react';
+import { Search, MapPin, Coffee, Utensils, Hammer, BookOpen, Users, Landmark, Globe, Navigation, Map, List } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { MapView } from './MapView';
+import { LiveLocationInfo } from './LiveLocationInfo';
 
 const iconMap: Record<string, React.ElementType> = {
   Landmark,
@@ -37,6 +39,7 @@ export const MainContent: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<Category | 'all'>('all');
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
   const [selectedRoute, setSelectedRoute] = useState<string>(routes[0].id);
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
 
   const filteredLocations = useMemo(() => {
     return locations.filter(loc => {
@@ -152,6 +155,34 @@ export const MainContent: React.FC = () => {
           />
         </div>
 
+        {/* View Toggle */}
+        <div className="flex justify-center mb-8">
+          <div className="bg-white p-1 rounded-full shadow-sm border border-stone-200 inline-flex">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-medium transition-all ${
+                viewMode === 'list' 
+                  ? 'bg-stone-900 text-white shadow-md' 
+                  : 'text-stone-500 hover:text-stone-900'
+              }`}
+            >
+              <List className="w-4 h-4" />
+              {t('list')}
+            </button>
+            <button
+              onClick={() => setViewMode('map')}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-medium transition-all ${
+                viewMode === 'map' 
+                  ? 'bg-stone-900 text-white shadow-md' 
+                  : 'text-stone-500 hover:text-stone-900'
+              }`}
+            >
+              <Map className="w-4 h-4" />
+              {t('map')}
+            </button>
+          </div>
+        </div>
+
         {/* Categories */}
         <div className="mb-10 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
           <div className="flex gap-2 min-w-max">
@@ -186,9 +217,85 @@ export const MainContent: React.FC = () => {
           </div>
         </div>
 
-        {/* Timeline / List */}
-        <div className="relative">
-          {/* Vertical Line */}
+        {/* Content Area */}
+        {viewMode === 'map' ? (
+          <div className="mb-10">
+            <MapView 
+              locations={filteredLocations} 
+              selectedLocation={selectedLocation} 
+              onSelectLocation={setSelectedLocation} 
+            />
+            
+            {/* Show details for selected location below map */}
+            <AnimatePresence>
+              {selectedLocation && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 20 }}
+                  className="mt-6"
+                >
+                  {(() => {
+                    const loc = locations.find(l => l.id === selectedLocation);
+                    if (!loc) return null;
+                    const category = categories.find(c => c.id === loc.category);
+                    
+                    return (
+                      <div className="bg-white rounded-[1.5rem] p-6 shadow-md border border-stone-200">
+                        {loc.image && (
+                          <img 
+                            src={loc.image} 
+                            alt={isArabic ? loc.nameAr : loc.nameEn} 
+                            className="w-full h-48 object-cover rounded-xl mb-6 shadow-sm"
+                            referrerPolicy="no-referrer"
+                          />
+                        )}
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <h3 className={`text-2xl text-stone-900 ${headingFontClass}`}>
+                              {isArabic ? loc.nameAr : loc.nameEn}
+                            </h3>
+                            <p className="text-sm font-medium text-stone-400 mt-1.5 uppercase tracking-widest">
+                              {isArabic ? category?.nameAr : category?.nameEn}
+                            </p>
+                          </div>
+                          <button 
+                            onClick={() => setSelectedLocation(null)}
+                            className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-stone-500 hover:bg-stone-200 transition-colors"
+                          >
+                            ×
+                          </button>
+                        </div>
+                        
+                        <p className="text-stone-600 leading-relaxed mb-6">
+                          {isArabic 
+                            ? (loc.descriptionAr || 'لا يوجد وصف متاح حالياً لهذا الموقع.')
+                            : (loc.descriptionEn || 'No description available for this location at the moment.')}
+                        </p>
+                        
+                        <LiveLocationInfo locationNameEn={loc.nameEn} locationNameAr={loc.nameAr} />
+                        
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const query = encodeURIComponent(`${loc.nameEn}, Cairo, Egypt`);
+                            window.open(`https://www.google.com/maps/dir/?api=1&destination=${query}`, '_blank');
+                          }}
+                          className="mt-6 w-full py-3.5 bg-stone-900 hover:bg-stone-800 text-white rounded-full text-sm font-medium transition-all duration-300 flex items-center justify-center shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                        >
+                          <Navigation className={`w-4 h-4 ${isArabic ? 'ml-2' : 'mr-2'}`} />
+                          {t('directions')}
+                        </button>
+                      </div>
+                    );
+                  })()}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        ) : (
+          <div className="relative">
+            {/* Vertical Line */}
           <div className={`absolute top-4 bottom-0 w-px border-l-2 border-dashed border-stone-300 ${isArabic ? 'right-6' : 'left-6'} -z-10`}></div>
 
           <div className="space-y-8">
@@ -244,6 +351,14 @@ export const MainContent: React.FC = () => {
                               className="overflow-hidden"
                             >
                               <div className="pt-4 mt-4 border-t border-stone-100">
+                                {loc.image && (
+                                  <img 
+                                    src={loc.image} 
+                                    alt={isArabic ? loc.nameAr : loc.nameEn} 
+                                    className="w-full h-40 object-cover rounded-xl mb-4 shadow-sm"
+                                    referrerPolicy="no-referrer"
+                                  />
+                                )}
                                 <p className="text-sm text-stone-600 leading-relaxed">
                                   {isArabic 
                                     ? (loc.descriptionAr || 'لا يوجد وصف متاح حالياً لهذا الموقع.')
@@ -292,6 +407,8 @@ export const MainContent: React.FC = () => {
                                   );
                                 })()}
 
+                                <LiveLocationInfo locationNameEn={loc.nameEn} locationNameAr={loc.nameAr} />
+
                                 <button 
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -329,6 +446,7 @@ export const MainContent: React.FC = () => {
             )}
           </div>
         </div>
+        )}
       </main>
     </div>
   );

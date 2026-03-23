@@ -11,3 +11,25 @@ body {
   background-color: #f8f7f4;
   color: #2d2d2a;
 }
+
+/* Leaflet Customizations */
+.custom-tooltip {
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.custom-tooltip .leaflet-tooltip-tip {
+  display: none;
+}
+
+.custom-popup .leaflet-popup-content-wrapper {
+  border-radius: 1rem;
+  padding: 0;
+  overflow: hidden;
+}
+
+.custom-popup .leaflet-popup-content {
+  margin: 0;
+}
