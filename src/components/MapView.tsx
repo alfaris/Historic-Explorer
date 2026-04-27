@@ -1,12 +1,14 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import L from 'leaflet';
+import { MapPin } from 'lucide-react';
 import { Location, categories } from '../data/locations';
 import { useLanguage } from '../i18n/LanguageContext';
+import { HistoricPlaceholder } from './HistoricPlaceholder';
 
 // Fix for default marker icons in React Leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -23,29 +25,170 @@ interface MapViewProps {
 }
 
 // Component to handle map center updates when selection changes
-const MapUpdater: React.FC<{ locations: Location[]; selectedLocation: number | null }> = ({ locations, selectedLocation }) => {
+const MapUpdater: React.FC<{ locations: Location[]; selectedLocation: number | null, userLocation: [number, number] | null }> = ({ locations, selectedLocation, userLocation }) => {
   const map = useMap();
+  const hasCenteredOnUser = useRef(false);
 
   useEffect(() => {
+    // Force map to acknowledge container size on mount
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 100);
+
     if (selectedLocation) {
       const loc = locations.find(l => l.id === selectedLocation);
       if (loc) {
         map.flyTo([loc.lat, loc.lng], 16, { animate: true });
       }
-    } else if (locations.length > 0) {
+    } else if (userLocation && !hasCenteredOnUser.current) {
+      map.flyTo(userLocation, 14, { animate: true });
+      hasCenteredOnUser.current = true;
+    } else if (locations.length > 0 && !hasCenteredOnUser.current) {
       // Fit bounds to all locations if none selected
       const bounds = L.latLngBounds(locations.map(l => [l.lat, l.lng]));
       map.fitBounds(bounds, { padding: [50, 50] });
     }
-  }, [selectedLocation, locations, map]);
+  }, [selectedLocation, locations, map, userLocation]);
 
   return null;
+};
+
+// Component for the Locate Me button
+const LocateControl: React.FC<{ onLocate: () => void, isLocating: boolean }> = ({ onLocate, isLocating }) => {
+  const { language } = useLanguage();
+  const isArabic = language === 'ar';
+  
+  return (
+    <div className={`absolute bottom-6 ${isArabic ? 'left-6' : 'right-6'} z-[1000]`}>
+      <button 
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onLocate(); }}
+        className="w-12 h-12 bg-white rounded-full shadow-lg border border-stone-200 flex items-center justify-center text-ink hover:text-nile hover:bg-stone-50 transition-colors focus:outline-none"
+        title={isArabic ? 'موقعي الحالي' : 'My Location'}
+        disabled={isLocating}
+      >
+        <MapPin className={`w-5 h-5 ${isLocating ? 'animate-pulse text-stone-400' : ''}`} />
+      </button>
+    </div>
+  );
 };
 
 export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, onSelectLocation }) => {
   const { language } = useLanguage();
   const isArabic = language === 'ar';
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
   
+  const mapRef = useRef<L.Map>(null);
+
+  const locateUser = () => {
+    if (!navigator.geolocation) {
+      alert(isArabic ? 'تحديد الموقع غير مدعوم في هذا المتصفح' : 'Geolocation is not supported by your browser');
+      return;
+    }
+
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setUserLocation([latitude, longitude]);
+        setIsLocating(false);
+        if (mapRef.current) {
+          mapRef.current.flyTo([latitude, longitude], 15, { animate: true });
+        }
+      },
+      (error) => {
+        console.error('Error getting location:', error);
+        setIsLocating(false);
+        alert(isArabic ? 'تعذر الوصول إلى موقعك' : 'Unable to retrieve your location');
+      },
+      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+    );
+  };
+
+  useEffect(() => {
+    // Try to get location on initial load silently
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setUserLocation([latitude, longitude]);
+        },
+        () => {
+          // ignore errors on silent initial load
+        },
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 }
+      );
+    }
+  }, []);
+
+  const markers = React.useMemo(() => {
+    return locations.map((loc) => {
+      const category = categories.find(c => c.id === loc.category);
+      const isSelected = selectedLocation === loc.id;
+      
+      const customIcon = L.divIcon({
+        className: 'custom-leaflet-marker',
+        html: `<div class="w-10 h-10 rounded-full flex items-center justify-center text-white shadow-xl border-2 border-white ${category?.color || 'bg-nile'} transition-all duration-500 ${isSelected ? 'marker-selected scale-125' : 'hover:scale-125'}">
+                <div class="w-1.5 h-1.5 bg-white rounded-full shadow-sm"></div>
+               </div>`,
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
+      });
+
+      return (
+        <Marker 
+          key={loc.id} 
+          position={[loc.lat, loc.lng]}
+          icon={customIcon as L.DivIcon}
+          eventHandlers={{
+            click: () => onSelectLocation(loc.id),
+          }}
+        >
+          <Tooltip direction="top" offset={[0, -20]} opacity={1} className="custom-tooltip">
+            <div className="flex flex-col items-center gap-3 p-3 bg-white rounded-2xl shadow-2xl border border-sand/50 max-w-[160px]">
+              <HistoricPlaceholder 
+                category={loc.category} 
+                name={loc.nameEn}
+                className="w-full h-12 rounded-xl shadow-md"
+              />
+              <div className="text-center px-1">
+                <p className="font-bold text-nile text-[10px] leading-tight text-balance uppercase tracking-wider">
+                  {isArabic ? loc.nameAr : loc.nameEn}
+                </p>
+              </div>
+            </div>
+          </Tooltip>
+          <Popup className="custom-popup">
+            <div className="p-3 bg-white">
+              <HistoricPlaceholder 
+                category={loc.category} 
+                name={loc.nameEn}
+                className="w-full h-40 rounded-xl mb-4"
+              />
+              <p className="text-[10px] font-bold text-gold mb-2 uppercase tracking-[0.2em]">
+                {isArabic ? category?.nameAr : category?.nameEn}
+              </p>
+              <h3 className="font-serif italic text-lg text-ink leading-tight">
+                {isArabic ? loc.nameAr : loc.nameEn}
+              </h3>
+            </div>
+          </Popup>
+        </Marker>
+      );
+    });
+  }, [locations, isArabic, onSelectLocation, selectedLocation]);
+
+  const userIcon = React.useMemo(() => {
+    return L.divIcon({
+      className: 'user-location-marker',
+      html: `<div class="w-6 h-6 bg-blue-500 rounded-full border-4 border-white shadow-lg overflow-visible animate-pulse">
+               <div class="absolute inset-0 bg-blue-400 rounded-full animate-ping opacity-75"></div>
+             </div>`,
+      iconSize: [24, 24],
+      iconAnchor: [12, 12],
+    });
+  }, []);
+
   // Default center (Cairo roughly)
   const defaultCenter: [number, number] = [30.0444, 31.2357];
 
@@ -64,13 +207,22 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
         zoom={13} 
         style={{ height: '100%', width: '100%' }}
         zoomControl={false}
+        ref={mapRef}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
         />
         
-        <MapUpdater locations={locations} selectedLocation={selectedLocation} />
+        <MapUpdater locations={locations} selectedLocation={selectedLocation} userLocation={userLocation} />
+
+        {userLocation && (
+          <Marker position={userLocation} icon={userIcon as L.DivIcon} zIndexOffset={1000}>
+            <Tooltip direction="top" opacity={1}>
+              <span className="font-bold">{isArabic ? 'موقعك الحالي' : 'Your Location'}</span>
+            </Tooltip>
+          </Marker>
+        )}
 
         <MarkerClusterGroup
           chunkedLoading
@@ -78,82 +230,11 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
           showCoverageOnHover={false}
           spiderfyOnMaxZoom={true}
         >
-          {locations.map((loc) => {
-            const category = categories.find(c => c.id === loc.category);
-            
-            // Create a custom div icon with Tailwind classes
-            const customIcon = L.divIcon({
-              className: 'custom-leaflet-marker',
-              html: `<div class="w-8 h-8 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white ${category?.color || 'bg-stone-500'} transition-transform hover:scale-110">
-                      <div class="w-3 h-3 bg-white rounded-full opacity-50"></div>
-                     </div>`,
-              iconSize: [32, 32],
-              iconAnchor: [16, 16],
-            });
-
-            // Generate a consistent placeholder image based on the location ID
-            const getFallbackImage = () => {
-              switch (loc.category) {
-                case 'coffee': return 'https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=400&auto=format&fit=crop';
-                case 'restaurant': return 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?q=80&w=400&auto=format&fit=crop';
-                case 'workshop': return 'https://images.unsplash.com/photo-1531053306735-59ce1e15566c?q=80&w=400&auto=format&fit=crop';
-                case 'stationary': return 'https://images.unsplash.com/photo-1583485088034-697b5bc54ccd?q=80&w=400&auto=format&fit=crop';
-                case 'meeting': return 'https://images.unsplash.com/photo-1577083552431-6e5fd01988ec?q=80&w=400&auto=format&fit=crop';
-                case 'monument':
-                default: return 'https://images.unsplash.com/photo-1539768942893-daf53e448371?q=80&w=400&auto=format&fit=crop';
-              }
-            };
-            
-            const imageUrl = loc.image || getFallbackImage();
-
-            return (
-              <Marker 
-                key={loc.id} 
-                position={[loc.lat, loc.lng]}
-                icon={customIcon}
-                eventHandlers={{
-                  click: () => onSelectLocation(loc.id),
-                }}
-              >
-                <Tooltip direction="top" offset={[0, -16]} opacity={1} className="custom-tooltip">
-                  <div className="flex flex-col items-center gap-2 p-2 bg-white rounded-xl shadow-lg border border-stone-100">
-                    <img 
-                      src={imageUrl} 
-                      alt={isArabic ? loc.nameAr : loc.nameEn} 
-                      className="w-32 h-24 object-cover rounded-lg shadow-sm"
-                      referrerPolicy="no-referrer"
-                    />
-                    <div className="text-center">
-                      <p className="font-bold text-stone-900 text-xs">
-                        {isArabic ? loc.nameAr : loc.nameEn}
-                      </p>
-                      <p className="text-[10px] text-stone-500">
-                        {isArabic ? category?.nameAr : category?.nameEn}
-                      </p>
-                    </div>
-                  </div>
-                </Tooltip>
-                <Popup className="custom-popup">
-                  <div className="p-1">
-                    <img 
-                      src={imageUrl} 
-                      alt={isArabic ? loc.nameAr : loc.nameEn} 
-                      className="w-full h-32 object-cover rounded-lg shadow-sm mb-2"
-                      referrerPolicy="no-referrer"
-                    />
-                    <h3 className="font-bold text-stone-900 text-sm mb-1">
-                      {isArabic ? loc.nameAr : loc.nameEn}
-                    </h3>
-                    <p className="text-xs text-stone-500">
-                      {isArabic ? category?.nameAr : category?.nameEn}
-                    </p>
-                  </div>
-                </Popup>
-              </Marker>
-            );
-          })}
+          {markers}
         </MarkerClusterGroup>
       </MapContainer>
+      
+      <LocateControl onLocate={locateUser} isLocating={isLocating} />
     </div>
   );
 };
