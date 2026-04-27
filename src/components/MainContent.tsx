@@ -9,6 +9,7 @@ import { MapView } from './MapView';
 import { LiveLocationInfo } from './LiveLocationInfo';
 import { AudioGuide } from './AudioGuide';
 import { Logo } from './Logo';
+import { OfflineManager } from './OfflineManager';
 
 const iconMap: Record<string, React.ElementType> = {
   Landmark,
@@ -205,13 +206,18 @@ export const MainContent: React.FC = () => {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: "circOut" }}
+            className="flex flex-col items-center"
           >
             <h2 className={`text-4xl md:text-5xl text-ink mb-4 ${headingFontClass}`}>
               {isArabic ? currentRouteData.nameAr : currentRouteData.nameEn}
             </h2>
-            <p className="text-stone-500 italic text-base md:text-lg leading-relaxed font-serif">
+            <p className="text-stone-500 italic text-base md:text-lg leading-relaxed font-serif mb-6">
               "{isArabic ? currentRouteData.descriptionAr : currentRouteData.descriptionEn}"
             </p>
+            <OfflineManager 
+              locations={locations.filter(l => l.routeId === selectedRoute)} 
+              routeName={currentRouteData.nameEn} 
+            />
           </motion.div>
         </div>
 
