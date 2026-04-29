@@ -14,10 +14,13 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 export function AudioGuide({ text, langCode }: AudioGuideProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { isArabic } = useLanguage();
+  const { language } = useLanguage();
+  const isArabic = language === 'ar';
   
   const audioCtxRef = useRef<AudioContext | null>(null);
   const sourceRef = useRef<AudioBufferSourceNode | null>(null);
+
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   useEffect(() => {
     // When text or lang changes, reset playing state
@@ -25,10 +28,12 @@ export function AudioGuide({ text, langCode }: AudioGuideProps) {
       sourceRef.current.stop();
       sourceRef.current.disconnect();
     }
+    window.speechSynthesis.cancel();
     setIsPlaying(false);
     setIsLoading(false);
     
     return () => {
+      window.speechSynthesis.cancel();
       if (sourceRef.current) {
         sourceRef.current.stop();
         sourceRef.current.disconnect();
@@ -45,6 +50,7 @@ export function AudioGuide({ text, langCode }: AudioGuideProps) {
     if (!text) return;
 
     if (isPlaying) {
+      window.speechSynthesis.cancel();
       setIsPlaying(false);
       if (sourceRef.current) {
         sourceRef.current.stop();
@@ -58,12 +64,24 @@ export function AudioGuide({ text, langCode }: AudioGuideProps) {
     
     setIsLoading(true);
 
+    // Initialize AudioContext synchronously to satisfy iOS Safari gesture requirements
+    if (!audioCtxRef.current) {
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioContextClass) {
+            audioCtxRef.current = new AudioContextClass({ sampleRate: 24000 });
+            // Resume immediately within the synchronous click handler
+            if (audioCtxRef.current.state === 'suspended') {
+                audioCtxRef.current.resume().catch(() => {});
+            }
+        }
+    }
+
     try {
       // 1. Generate an immersive script based on the raw location text
       const scriptPrompt = `You are an immersive audio guide narrator for the historical city of Cairo. Make this historical fact sound like a captivating, slightly dramatic story for a tourist standing right there. Do NOT include any formatting, markdown, or sound effect markers. Keep it under 2 short paragraphs. Speak directly to the listener as if you are standing next to them. The response MUST be ONLY the spoken text, in ${langCode === 'ar' ? 'Arabic' : 'English'}. Here is the information:\n${text}`;
 
       const scriptResponse = await ai.models.generateContent({
-        model: "gemini-3.1-flash-lite-preview",
+        model: "gemini-3-flash-preview",
         contents: scriptPrompt,
       });
       
@@ -74,75 +92,106 @@ export function AudioGuide({ text, langCode }: AudioGuideProps) {
       }
 
       // 2. Generate high-quality TTS audio
-      const ttsResponse = await ai.models.generateContent({
-        model: "gemini-3.1-flash-tts-preview",
-        contents: [{ parts: [{ text: immersiveScript }] }],
-        config: {
-          responseModalities: [Modality.AUDIO],
-          speechConfig: {
-              voiceConfig: {
-                prebuiltVoiceConfig: { voiceName: langCode === 'ar' ? 'Zephyr' : 'Kore' },
-              },
+      try {
+        const ttsResponse = await ai.models.generateContent({
+          model: "gemini-3.1-flash-tts-preview",
+          contents: [{ parts: [{ text: immersiveScript }] }],
+          config: {
+            responseModalities: [Modality.AUDIO],
+            speechConfig: {
+                voiceConfig: {
+                  prebuiltVoiceConfig: { voiceName: langCode === 'ar' ? 'Zephyr' : 'Kore' },
+                },
+            },
           },
-        },
-      });
-
-      const base64Audio = ttsResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-      if (base64Audio) {
-        // Decode PCM and play
-        const binaryString = window.atob(base64Audio);
-        const len = binaryString.length;
-        const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-        }
-        
-        const int16Array = new Int16Array(bytes.buffer);
-        const audioCtx = audioCtxRef.current || new (window.AudioContext || (window as any).webkitAudioContext)({
-          sampleRate: 24000
         });
-        audioCtxRef.current = audioCtx;
-        
-        // Ensure browser allows audio context
-        if (audioCtx.state === 'suspended') {
-          await audioCtx.resume();
-        }
 
-        const buffer = audioCtx.createBuffer(1, int16Array.length, 24000);
-        const channelData = buffer.getChannelData(0);
-        for (let i = 0; i < int16Array.length; i++) {
-            channelData[i] = int16Array[i] / 32768.0;
+        const base64Audio = ttsResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+        if (base64Audio) {
+          // Decode PCM and play
+          const binaryString = window.atob(base64Audio);
+          const len = binaryString.length;
+          const bytes = new Uint8Array(len);
+          for (let i = 0; i < len; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+          }
+          
+          const int16Array = new Int16Array(bytes.buffer);
+          const audioCtx = audioCtxRef.current;
+          
+          if (audioCtx) {
+              if (audioCtx.state === 'suspended') {
+                await audioCtx.resume();
+              }
+
+              const buffer = audioCtx.createBuffer(1, int16Array.length, 24000);
+              const channelData = buffer.getChannelData(0);
+              for (let i = 0; i < int16Array.length; i++) {
+                  channelData[i] = int16Array[i] / 32768.0;
+              }
+              
+              const source = audioCtx.createBufferSource();
+              source.buffer = buffer;
+              source.connect(audioCtx.destination);
+              source.start();
+              
+              sourceRef.current = source;
+              setIsPlaying(true);
+              setIsLoading(false);
+              
+              source.onended = () => {
+                setIsPlaying(false);
+                sourceRef.current = null;
+              };
+          } else {
+             throw new Error('AudioContext not supported');
+          }
+        } else {
+          throw new Error('No audio returned');
         }
-        
-        const source = audioCtx.createBufferSource();
-        source.buffer = buffer;
-        source.connect(audioCtx.destination);
-        source.start();
-        
-        sourceRef.current = source;
-        setIsPlaying(true);
-        setIsLoading(false);
-        
-        source.onended = () => {
-          setIsPlaying(false);
-          sourceRef.current = null;
-        };
-      } else {
-        throw new Error('No audio returned');
+      } catch (ttsError: any) {
+        // If TTS model specifically fails with permission, we fallback to browser speech with the immersive script
+        if (ttsError?.message?.includes('PERMISSION_DENIED') || ttsError?.message?.includes('403')) {
+          console.warn('Gemini TTS denied permission, falling back to browser speech with generated script.');
+          useBrowserSpeech(immersiveScript);
+        } else {
+          throw ttsError;
+        }
       }
-    } catch (error) {
-      console.error('Audio generation failed:', error);
+    } catch (error: any) {
+      console.warn('Audio generation failed:', error);
       setIsLoading(false);
       
-      // Fallback to basic browser TTS if Gemini fails
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = langCode === 'ar' ? 'ar-EG' : 'en-US';
-      utterance.onend = () => setIsPlaying(false);
-      utterance.onerror = () => setIsPlaying(false);
-      window.speechSynthesis.speak(utterance);
-      setIsPlaying(true);
+      // Full fallback to basic browser TTS with original text if anything else fails
+      useBrowserSpeech(text);
     }
+  };
+
+  const useBrowserSpeech = (speechText: string) => {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(speechText);
+    utterance.lang = langCode === 'ar' ? 'ar-EG' : 'en-US';
+    
+    const voices = window.speechSynthesis.getVoices();
+    const targetLangPrefix = langCode === 'ar' ? 'ar' : 'en';
+    const voice = voices.find(v => v.lang.toLowerCase().startsWith(targetLangPrefix));
+    if (voice) {
+      utterance.voice = voice;
+    }
+
+    utterance.onend = () => setIsPlaying(false);
+    utterance.onerror = (e) => {
+       console.warn('SpeechSynthesis error:', e);
+       // Some browsers fire 'interrupted', but the speech still plays or gets caught
+       if (e.error !== 'interrupted') {
+           setIsPlaying(false);
+       }
+    };
+    
+    utteranceRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
+    setIsPlaying(true);
+    setIsLoading(false);
   };
 
   return (

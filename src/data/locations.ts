@@ -7,6 +7,10 @@ export interface Route {
   descriptionEn: string;
   descriptionAr: string;
   image: string;
+  highlightsEn: string[];
+  highlightsAr: string[];
+  distance: string;
+  duration: string;
 }
 
 export interface Location {
@@ -29,7 +33,11 @@ export const routes: Route[] = [
     nameAr: 'مسار آل البيت',
     descriptionEn: 'A journey through history and spirituality in the heart of Cairo',
     descriptionAr: 'رحلة عبر التاريخ والروحانية في قلب القاهرة',
-    image: ''
+    image: '',
+    highlightsEn: ['20+ Spiritual sites', 'Unique Spiral Minaret', 'Traditional Handicrafts'],
+    highlightsAr: ['أكثر من ٢٠ موقعاً روحياً', 'مئذنة ملتوية فريدة', 'حرف يدوية تقليدية'],
+    distance: '2.5 km',
+    duration: '2-3 hours'
   },
   {
     id: 'al-muizz',
@@ -37,7 +45,11 @@ export const routes: Route[] = [
     nameAr: 'مسار شارع المعز',
     descriptionEn: 'The greatest concentration of medieval architectural treasures in the Islamic world',
     descriptionAr: 'أكبر تجمع للكنوز المعمارية في العالم الإسلامي',
-    image: ''
+    image: '',
+    highlightsEn: ['Medieval Architecture', 'Khan el-Khalili Bazaar', 'Ancient City Gates'],
+    highlightsAr: ['عمارة العصور الوسطى', 'بازار خان الخليلي', 'بوابات المدينة القديمة'],
+    distance: '1.8 km',
+    duration: '3-4 hours'
   },
   {
     id: 'coptic-cairo',
@@ -45,7 +57,11 @@ export const routes: Route[] = [
     nameAr: 'مجمع الأديان (مصر القديمة)',
     descriptionEn: 'A unique area where Islamic, Christian, and Jewish monuments stand side by side',
     descriptionAr: 'منطقة فريدة تتعانق فيها الآثار الإسلامية والمسيحية واليهودية',
-    image: ''
+    image: '',
+    highlightsEn: ['The Hanging Church', 'Oldest Mosque in Africa', 'Roman Fortress Ruins'],
+    highlightsAr: ['الكنيسة المعلقة', 'أقدم مسجد في أفريقيا', 'أنقاض الحصن الروماني'],
+    distance: '1.0 km',
+    duration: '1.5-2 hours'
   },
   {
     id: 'darb-al-ahmar',
@@ -53,7 +69,11 @@ export const routes: Route[] = [
     nameAr: 'الدرب الأحمر والقلعة',
     descriptionEn: 'Historic district featuring the majestic Citadel and stunning Mamluk architecture',
     descriptionAr: 'حي تاريخي يضم قلعة صلاح الدين الشامخة وروائع العمارة المملوكية',
-    image: ''
+    image: '',
+    highlightsEn: ['Salah El-Din Citadel', 'Alabaster Mosque', 'Al-Azhar Park Views'],
+    highlightsAr: ['قلعة صلاح الدين', 'مسجد الألبستر', 'إطلالات حديقة الأزهر'],
+    distance: '2.2 km',
+    duration: '3-4 hours'
   }
 ];
 
