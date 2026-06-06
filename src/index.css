@@ -66,3 +66,25 @@ body {
   border-color: var(--color-gold) !important;
   z-index: 1000;
 }
+
+.map-paper-texture {
+  pointer-events: none;
+  opacity: 0.15;
+  mix-blend-mode: multiply;
+  background-image: url("https://www.transparenttextures.com/patterns/natural-paper.png");
+}
+
+.custom-popup .leaflet-popup-tip-container {
+  display: none;
+}
+
+.custom-popup .leaflet-popup-close-button {
+  padding: 8px !important;
+  color: #999 !important;
+  font-size: 20px !important;
+}
+
+.custom-popup .leaflet-popup-content-wrapper {
+  background: #fdfcf8;
+  border: 1px solid rgba(196, 154, 108, 0.2);
+}

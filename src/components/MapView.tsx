@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap, Polyline } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap, Polyline, ScaleControl } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import L from 'leaflet';
-import { MapPin, ZoomIn, ZoomOut, Layers } from 'lucide-react';
+import { MapPin, ZoomIn, ZoomOut, Layers, Compass } from 'lucide-react';
 import { Location, categories } from '../data/locations';
 import { useLanguage } from '../i18n/LanguageContext';
 import { HistoricPlaceholder } from './HistoricPlaceholder';
@@ -60,16 +60,29 @@ const CustomZoomControl: React.FC = () => {
     <div className="absolute top-6 right-6 z-[1000] flex flex-col gap-2">
       <button 
         onClick={() => map.zoomIn()}
-        className="w-10 h-10 bg-white rounded-xl shadow-lg border border-stone-200 flex items-center justify-center text-nile hover:bg-stone-50 transition-colors"
+        className="w-10 h-10 bg-white rounded-xl shadow-lg border border-stone-200 flex items-center justify-center text-nile hover:bg-gold hover:text-white transition-all duration-300"
       >
         <ZoomIn className="w-5 h-5" />
       </button>
       <button 
         onClick={() => map.zoomOut()}
-        className="w-10 h-10 bg-white rounded-xl shadow-lg border border-stone-200 flex items-center justify-center text-nile hover:bg-stone-50 transition-colors"
+        className="w-10 h-10 bg-white rounded-xl shadow-lg border border-stone-200 flex items-center justify-center text-nile hover:bg-gold hover:text-white transition-all duration-300"
       >
         <ZoomOut className="w-5 h-5" />
       </button>
+    </div>
+  );
+};
+
+// Compass Component 
+const CompassOverlay: React.FC<{ isArabic: boolean }> = ({ isArabic }) => {
+  return (
+    <div className={`absolute top-6 ${isArabic ? 'right-20' : 'left-6'} z-[1000] pointer-events-none opacity-40 hover:opacity-100 transition-opacity`}>
+      <div className="relative flex flex-col items-center">
+        <div className="text-[10px] font-bold text-nile mb-1">N</div>
+        <Compass className="w-8 h-8 text-nile animate-[spin_10s_linear_infinite_paused]" strokeWidth={1} />
+        <div className="w-px h-8 bg-gold/30 my-2"></div>
+      </div>
     </div>
   );
 };
@@ -80,7 +93,7 @@ const LocateControl: React.FC<{ onLocate: () => void, isLocating: boolean, isAra
     <div className={`absolute bottom-6 ${isArabic ? 'left-6' : 'right-6'} z-[1000]`}>
       <button 
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); onLocate(); }}
-        className="w-12 h-12 bg-nile text-white rounded-full shadow-xl border-2 border-white flex items-center justify-center hover:bg-nile/90 transition-all active:scale-95 focus:outline-none"
+        className="w-12 h-12 bg-nile text-white rounded-full shadow-xl border-2 border-white flex items-center justify-center hover:bg-nile-light hover:scale-110 transition-all active:scale-95 focus:outline-none"
         title={isArabic ? 'موقعي الحالي' : 'My Location'}
         disabled={isLocating}
       >
@@ -146,13 +159,13 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
   }, [locations]);
 
   const markers = React.useMemo(() => {
-    return locations.map((loc) => {
+    return locations.map((loc, idx) => {
       const category = categories.find(c => c.id === loc.category);
       const isSelected = selectedLocation === loc.id;
       
       const customIcon = L.divIcon({
         className: 'custom-leaflet-marker',
-        html: `<div class="group relative flex items-center justify-center transition-all duration-300">
+        html: `<div class="group relative flex items-center justify-center transition-all duration-300 animate-[fade-in_0.5s_ease-out_forwards]" style="animation-delay: ${idx * 50}ms">
                 <div class="absolute -inset-2 bg-white/20 rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity"></div>
                 <div class="w-10 h-10 rounded-full flex items-center justify-center text-white shadow-xl border-2 border-white ${category?.color || 'bg-nile'} transition-all duration-500 ${isSelected ? 'marker-selected scale-125 ring-4 ring-gold/30 ring-offset-2' : 'hover:scale-125'}">
                   <div class="w-1.5 h-1.5 bg-white rounded-full shadow-sm animate-pulse"></div>
@@ -186,18 +199,27 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
             </div>
           </Tooltip>
           <Popup className="custom-popup">
-            <div className="p-3 bg-white">
+            <div className="p-4 bg-[#fdfcf8] min-w-[240px]">
               <HistoricPlaceholder 
                 category={loc.category} 
                 name={loc.nameEn}
-                className="w-full h-40 rounded-xl mb-4"
+                className="w-full h-40 rounded-xl mb-4 shadow-sm border border-sand/30"
               />
-              <p className="text-[10px] font-bold text-gold mb-2 uppercase tracking-[0.2em]">
-                {isArabic ? category?.nameAr : category?.nameEn}
-              </p>
-              <h3 className="font-serif italic text-lg text-ink leading-tight">
-                {isArabic ? loc.nameAr : loc.nameEn}
-              </h3>
+              <div className="px-1">
+                <p className="text-[10px] font-bold text-gold mb-2 uppercase tracking-[0.2em]">
+                  {isArabic ? category?.nameAr : category?.nameEn}
+                </p>
+                <h3 className="font-serif italic text-xl text-ink leading-tight mb-2">
+                  {isArabic ? loc.nameAr : loc.nameEn}
+                </h3>
+                <div className="w-8 h-px bg-gold/30 mb-3"></div>
+                <button 
+                  onClick={() => onSelectLocation(loc.id)}
+                  className="text-[10px] font-bold text-nile underline underline-offset-4 uppercase tracking-widest hover:text-gold transition-colors"
+                >
+                  {isArabic ? 'بدء الاستماع' : 'Start Lesson'}
+                </button>
+              </div>
             </div>
           </Popup>
         </Marker>
@@ -234,24 +256,40 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url={mapStyle === 'voyager' 
             ? "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-            : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" // Using Light All as base for stylized look
+            : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
           }
         />
         
         {/* Stylized Overlay Tile for Antique look */}
         {mapStyle === 'antique' && (
-          <div className="absolute inset-0 bg-gold/10 mix-blend-multiply pointer-events-none z-[400] transition-opacity duration-1000"></div>
+          <>
+            <div className="absolute inset-0 bg-gold/15 mix-blend-multiply pointer-events-none z-[400] transition-opacity duration-1000"></div>
+            <div className="absolute inset-0 map-paper-texture z-[401]"></div>
+          </>
         )}
 
         <MapUpdater locations={locations} selectedLocation={selectedLocation} userLocation={userLocation} />
+
+        <ScaleControl position="bottomleft" />
 
         <Polyline 
           positions={routePoints}
           pathOptions={{ 
             color: '#c49a6c', // gold-sand color
-            weight: 4, 
+            weight: 3, 
             opacity: 0.6,
-            dashArray: '10, 10',
+            dashArray: '8, 12',
+            lineJoin: 'round'
+          }} 
+        />
+        
+        {/* Shadow/Glow effect for Route */}
+        <Polyline 
+          positions={routePoints}
+          pathOptions={{ 
+            color: '#c49a6c', 
+            weight: 12, 
+            opacity: 0.1,
             lineJoin: 'round'
           }} 
         />
@@ -274,12 +312,13 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
         </MarkerClusterGroup>
 
         <CustomZoomControl />
+        <CompassOverlay isArabic={isArabic} />
       </MapContainer>
       
       {/* Map Style Toggle */}
       <button 
         onClick={() => setMapStyle(prev => prev === 'voyager' ? 'antique' : 'voyager')}
-        className={`absolute bottom-6 ${isArabic ? 'right-6' : 'left-6'} z-[1000] px-4 py-2 bg-white rounded-xl shadow-lg border border-stone-200 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-nile hover:bg-stone-50 transition-all`}
+        className={`absolute bottom-6 ${isArabic ? 'right-6' : 'left-6'} z-[1000] px-4 py-2 bg-white rounded-xl shadow-lg border border-stone-200 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-nile hover:bg-stone-50 transition-all hover:scale-105 active:scale-95`}
       >
         <Layers className="w-4 h-4" />
         {isArabic ? (mapStyle === 'voyager' ? 'نمط قديم' : 'نمط حديث') : (mapStyle === 'voyager' ? 'Antique Map' : 'Modern Map')}
@@ -288,9 +327,10 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
       <LocateControl onLocate={locateUser} isLocating={isLocating} isArabic={isArabic} />
       
       {/* Decorative corners */}
-      <div className="absolute top-0 left-0 w-16 h-16 border-t-4 border-l-4 border-gold/20 pointer-events-none rounded-tl-[2.5rem] m-6"></div>
-      <div className="absolute bottom-0 right-0 w-16 h-16 border-b-4 border-r-4 border-gold/20 pointer-events-none rounded-br-[2.5rem] m-6"></div>
+      <div className="absolute top-0 left-0 w-16 h-16 border-t-2 border-l-2 border-gold/40 pointer-events-none rounded-tl-[2.5rem] m-6 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+      <div className="absolute bottom-0 right-0 w-16 h-16 border-b-2 border-r-2 border-gold/40 pointer-events-none rounded-br-[2.5rem] m-6 opacity-0 group-hover:opacity-100 transition-opacity"></div>
     </div>
   );
 };
+
 
