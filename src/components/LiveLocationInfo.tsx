@@ -1,15 +1,13 @@
 import React, { useState } from 'react';
-import { GoogleGenAI } from '@google/genai';
 import Markdown from 'react-markdown';
 import { Sparkles, Map, ExternalLink } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 
 interface LiveLocationInfoProps {
-  locationNameEn: string;
-  locationNameAr: string;
+  locationId: number;
 }
 
-export const LiveLocationInfo: React.FC<LiveLocationInfoProps> = ({ locationNameEn, locationNameAr }) => {
+export const LiveLocationInfo: React.FC<LiveLocationInfoProps> = ({ locationId }) => {
   const { language } = useLanguage();
   const isArabic = language === 'ar';
   const [loading, setLoading] = useState(false);
@@ -24,62 +22,22 @@ export const LiveLocationInfo: React.FC<LiveLocationInfoProps> = ({ locationName
     setLinks([]);
 
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        throw new Error(isArabic ? 'مفتاح API الخاص بـ Gemini مفقود.' : 'Gemini API Key is missing.');
+      const res = await fetch(`/api/live-info?id=${locationId}&lang=${isArabic ? 'ar' : 'en'}`);
+      const data: { text?: string | null; links?: { uri: string; title?: string }[]; error?: string } = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || `Request failed (${res.status})`);
       }
 
-      const ai = new GoogleGenAI({ apiKey });
-      
-      const prompt = isArabic 
-        ? `أعطني معلومات سياحية حية ومراجعات وتفاصيل تاريخية محدثة عن "${locationNameAr}" في القاهرة، مصر. استخدم بحث جوجل للحصول على أحدث المصادر.`
-        : `Provide live tourist information, reviews, and updated historical details about "${locationNameEn}" in Cairo, Egypt. Use Google Search to find the latest sources.`;
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-lite-preview',
-        contents: prompt,
-        config: {
-          tools: [{ googleSearch: {} }]
-        }
-      });
-
-      if (response.text) {
-        setInfo(response.text);
+      if (data.text) {
+        setInfo(data.text);
       } else {
         setError(isArabic ? 'لم يتم العثور على معلومات دقيقة حالياً.' : 'No precise information found at the moment.');
       }
 
-      // Extract Grounding Links (Search and Maps)
-      const groundingMetadata = response.candidates?.[0]?.groundingMetadata;
-      const extractedLinks: { uri: string; title: string }[] = [];
-
-      // Handle Search Metadata
-      if (groundingMetadata?.searchEntryPoint) {
-        // Search entry point available
-      }
-
-      // Handle Grounding Chunks (General)
-      const chunks = groundingMetadata?.groundingChunks;
-      if (chunks) {
-        chunks.forEach((chunk: any) => {
-          if (chunk.web?.uri) {
-            extractedLinks.push({
-              uri: chunk.web.uri,
-              title: chunk.web.title || (isArabic ? 'مصدر خارجي' : 'Web Source')
-            });
-          }
-          if (chunk.maps?.uri) {
-            extractedLinks.push({
-              uri: chunk.maps.uri,
-              title: chunk.maps.title || (isArabic ? 'خرائط جوجل' : 'Google Maps')
-            });
-          }
-        });
-      }
-
-      // Deduplicate links
-      const uniqueLinks = Array.from(new globalThis.Map(extractedLinks.map(item => [item.uri, item])).values());
-      setLinks(uniqueLinks);
+      setLinks((data.links ?? []).map(link => ({
+        uri: link.uri,
+        title: link.title || (isArabic ? 'مصدر خارجي' : 'Web Source'),
+      })));
 
     } catch (err: any) {
       console.error('Audit: Live Info Failure:', err);

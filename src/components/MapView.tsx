@@ -239,7 +239,7 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
   const defaultCenter: [number, number] = [30.0444, 31.2357];
 
   return (
-    <div className="w-full h-[400px] md:h-[600px] rounded-[2.5rem] overflow-hidden shadow-2xl border border-stone-200 relative group z-0">
+    <div className={`w-full h-full min-h-[400px] rounded-[2.5rem] overflow-hidden shadow-2xl border border-stone-200 relative group z-0 ${mapStyle === 'antique' ? 'map-antique' : ''}`}>
       <MapContainer 
         center={defaultCenter} 
         zoom={13} 
@@ -252,12 +252,11 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
         }}
         ref={mapRef}
       >
+        {/* CARTO basemaps now require an API key; OSM tiles are keyless and match what OfflineManager caches */}
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url={mapStyle === 'voyager' 
-            ? "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-            : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-          }
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          maxZoom={19}
         />
         
         {/* Stylized Overlay Tile for Antique look */}
