@@ -34,7 +34,7 @@ src/
   i18n/              English/Arabic strings and RTL handling
 ```
 
-The browser never receives the Gemini API key. It requests audio and insights by location ID, and the server builds the prompts from `src/data/locations.ts`. Generated audio is cached at the CDN, so each place is only generated once per deployment.
+The browser never receives the Gemini API key. It requests audio and insights by location ID, and the server builds the prompts from `src/data/locations.ts`. Generated audio is stored in Vercel Blob (keyed by the description text), so each place is generated once and survives deploys. Editing a description regenerates its audio automatically, and bumping `AUDIO_VERSION` in `api/_lib/gemini.ts` regenerates everything, for example after changing the voice or prompt.
 
 ## Running locally
 
@@ -58,6 +58,8 @@ Other scripts: `npm run build` (production build in `dist/`), `npm run preview`,
 ## Deploying
 
 The app deploys to Vercel from this repository. Set `GEMINI_API_KEY` in the Vercel project's environment variables. Only the functions in `api/` read it, and it is not included in the frontend build.
+
+For persistent audio, create a **private** Blob store under the project's Storage tab and connect it to the project. This adds `BLOB_READ_WRITE_TOKEN`. Without it, the app still works, but audio is regenerated after each deploy.
 
 ## Adding or editing places
 

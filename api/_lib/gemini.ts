@@ -1,4 +1,6 @@
+import { createHash } from 'node:crypto';
 import { GoogleGenAI, Modality, ThinkingLevel } from '@google/genai';
+import { get, put } from '@vercel/blob';
 import { locations } from '../../src/data/locations.js';
 
 // Server-only: the key is read at request time and never shipped to the browser.
@@ -31,6 +33,50 @@ const LIVE_INFO_CACHE = 'public, max-age=3600, s-maxage=21600, stale-while-reval
 
 // Warm instances reuse these, so repeat requests skip Gemini entirely.
 const audioCache = new Map<string, Promise<Uint8Array>>();
+
+// Bump when the narration prompt, models or voices change, so stored audio is regenerated.
+const AUDIO_VERSION = 'v1';
+
+// Generated audio is kept in Vercel Blob so it survives deploys (the CDN cache does not).
+// Without a connected store (e.g. local dev) audio is generated on every cold request.
+const hasBlobStore = () => Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID);
+
+// Keyed by content, so editing a description in locations.ts produces fresh audio.
+const audioBlobPath = (text: string, lang: Lang) =>
+  `audio-guide/${createHash('sha256').update(`${AUDIO_VERSION}|${lang}|${text}`).digest('hex').slice(0, 32)}.wav`;
+
+const readStoredAudio = async (pathname: string) => {
+  if (!hasBlobStore()) return null;
+  try {
+    const result = await get(pathname, { access: 'private' });
+    if (!result?.stream) return null;
+    return new Uint8Array(await new Response(result.stream).arrayBuffer());
+  } catch (err) {
+    console.warn('Reading stored audio failed:', err);
+    return null;
+  }
+};
+
+const storeAudio = async (pathname: string, wav: Uint8Array) => {
+  if (!hasBlobStore()) return;
+  try {
+    await put(pathname, Buffer.from(wav), {
+      access: 'private',
+      contentType: 'audio/wav',
+      allowOverwrite: true,
+    });
+  } catch (err) {
+    console.warn('Storing audio failed:', err);
+  }
+};
+
+const loadOrGenerateAudio = async (text: string, lang: Lang, pathname: string) => {
+  const stored = await readStoredAudio(pathname);
+  if (stored) return stored;
+  const wav = await generateAudio(text, lang);
+  await storeAudio(pathname, wav);
+  return wav;
+};
 
 const pcmToWav = (pcm: Uint8Array, sampleRate = 24000) => {
   const header = new ArrayBuffer(44);
@@ -98,10 +144,10 @@ export async function handleAudioGuide(url: URL): Promise<Response> {
   const text = lang === 'ar' ? location?.descriptionAr : location?.descriptionEn;
   if (!location || !text) return json({ error: 'Unknown location' }, 404);
 
-  const key = `${location.id}:${lang}`;
+  const key = audioBlobPath(text, lang);
   let pending = audioCache.get(key);
   if (!pending) {
-    pending = generateAudio(text, lang);
+    pending = loadOrGenerateAudio(text, lang, key);
     audioCache.set(key, pending);
     pending.catch(() => audioCache.delete(key));
   }
