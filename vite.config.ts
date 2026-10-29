@@ -1,14 +1,43 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig, loadEnv} from 'vite';
+import {defineConfig, loadEnv, type Plugin} from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+
+// Serves the Vercel functions in api/ during `npm run dev`, so Gemini calls
+// stay server-side locally too.
+const devApi = (): Plugin => ({
+  name: 'dev-api',
+  configureServer(server) {
+    server.middlewares.use(async (req, res, next) => {
+      const url = new URL(req.url ?? '/', 'http://localhost');
+      const routes: Record<string, string> = {
+        '/api/audio-guide': 'handleAudioGuide',
+        '/api/live-info': 'handleLiveInfo',
+      };
+      const handlerName = routes[url.pathname];
+      if (!handlerName) return next();
+      try {
+        const mod = await server.ssrLoadModule('/api/_lib/gemini.ts');
+        const response: Response = await mod[handlerName](url);
+        res.statusCode = response.status;
+        response.headers.forEach((value, key) => res.setHeader(key, value));
+        res.end(Buffer.from(await response.arrayBuffer()));
+      } catch (err) {
+        next(err);
+      }
+    });
+  },
+});
 
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
+  // Only the dev server process sees the key; it is never inlined into client code.
+  process.env.GEMINI_API_KEY ??= env.GEMINI_API_KEY;
   return {
     plugins: [
       react(), 
+      devApi(),
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
@@ -66,9 +95,6 @@ export default defineConfig(({mode}) => {
         }
       })
     ],
-    define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

@@ -1,17 +1,42 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Volume2, Square, Loader2, Sparkles } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
-import { GoogleGenAI, Modality } from "@google/genai";
 
 interface AudioGuideProps {
+  locationId: number;
   text: string;
   langCode: 'en' | 'ar';
 }
 
-// Ensure the API key is passed correctly via Vite's process.env define
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+type GuideAudio = { audio: ArrayBuffer } | { script: string };
 
-export function AudioGuide({ text, langCode }: AudioGuideProps) {
+// Shared across mounts so a prefetch and a later click reuse one request.
+const guideCache = new Map<string, Promise<GuideAudio>>();
+
+const loadGuideAudio = (locationId: number, langCode: 'en' | 'ar') => {
+  const key = `${locationId}:${langCode}`;
+  let pending = guideCache.get(key);
+  if (!pending) {
+    pending = fetch(`/api/audio-guide?id=${locationId}&lang=${langCode}`).then(async (res) => {
+      if (!res.ok) throw new Error(`Audio guide request failed (${res.status})`);
+      if (res.headers.get('Content-Type')?.includes('application/json')) {
+        const { script } = await res.json();
+        if (!script) throw new Error('No audio returned');
+        return { script };
+      }
+      return { audio: await res.arrayBuffer() };
+    });
+    guideCache.set(key, pending);
+    pending.catch(() => guideCache.delete(key));
+  }
+  return pending;
+};
+
+// Wait this long after a place is opened before generating its audio in the
+// background, so quickly skimmed places don't trigger generation.
+const PREFETCH_DELAY_MS = 1500;
+
+export function AudioGuide({ locationId, text, langCode }: AudioGuideProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { language } = useLanguage();
@@ -21,6 +46,14 @@ export function AudioGuide({ text, langCode }: AudioGuideProps) {
   const sourceRef = useRef<AudioBufferSourceNode | null>(null);
 
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  useEffect(() => {
+    if (!text) return;
+    const timer = setTimeout(() => {
+      loadGuideAudio(locationId, langCode).catch(() => {});
+    }, PREFETCH_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [locationId, langCode, text]);
 
   useEffect(() => {
     // When text or lang changes, reset playing state
@@ -41,8 +74,9 @@ export function AudioGuide({ text, langCode }: AudioGuideProps) {
       if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
         audioCtxRef.current.close().catch(() => {});
       }
+      audioCtxRef.current = null;
     };
-  }, [text, langCode]);
+  }, [locationId, text, langCode]);
 
   const togglePlay = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -77,87 +111,35 @@ export function AudioGuide({ text, langCode }: AudioGuideProps) {
     }
 
     try {
-      // 1. Generate an immersive script based on the raw location text
-      const scriptPrompt = `You are an immersive audio guide narrator for the historical city of Cairo. Make this historical fact sound like a captivating, slightly dramatic story for a tourist standing right there. Do NOT include any formatting, markdown, or sound effect markers. Keep it under 2 short paragraphs. Speak directly to the listener as if you are standing next to them. The response MUST be ONLY the spoken text, in ${langCode === 'ar' ? 'Arabic' : 'English'}. Here is the information:\n${text}`;
+      const result = await loadGuideAudio(locationId, langCode);
 
-      const scriptResponse = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: scriptPrompt,
-      });
-      
-      const immersiveScript = scriptResponse.text;
-
-      if (!immersiveScript) {
-        throw new Error('Failed to generate script');
+      if ('script' in result) {
+        // Server could narrate the script but not voice it
+        useBrowserSpeech(result.script);
+        return;
       }
 
-      // 2. Generate high-quality TTS audio
-      try {
-        const ttsResponse = await ai.models.generateContent({
-          model: "gemini-3.1-flash-tts-preview",
-          contents: [{ parts: [{ text: immersiveScript }] }],
-          config: {
-            responseModalities: [Modality.AUDIO],
-            speechConfig: {
-                voiceConfig: {
-                  prebuiltVoiceConfig: { voiceName: langCode === 'ar' ? 'Zephyr' : 'Kore' },
-                },
-            },
-          },
-        });
-
-        const base64Audio = ttsResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-        if (base64Audio) {
-          // Decode PCM and play
-          const binaryString = window.atob(base64Audio);
-          const len = binaryString.length;
-          const bytes = new Uint8Array(len);
-          for (let i = 0; i < len; i++) {
-              bytes[i] = binaryString.charCodeAt(i);
-          }
-          
-          const int16Array = new Int16Array(bytes.buffer);
-          const audioCtx = audioCtxRef.current;
-          
-          if (audioCtx) {
-              if (audioCtx.state === 'suspended') {
-                await audioCtx.resume();
-              }
-
-              const buffer = audioCtx.createBuffer(1, int16Array.length, 24000);
-              const channelData = buffer.getChannelData(0);
-              for (let i = 0; i < int16Array.length; i++) {
-                  channelData[i] = int16Array[i] / 32768.0;
-              }
-              
-              const source = audioCtx.createBufferSource();
-              source.buffer = buffer;
-              source.connect(audioCtx.destination);
-              source.start();
-              
-              sourceRef.current = source;
-              setIsPlaying(true);
-              setIsLoading(false);
-              
-              source.onended = () => {
-                setIsPlaying(false);
-                sourceRef.current = null;
-              };
-          } else {
-             throw new Error('AudioContext not supported');
-          }
-        } else {
-          throw new Error('No audio returned');
-        }
-      } catch (ttsError: any) {
-        // If TTS model specifically fails with permission, we fallback to browser speech with the immersive script
-        if (ttsError?.message?.includes('PERMISSION_DENIED') || ttsError?.message?.includes('403')) {
-          console.warn('Gemini TTS denied permission, falling back to browser speech with generated script.');
-          useBrowserSpeech(immersiveScript);
-        } else {
-          throw ttsError;
-        }
+      const audioCtx = audioCtxRef.current;
+      if (!audioCtx) throw new Error('AudioContext not supported');
+      if (audioCtx.state === 'suspended') {
+        await audioCtx.resume();
       }
+
+      // decodeAudioData detaches its input, so keep the cached copy intact
+      const buffer = await audioCtx.decodeAudioData(result.audio.slice(0));
+      const source = audioCtx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(audioCtx.destination);
+      source.start();
+
+      sourceRef.current = source;
+      setIsPlaying(true);
+      setIsLoading(false);
+
+      source.onended = () => {
+        setIsPlaying(false);
+        sourceRef.current = null;
+      };
     } catch (error: any) {
       console.warn('Audio generation failed:', error);
       setIsLoading(false);

@@ -67,6 +67,10 @@ body {
   z-index: 1000;
 }
 
+.map-antique .leaflet-tile-pane {
+  filter: sepia(0.6) saturate(0.8) contrast(0.95);
+}
+
 .map-paper-texture {
   pointer-events: none;
   opacity: 0.15;

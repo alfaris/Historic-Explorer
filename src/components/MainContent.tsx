@@ -379,12 +379,13 @@ export const MainContent: React.FC = () => {
                                   : (loc.descriptionEn || 'No description available for this location at the moment.')}
                               </p>
                               <AudioGuide 
+                                locationId={loc.id}
                                 text={isArabic ? (loc.descriptionAr || '') : (loc.descriptionEn || '')}
                                 langCode={isArabic ? 'ar' : 'en'} 
                               />
                             </div>
                             
-                            <LiveLocationInfo locationNameEn={loc.nameEn} locationNameAr={loc.nameAr} />
+                            <LiveLocationInfo locationId={loc.id} />
                             
                             <div className="flex flex-col sm:flex-row gap-4 mt-10">
                               <button 
@@ -484,12 +485,13 @@ export const MainContent: React.FC = () => {
                                         : (loc.descriptionEn || 'No description available for this location at the moment.')}
                                     </p>
                                     <AudioGuide 
+                                      locationId={loc.id}
                                       text={isArabic ? (loc.descriptionAr || '') : (loc.descriptionEn || '')}
                                       langCode={isArabic ? 'ar' : 'en'} 
                                     />
                                   </div>
                                   
-                                  <LiveLocationInfo locationNameEn={loc.nameEn} locationNameAr={loc.nameAr} />
+                                  <LiveLocationInfo locationId={loc.id} />
 
                                   <div className="flex flex-col sm:flex-row gap-4 mt-8">
                                     <button 
