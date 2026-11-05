@@ -1,34 +1,47 @@
 import React, { useState } from 'react';
 import { Check, Share2 } from 'lucide-react';
-import type { Route } from '../data/locations';
-import { routeShareUrl } from '../lib/share';
+import type { Location, Route } from '../data/locations';
+import { placeShareUrl, routeShareUrl } from '../lib/share';
 
-import { L, nameOf } from '../i18n/lang';
+import { L, currentLang, nameOf } from '../i18n/lang';
+
 /**
- * "Share route": the phone's share sheet where there is one, otherwise copies
- * a link that opens the app on this route.
+ * Opens the phone's share sheet where there is one, otherwise copies the link.
+ * Returns whether the link was copied (to show "Link copied").
  */
-export function ShareRoute({ route, isArabic }: { route: Route; isArabic: boolean }) {
-  const [copied, setCopied] = useState(false);
-  const share = async () => {
-    const url = routeShareUrl(window.location.origin, route.id);
-    const title = nameOf(route);
-    const text = `${nameOf(route)}: ${L('a walk through historic Cairo', 'جولة سير في القاهرة التاريخية')}`;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title, text, url });
-        return;
-      } catch (err) {
-        if ((err as Error).name === 'AbortError') return; // The visitor closed the sheet.
-      }
-    }
+async function shareLink(url: string, title: string, text: string): Promise<boolean> {
+  if (navigator.share) {
     try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    } catch {
-      window.prompt(L('Copy the link:', 'انسخ الرابط:'), url);
+      await navigator.share({ title, text, url });
+      return false;
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') return false; // The visitor closed the sheet.
     }
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+    return true;
+  } catch {
+    window.prompt(L('Copy the link:', 'انسخ الرابط:'), url);
+    return false;
+  }
+}
+
+function useCopied() {
+  const [copied, setCopied] = useState(false);
+  const flash = () => {
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  };
+  return [copied, flash] as const;
+}
+
+/** "Share route": a link that opens the app on this route, with a preview card. */
+export function ShareRoute({ route }: { route: Route; isArabic?: boolean }) {
+  const [copied, flash] = useCopied();
+  const share = async () => {
+    const text = `${nameOf(route)}: ${L('a walk through historic Cairo', 'جولة سير في القاهرة التاريخية')}`;
+    if (await shareLink(routeShareUrl(window.location.origin, route.id), nameOf(route), text)) flash();
   };
   return (
     <button
@@ -37,6 +50,25 @@ export function ShareRoute({ route, isArabic }: { route: Route; isArabic: boolea
     >
       {copied ? <Check className="w-4 h-4 text-nile" /> : <Share2 className="w-4 h-4 text-stone-500" />}
       <span aria-live="polite">{copied ? (L('Link copied', 'تم نسخ الرابط')) : L('Share route', 'مشاركة المسار')}</span>
+    </button>
+  );
+}
+
+/**
+ * Share a place: a `/p/<id>` link (in the current language) that opens the
+ * app on this place, with its photo, name and description as the preview.
+ */
+export function SharePlace({ place, className = '' }: { place: Location; className?: string }) {
+  const [copied, flash] = useCopied();
+  const share = async (e: React.MouseEvent) => {
+    e.stopPropagation(); // The card behind it opens and closes on click.
+    const text = `${nameOf(place)}: ${L('a walk through historic Cairo', 'جولة سير في القاهرة التاريخية')}`;
+    if (await shareLink(placeShareUrl(window.location.origin, place.id, currentLang()), nameOf(place), text)) flash();
+  };
+  return (
+    <button onClick={share} className={className} aria-label={copied ? L('Link copied', 'تم نسخ الرابط') : L('Share this place', 'مشاركة هذا المكان')}>
+      {copied ? <Check className="w-5 h-5 text-nile" /> : <Share2 className="w-5 h-5" />}
+      <span className="sr-only" aria-live="polite">{copied ? L('Link copied', 'تم نسخ الرابط') : ''}</span>
     </button>
   );
 }

@@ -3,8 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 // No built dist/index.html in tests (even if one exists locally): the fetch
 // fallback is what runs.
 vi.mock('node:fs/promises', () => ({ readFile: async () => { throw new Error('ENOENT'); } }));
-import { routes } from '../../src/data/locations';
-import { handleShare, withRoutePreview } from './share';
+import { locations, routes } from '../../src/data/locations';
+import { handleShare, withPlacePreview, withRoutePreview } from './share';
 
 const HTML = `<!doctype html><html><head>
     <meta name="description" content="Default." />
@@ -53,5 +53,63 @@ describe('handleShare', () => {
     stubPage();
     const text = await (await handleShare(new Request('https://cairo.example/?route=nope'))).text();
     expect(text).toBe(HTML);
+  });
+});
+
+describe('withPlacePreview', () => {
+  const place = locations[0];
+  const route = routes.find(r => r.id === place.routeId);
+
+  it('names the page after the place and its route, with its photo', () => {
+    const html = withPlacePreview(HTML, place, route, 'https://cairo.example', 'en');
+    expect(html).toContain(`<title>${place.nameEn} · ${route!.nameEn} | Cairo Historic Explorer</title>`);
+    expect(html).toContain(`<meta property="og:url" content="https://cairo.example/p/${place.id}" />`);
+    expect(html).toContain('<meta property="og:locale" content="en_GB" />');
+    expect(html).toContain(`content="https://cairo.example/images/photos/place-${place.id}.webp"`);
+    expect(html).toMatch(/<meta name="description" content="The oldest mosque in Cairo/);
+  });
+
+  it('uses the link’s language, falling back to English for missing French', () => {
+    const ar = withPlacePreview(HTML, place, route, 'https://cairo.example', 'ar');
+    expect(ar).toContain(`<title>${place.nameAr} · ${route!.nameAr}`);
+    expect(ar).toContain(`og:url" content="https://cairo.example/p/${place.id}?lang=ar"`);
+    expect(ar).toContain('og:locale" content="ar_EG"');
+    const fr = withPlacePreview(HTML, { ...place, nameFr: 'Mosquée Ibn Touloun' }, route, 'https://cairo.example', 'fr');
+    expect(fr).toContain('<title>Mosquée Ibn Touloun · Parcours');
+    expect(fr).toMatch(/<meta name="description" content="The oldest mosque/);
+  });
+
+  it('shortens long descriptions at a word', () => {
+    const html = withPlacePreview(HTML, { ...place, descriptionEn: 'word '.repeat(100) }, route, 'https://cairo.example', 'en');
+    const description = /<meta name="description" content="([^"]*)"/.exec(html)![1];
+    expect(description.length).toBeLessThanOrEqual(200);
+    expect(description).toMatch(/word…$/);
+  });
+});
+
+describe('handleShare for places', () => {
+  afterEach(() => vi.unstubAllGlobals());
+  const stubPage = () => vi.stubGlobal('fetch', async (u: URL) => (String(u).endsWith('/index.html') ? new Response(HTML) : new Response('', { status: 404 })));
+
+  it('serves the app with the place preview in the link’s language', async () => {
+    stubPage();
+    const res = await handleShare(new Request(`https://cairo.example/api/share?place=${locations[0].id}&lang=ar`));
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain(`og:title" content="${locations[0].nameAr}`);
+  });
+
+  it('sends unknown or malformed IDs to the home page', async () => {
+    stubPage();
+    for (const id of ['999999', 'abc', '']) {
+      const res = await handleShare(new Request(`https://cairo.example/api/share?place=${id}`));
+      expect(res.status).toBe(302);
+      expect(res.headers.get('location')).toBe('https://cairo.example/');
+    }
+  });
+
+  it('opens the app on the place when the page can’t be wrapped', async () => {
+    vi.stubGlobal('fetch', async () => new Response('<html><body>Log in to Vercel</body></html>'));
+    const res = await handleShare(new Request(`https://cairo.example/api/share?place=${locations[0].id}&lang=fr`));
+    expect(res.headers.get('location')).toBe(`https://cairo.example/?loc=${locations[0].id}&lang=fr`);
   });
 });

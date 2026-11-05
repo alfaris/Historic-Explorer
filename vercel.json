@@ -5,6 +5,10 @@
       "destination": "/api/share?route=:route"
     },
     {
+      "source": "/p/:place",
+      "destination": "/api/share?place=:place"
+    },
+    {
       "source": "/admin",
       "destination": "/admin.html"
     }

@@ -85,7 +85,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } catch {
       // No storage (private mode): use the browser's language.
     }
-    return initialLang(saved, navigator.language || '');
+    return initialLang(saved, navigator.language || '', new URLSearchParams(window.location.search).get('lang'));
   });
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);

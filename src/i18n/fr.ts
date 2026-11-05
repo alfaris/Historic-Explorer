@@ -24,7 +24,7 @@ export const FR: Record<string, string> = {
   'No precise information found at the moment.': 'Aucune information précise pour le moment.',
   'Web Source': 'Source web',
   'Start Lesson': 'Commencer',
-  'Link copied to clipboard': 'Lien copié',
+  'Share this place': 'Partager ce lieu',
   'No explorations found': 'Aucun lieu trouvé',
   'Nothing on this route, but there are matches on other routes:': 'Rien sur ce parcours, mais il y a des résultats sur d’autres parcours :',
   'Also on other routes': 'Aussi sur d’autres parcours',

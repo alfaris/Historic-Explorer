@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isRouteLink, routeFromLocation, routeShareUrl } from './share';
+import { isPlaceLink, isRouteLink, placeFromLocation, placeShareUrl, routeFromLocation, routeShareUrl } from './share';
 
 const at = (href: string) => new URL(href, 'https://x');
 const ids = ['ahl-al-bayt', 'fustat-roda'];
@@ -26,5 +26,26 @@ describe('route links', () => {
     expect(isRouteLink(at('/r/nope'))).toBe(true);
     expect(isRouteLink(at('/?route=x'))).toBe(true);
     expect(isRouteLink(at('/?loc=1'))).toBe(false);
+  });
+});
+
+describe('place links', () => {
+  it('builds /p/<id> links, with the language when it isn’t English', () => {
+    expect(placeShareUrl('https://x', 12)).toBe('https://x/p/12');
+    expect(placeShareUrl('https://x', 12, 'en')).toBe('https://x/p/12');
+    expect(placeShareUrl('https://x', 12, 'fr')).toBe('https://x/p/12?lang=fr');
+  });
+  it('reads /p/<id> and ?loc=<id>', () => {
+    expect(placeFromLocation(at('/p/12'))).toBe(12);
+    expect(placeFromLocation(at('/p/12/?lang=ar'))).toBe(12);
+    expect(placeFromLocation(at('/?loc=7'))).toBe(7);
+    expect(placeFromLocation(at('/p/abc'))).toBeNull();
+    expect(placeFromLocation(at('/?loc=1e3'))).toBeNull();
+    expect(placeFromLocation(at('/'))).toBeNull();
+  });
+  it('knows a place link even when it can’t be read', () => {
+    expect(isPlaceLink(at('/p/abc'))).toBe(true);
+    expect(isPlaceLink(at('/?loc=7'))).toBe(true);
+    expect(isPlaceLink(at('/r/x'))).toBe(false);
   });
 });
