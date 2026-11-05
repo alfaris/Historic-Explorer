@@ -22,35 +22,44 @@ export function ReportsTab({ content, save, onEditPlace, onSignedOut }: {
   onSignedOut: () => void;
 }) {
   const [reports, setReports] = useState<Report[] | null>(null);
+  const [total, setTotal] = useState(0);
+  const [counts, setCounts] = useState<Record<Report['status'], number> | null>(null);
   const [filter, setFilter] = useState<Filter>('open');
   const [error, setError] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  const load = useCallback(async () => {
-    try {
-      setReports((await api.reports()).reports);
-      setError(null);
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 401) return onSignedOut();
-      setError((err as Error).message);
-    }
-  }, [onSignedOut]);
+  // Loads the first page for the filter, or the next page when appending.
+  const load = useCallback(
+    async (append = false, offset = 0) => {
+      try {
+        const page = await api.reports(filter, offset);
+        setReports(rs => (append && rs ? [...rs, ...page.reports] : page.reports));
+        setTotal(page.total);
+        setCounts(page.counts);
+        setError(null);
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 401) return onSignedOut();
+        setError((err as Error).message);
+      }
+    },
+    [filter, onSignedOut],
+  );
 
   useEffect(() => {
+    setReports(null);
     load();
   }, [load]);
 
   const setStatus = async (report: Report, status: Report['status']) => {
     try {
-      const { report: updated } = await api.updateReport(report.id, { status });
-      setReports(rs => rs?.map(r => (r.id === updated.id ? updated : r)) ?? null);
+      await api.updateReport(report.id, { status });
+      await load(); // the report moves to another filter, so refresh the list and counts
     } catch (err) {
       setError((err as Error).message);
     }
   };
 
-  const counts = { open: 0, resolved: 0, dismissed: 0 };
-  reports?.forEach(r => counts[r.status]++);
-  const shown = reports?.filter(r => filter === 'all' || r.status === filter) ?? [];
+  const shown = reports ?? [];
 
   return (
     <section>
@@ -63,10 +72,10 @@ export function ReportsTab({ content, save, onEditPlace, onSignedOut }: {
             className={`px-3 py-1.5 rounded-full text-xs font-bold capitalize ${filter === f ? 'bg-nile text-white' : 'bg-white border border-sand/60 text-stone-600'}`}
           >
             {f}
-            {f !== 'all' && reports ? ` (${counts[f]})` : ''}
+            {f !== 'all' && counts ? ` (${counts[f]})` : ''}
           </button>
         ))}
-        <button onClick={load} className="ms-auto flex items-center gap-1 text-xs text-stone-500 hover:text-nile">
+        <button onClick={() => load()} className="ms-auto flex items-center gap-1 text-xs text-stone-500 hover:text-nile">
           <RefreshCw className="w-3.5 h-3.5" /> Refresh
         </button>
       </div>
@@ -82,6 +91,21 @@ export function ReportsTab({ content, save, onEditPlace, onSignedOut }: {
             <ReportCard key={r.id} report={r} content={content} save={save} setStatus={setStatus} onEditPlace={onEditPlace} />
           ))}
         </ul>
+      )}
+      {reports && shown.length < total && (
+        <div className="text-center mt-4">
+          <Button
+            variant="secondary"
+            disabled={loadingMore}
+            onClick={async () => {
+              setLoadingMore(true);
+              await load(true, shown.length);
+              setLoadingMore(false);
+            }}
+          >
+            {loadingMore ? 'Loading…' : `Load more (${total - shown.length} older)`}
+          </Button>
+        </div>
       )}
     </section>
   );

@@ -2,7 +2,7 @@
 // Vercel Blob. Nothing identifying (IP, account) is stored with a report.
 
 import { randomUUID } from 'node:crypto';
-import { get, list, put } from '@vercel/blob';
+import { del, get, list, put } from '@vercel/blob';
 import { CAIRO_BOUNDS } from '../../src/data/content.js';
 import { getContent } from './content.js';
 import { createRateLimiter } from './guard.js';
@@ -70,7 +70,13 @@ export async function buildReport(input: any, now = new Date()): Promise<Report 
   };
 }
 
-const pathFor = (r: Pick<Report, 'id' | 'createdAt'>) => `${PREFIX}${r.createdAt.replace(/[:.]/g, '-')}_${r.id}.json`;
+// Reports are filed by status (reports/open/…, reports/resolved/…), so the
+// dashboard can list and page through one status without reading the rest.
+const STATUSES: ReportStatus[] = ['open', 'resolved', 'dismissed'];
+const pathFor = (r: Pick<Report, 'id' | 'createdAt' | 'status'>) =>
+  `${PREFIX}${r.status}/${r.createdAt.replace(/[:.]/g, '-')}_${r.id}.json`;
+const statusOf = (pathname: string) => pathname.slice(PREFIX.length).split('/')[0] as ReportStatus;
+const fileName = (pathname: string) => pathname.slice(pathname.lastIndexOf('/') + 1);
 
 async function listReportPaths(): Promise<string[]> {
   const paths: string[] = [];
@@ -80,7 +86,8 @@ async function listReportPaths(): Promise<string[]> {
     paths.push(...page.blobs.map(b => b.pathname));
     cursor = page.hasMore ? page.cursor : undefined;
   } while (cursor);
-  return paths.sort().reverse(); // newest first: paths start with the timestamp
+  // Newest first: file names start with the timestamp.
+  return paths.filter(p => STATUSES.includes(statusOf(p))).sort((a, b) => fileName(b).localeCompare(fileName(a)));
 }
 
 async function readReport(pathname: string): Promise<Report | null> {
@@ -115,16 +122,27 @@ export async function handleReport(request: Request): Promise<Response> {
   return json({ ok: true, id: report.id }, 201);
 }
 
-/** Reports for the dashboard, newest first. */
-export async function listReports(limit = 300): Promise<Report[]> {
-  const paths = (await listReportPaths()).slice(0, limit);
+export interface ReportPage {
+  reports: Report[];
+  /** How many reports match the filter in total. */
+  total: number;
+  counts: Record<ReportStatus, number>;
+}
+
+/** One page of reports for the dashboard, newest first. */
+export async function listReports(status: ReportStatus | 'all' = 'open', offset = 0, limit = 50): Promise<ReportPage> {
+  const all = await listReportPaths();
+  const counts = { open: 0, resolved: 0, dismissed: 0 };
+  for (const p of all) counts[statusOf(p)]++;
+  const matching = status === 'all' ? all : all.filter(p => statusOf(p) === status);
+  const paths = matching.slice(Math.max(0, offset), Math.max(0, offset) + Math.min(Math.max(1, limit), 100));
   const reports: Report[] = [];
   // Read a few at a time to stay well within Blob's rate limits.
   for (let i = 0; i < paths.length; i += 10) {
     const batch = await Promise.all(paths.slice(i, i + 10).map(readReport));
     reports.push(...batch.filter((r): r is Report => r !== null));
   }
-  return reports;
+  return { reports, total: matching.length, counts };
 }
 
 /** Changes a report's status or note. Returns the updated report, or null if not found. */
@@ -134,9 +152,12 @@ export async function updateReport(id: string, changes: { status?: unknown; admi
   if (!pathname) return null;
   const report = await readReport(pathname);
   if (!report) return null;
-  if (changes.status === 'open' || changes.status === 'resolved' || changes.status === 'dismissed') report.status = changes.status;
+  if (STATUSES.includes(changes.status as ReportStatus)) report.status = changes.status as ReportStatus;
   if (typeof changes.adminNote === 'string') report.adminNote = changes.adminNote.trim().slice(0, 500);
   report.updatedAt = new Date().toISOString();
-  await put(pathname, JSON.stringify(report), { access: 'private', contentType: 'application/json', allowOverwrite: true });
+  // A status change moves the file to that status's folder.
+  const target = pathFor(report);
+  await put(target, JSON.stringify(report), { access: 'private', contentType: 'application/json', allowOverwrite: true });
+  if (target !== pathname) await del(pathname);
   return report;
 }

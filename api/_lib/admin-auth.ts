@@ -18,8 +18,10 @@ export const loginRateLimit = createRateLimiter(10, 15 * 60_000, 'Too many login
 const password = () => process.env.ADMIN_PASSWORD ?? '';
 export const adminConfigured = () => password().length >= 12;
 
-// Changing the password (or ADMIN_SESSION_SECRET) signs every admin out.
-const secret = () => process.env.ADMIN_SESSION_SECRET || createHash('sha256').update(`cairo-walks-admin:${password()}`).digest('hex');
+// The signing key always includes the password, so changing the password (or
+// ADMIN_SESSION_SECRET) signs every admin out, with or without a custom secret.
+const secret = () =>
+  createHash('sha256').update(`cairo-walks-admin:${process.env.ADMIN_SESSION_SECRET ?? ''}:${password()}`).digest('hex');
 
 const sign = (payload: string) => createHmac('sha256', secret()).update(payload).digest('base64url');
 

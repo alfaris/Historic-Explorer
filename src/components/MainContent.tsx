@@ -92,6 +92,16 @@ export const MainContent: React.FC = () => {
     if (!routes.some(r => r.id === selectedRoute)) setSelectedRoute(routes[0].id);
   }, [routes, selectedRoute]);
 
+  // When the live content arrives, keep a selected place (e.g. from a shared
+  // link) visible even if the admin moved it to another route.
+  useEffect(() => {
+    if (selectedLocation === null) return;
+    const place = locations.find(l => l.id === selectedLocation);
+    if (place && place.routeId !== selectedRoute) setSelectedRoute(place.routeId);
+    // Only on content changes: picking another route clears the selection anyway.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locations]);
+
   React.useEffect(() => {
     const handleScroll = () => {
       setShowScrollTop(window.scrollY > 400);

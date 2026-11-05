@@ -50,6 +50,15 @@ describe('admin auth', () => {
     expect(verifySessionToken(undefined)).toBe(false);
   });
 
+  it('signs everyone out when the password changes, even with a custom session secret', () => {
+    process.env.ADMIN_SESSION_SECRET = 'a long random secret value';
+    const token = createSessionToken();
+    expect(verifySessionToken(token)).toBe(true);
+    process.env.ADMIN_PASSWORD = 'a completely different password';
+    expect(verifySessionToken(token)).toBe(false);
+    delete process.env.ADMIN_SESSION_SECRET;
+  });
+
   it('signs everyone out when the password changes', () => {
     const token = createSessionToken();
     process.env.ADMIN_PASSWORD = 'a completely different password';

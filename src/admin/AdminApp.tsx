@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { History, Inbox, LogOut, MapPinned, Route as RouteIcon } from 'lucide-react';
 import type { Content } from '../data/content';
-import { validateContent } from '../data/content';
+import { validateContent, withMaxPlaceId } from '../data/content';
 import { api, ApiError } from './api';
 import { ReportsTab } from './ReportsTab';
 import { PlacesTab } from './PlacesTab';
@@ -114,6 +114,8 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
   // can't silently overwrite each other.
   const save: SaveFn = async (next, note) => {
     setNotice(null);
+    // Remember the highest place ID ever used, so a deleted place's ID isn't reused.
+    if (content) next = withMaxPlaceId(next, content);
     const problems = validateContent(next);
     if (problems.length) {
       setSaveError({ message: 'Fix these before saving:', problems, conflict: false });

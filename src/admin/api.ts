@@ -47,7 +47,8 @@ export const api = {
   content: () => call<{ content: Content; etag: string | null }>('content'),
   saveContent: (content: Content, etag: string | null, note: string) =>
     call<{ etag: string }>('content', { method: 'PUT', body: JSON.stringify({ content, etag, note }) }),
-  reports: () => call<{ reports: Report[] }>('reports'),
+  reports: (status: Report['status'] | 'all', offset = 0) =>
+    call<{ reports: Report[]; total: number; counts: Record<Report['status'], number> }>('reports', {}, `&status=${status}&offset=${offset}`),
   updateReport: (id: string, changes: { status?: Report['status']; adminNote?: string }) =>
     call<{ report: Report }>('report', { method: 'PATCH', body: JSON.stringify({ id, ...changes }) }),
   history: () => call<{ history: HistoryEntry[] }>('history'),

@@ -5,7 +5,7 @@
 //   POST logout
 //   GET  content            → { content, etag }
 //   PUT  content {content, etag, note}  → { etag } | { problems } (422) | conflict (409)
-//   GET  reports            → { reports }
+//   GET  reports?status=open|resolved|dismissed|all&offset=n → { reports, total, counts }
 //   PATCH report {id, status?, adminNote?}
 //   GET  history            → { history }
 //   GET  version {pathname} → { content }
@@ -81,7 +81,10 @@ export async function handleAdmin(request: Request): Promise<Response> {
     }
 
     if (action === 'reports' && method === 'GET') {
-      return json({ reports: await listReports() });
+      const status = url.searchParams.get('status');
+      const filter = status === 'open' || status === 'resolved' || status === 'dismissed' ? status : status === 'all' ? 'all' : 'open';
+      const offset = Number(url.searchParams.get('offset') ?? 0) || 0;
+      return json(await listReports(filter, offset, 50));
     }
 
     if (action === 'report' && method === 'PATCH') {

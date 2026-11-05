@@ -13,6 +13,8 @@ export type { Category, Location, Route };
 export interface Content {
   routes: Route[];
   places: Location[];
+  /** Highest place ID ever used, so IDs of deleted places are never reused. */
+  maxPlaceId?: number;
 }
 
 export const bundledContent: Content = { routes, places: locations };
@@ -64,7 +66,9 @@ export function normalizeContent(input: unknown): Content {
   const raw = (input ?? {}) as { routes?: unknown; places?: unknown };
   const routesIn = Array.isArray(raw.routes) ? raw.routes : [];
   const placesIn = Array.isArray(raw.places) ? raw.places : [];
+  const maxPlaceId = Number((raw as { maxPlaceId?: unknown }).maxPlaceId);
   return {
+    ...(Number.isInteger(maxPlaceId) && maxPlaceId > 0 ? { maxPlaceId } : {}),
     routes: routesIn.map((r: any): Route => ({
       id: str(r?.id),
       nameEn: str(r?.nameEn),
@@ -153,5 +157,16 @@ export function validateContent(content: Content): string[] {
   return problems;
 }
 
-/** Next free place ID, for new places. */
-export const nextPlaceId = (content: Content) => Math.max(0, ...content.places.map(p => p.id)) + 1;
+const highestId = (content: Content) => Math.max(0, content.maxPlaceId ?? 0, ...content.places.map(p => p.id));
+
+/**
+ * Next place ID. Never reuses the ID of a deleted place: visited marks,
+ * built-in photos and reports refer to places by ID.
+ */
+export const nextPlaceId = (content: Content) => highestId(content) + 1;
+
+/** Content with maxPlaceId raised to cover every ID in it and in `previous`. */
+export const withMaxPlaceId = (content: Content, previous?: Content): Content => ({
+  ...content,
+  maxPlaceId: Math.max(highestId(content), previous ? highestId(previous) : 0),
+});

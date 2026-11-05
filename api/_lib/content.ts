@@ -3,7 +3,7 @@
 // bundled content from src/data/locations.ts is used.
 
 import { BlobNotFoundError, BlobPreconditionFailedError, get, list, put } from '@vercel/blob';
-import { bundledContent, normalizeContent, validateContent, type Content } from '../../src/data/content.js';
+import { bundledContent, normalizeContent, validateContent, withMaxPlaceId, type Content } from '../../src/data/content.js';
 import { hasBlobStore } from './http.js';
 
 const CURRENT = 'content/current.json';
@@ -64,9 +64,24 @@ export class ContentConflictError extends Error {
  * (expectedEtag must match the stored copy; null means "nothing saved yet").
  * Keeps the new version in the history too. Returns the new ETag.
  */
+const writeHistory = (body: string, at: Date) =>
+  put(`${HISTORY_PREFIX}${at.toISOString().replace(/[:.]/g, '-')}.json`, body, { access: 'private', contentType: 'application/json' }).catch(err =>
+    console.warn('Saving a history copy failed:', err),
+  );
+
 export async function saveContent(next: Content, expectedEtag: string | null, note: string): Promise<{ etag: string }> {
   if (!hasBlobStore()) throw new Error('No Blob store is connected, so content can’t be saved.');
-  const body = JSON.stringify({ ...next, savedAt: new Date().toISOString(), note: note.slice(0, 200) });
+  // Carry the highest-ever place ID forward so deleted IDs are never reused,
+  // whatever the browser sent.
+  const previous = expectedEtag ? (await getContentWithEtag()).content : bundledContent;
+  next = withMaxPlaceId(next, previous);
+  const now = new Date();
+  // Before the very first save, keep the built-in content in the history so
+  // the first edit (even a deletion) can be undone.
+  if (!expectedEtag && (await listHistory(1)).length === 0) {
+    await writeHistory(JSON.stringify({ ...withMaxPlaceId(bundledContent), savedAt: new Date(now.getTime() - 1).toISOString(), note: 'Built-in content' }), new Date(now.getTime() - 1));
+  }
+  const body = JSON.stringify({ ...next, savedAt: now.toISOString(), note: note.slice(0, 200) });
   let result;
   try {
     result = await put(CURRENT, body, {
@@ -81,10 +96,7 @@ export async function saveContent(next: Content, expectedEtag: string | null, no
     throw err;
   }
   memory = { content: next, at: Date.now() };
-  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-  await put(`${HISTORY_PREFIX}${stamp}.json`, body, { access: 'private', contentType: 'application/json' }).catch(err =>
-    console.warn('Saving a history copy failed:', err),
-  );
+  await writeHistory(body, now);
   return { etag: result.etag };
 }
 

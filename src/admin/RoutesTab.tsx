@@ -23,21 +23,31 @@ export function RoutesTab({ content, save }: { content: Content; save: SaveFn })
   const [draft, setDraft] = useState<Route | null>(null);
   const [isNew, setIsNew] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Highlights are edited as raw text (one per line) and split only when saving,
+  // so spaces and new lines aren't trimmed away while typing.
+  const [highlights, setHighlights] = useState({ en: '', ar: '' });
+
+  const lines = (text: string) => text.split('\n').map(s => s.trim()).filter(Boolean);
+  const open = (route: Route, asNew: boolean) => {
+    setDraft({ ...route, highlightsEn: [...route.highlightsEn], highlightsAr: [...route.highlightsAr] });
+    setHighlights({ en: route.highlightsEn.join('\n'), ar: route.highlightsAr.join('\n') });
+    setIsNew(asNew);
+  };
+  const finalDraft = draft && { ...draft, highlightsEn: lines(highlights.en), highlightsAr: lines(highlights.ar) };
 
   const original = draft && !isNew ? content.routes.find(r => r.id === draft.id) : undefined;
-  const changed = draft && (isNew || JSON.stringify(original) !== JSON.stringify(draft));
+  const changed = finalDraft && (isNew || JSON.stringify(original) !== JSON.stringify(finalDraft));
   const placeCount = (id: string) => content.places.filter(p => p.routeId === id).length;
 
   const set = <K extends keyof Route>(key: K, value: Route[K]) => setDraft(d => (d ? { ...d, [key]: value } : d));
-  const lines = (text: string) => text.split('\n').map(s => s.trim()).filter(Boolean);
 
   const submit = async () => {
-    if (!draft) return;
+    if (!finalDraft) return;
     setBusy(true);
     const next: Content = isNew
-      ? { ...content, routes: [...content.routes, draft] }
-      : { ...content, routes: content.routes.map(r => (r.id === draft.id ? draft : r)) };
-    if (await save(next, isNew ? `Added route "${draft.nameEn}"` : `Edited route "${draft.nameEn}"`)) setIsNew(false);
+      ? { ...content, routes: [...content.routes, finalDraft] }
+      : { ...content, routes: content.routes.map(r => (r.id === finalDraft.id ? finalDraft : r)) };
+    if (await save(next, isNew ? `Added route "${finalDraft.nameEn}"` : `Edited route "${finalDraft.nameEn}"`)) setIsNew(false);
     setBusy(false);
   };
 
@@ -54,10 +64,7 @@ export function RoutesTab({ content, save }: { content: Content; save: SaveFn })
     <section className="grid md:grid-cols-[320px_1fr] gap-6 items-start">
       <div className="bg-white rounded-2xl border border-sand/50 p-4">
         <Button
-          onClick={() => {
-            setDraft(blankRoute());
-            setIsNew(true);
-          }}
+          onClick={() => open(blankRoute(), true)}
           className="w-full mb-3 flex items-center justify-center gap-2"
         >
           <Plus className="w-4 h-4" /> Add route
@@ -66,10 +73,7 @@ export function RoutesTab({ content, save }: { content: Content; save: SaveFn })
           {content.routes.map(r => (
             <li key={r.id}>
               <button
-                onClick={() => {
-                  setDraft({ ...r, highlightsEn: [...r.highlightsEn], highlightsAr: [...r.highlightsAr] });
-                  setIsNew(false);
-                }}
+                onClick={() => open(r, false)}
                 className={`w-full text-start px-3 py-2 rounded-lg text-sm ${draft?.id === r.id && !isNew ? 'bg-nile/10 text-nile' : 'hover:bg-chalk'}`}
               >
                 <span className="block">{r.nameEn}</span>
@@ -108,10 +112,10 @@ export function RoutesTab({ content, save }: { content: Content; save: SaveFn })
               <textarea value={draft.descriptionAr} onChange={e => set('descriptionAr', e.target.value)} className={inputClass} rows={3} dir="rtl" />
             </Field>
             <Field label="Highlights (English)" hint="One per line, up to 8.">
-              <textarea value={draft.highlightsEn.join('\n')} onChange={e => set('highlightsEn', lines(e.target.value))} className={inputClass} rows={3} />
+              <textarea value={highlights.en} onChange={e => setHighlights(h => ({ ...h, en: e.target.value }))} className={inputClass} rows={3} />
             </Field>
             <Field label="Highlights (Arabic)" hint="Same number of lines as English.">
-              <textarea value={draft.highlightsAr.join('\n')} onChange={e => set('highlightsAr', lines(e.target.value))} className={inputClass} rows={3} dir="rtl" />
+              <textarea value={highlights.ar} onChange={e => setHighlights(h => ({ ...h, ar: e.target.value }))} className={inputClass} rows={3} dir="rtl" />
             </Field>
             <Field label="Distance" hint='e.g. "2.5 km"'>
               <input value={draft.distance} onChange={e => set('distance', e.target.value)} className={inputClass} />

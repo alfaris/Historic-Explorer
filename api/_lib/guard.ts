@@ -14,17 +14,23 @@ const json = (body: unknown, status: number, headers: Record<string, string> = {
  * else is rejected, so extra or odd parameters can't create new CDN cache keys
  * that skip the cache and reach Gemini.
  */
-export const parseCanonicalQuery = (url: URL): { id: number; lang: Lang } | Response => {
+export const parseCanonicalQuery = (
+  url: URL,
+  { allowVersion = false } = {},
+): { id: number; lang: Lang; version: string | null } | Response => {
   const keys = [...url.searchParams.keys()];
   const id = url.searchParams.get('id') ?? '';
   const lang = url.searchParams.get('lang') ?? '';
+  const version = url.searchParams.get('v');
+  const expected = allowVersion && version !== null ? 3 : 2;
   const valid =
-    keys.length === 2 &&
-    new Set(keys).size === 2 &&
+    keys.length === expected &&
+    new Set(keys).size === expected &&
     /^[1-9]\d{0,5}$/.test(id) &&
-    (lang === 'en' || lang === 'ar');
-  if (!valid) return json({ error: 'Expected ?id=<number>&lang=en|ar' }, 400);
-  return { id: Number(id), lang };
+    (lang === 'en' || lang === 'ar') &&
+    (version === null || (allowVersion && /^[0-9a-f]{8}$/.test(version)));
+  if (!valid) return json({ error: `Expected ?id=<number>&lang=en|ar${allowVersion ? '[&v=<hash>]' : ''}` }, 400);
+  return { id: Number(id), lang, version };
 };
 
 // Per-IP fixed-window limits. Counts are kept per function instance, so this

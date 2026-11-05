@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bundledContent, nextPlaceId, normalizeContent, validateContent, type Content } from './content';
+import { bundledContent, nextPlaceId, normalizeContent, validateContent, withMaxPlaceId, type Content } from './content';
 
 const clone = (): Content => structuredClone(bundledContent);
 
@@ -48,6 +48,14 @@ describe('normalizeContent', () => {
 describe('nextPlaceId', () => {
   it('is one more than the highest ID', () => {
     expect(nextPlaceId(bundledContent)).toBe(Math.max(...bundledContent.places.map(p => p.id)) + 1);
+  });
+
+  it('never reuses the ID of a deleted place', () => {
+    const top = Math.max(...bundledContent.places.map(p => p.id));
+    const before = withMaxPlaceId(bundledContent);
+    const afterDelete = withMaxPlaceId({ ...before, places: before.places.filter(p => p.id !== top) }, before);
+    expect(afterDelete.maxPlaceId).toBe(top);
+    expect(nextPlaceId(normalizeContent(JSON.parse(JSON.stringify(afterDelete))))).toBe(top + 1);
   });
 });
 

@@ -26,6 +26,9 @@ vi.mock('@vercel/blob', () => {
       if (!b) return null;
       return { statusCode: 200, stream: new Response(b.body).body, blob: { etag: b.etag, pathname, contentType: b.contentType ?? 'application/octet-stream' } };
     },
+    async del(pathname: string | string[]) {
+      for (const p of Array.isArray(pathname) ? pathname : [pathname]) store.delete(p);
+    },
     async head(pathname: string) {
       if (!store.has(pathname)) throw new BlobNotFoundError('not found');
       return { pathname };
@@ -80,7 +83,8 @@ describe('content', () => {
     _resetContentCache();
     expect((await getContent()).places[0].nameEn).toBe('Ibn Tulun (edited)');
     const { history } = await (await admin('history')).json();
-    expect(history).toHaveLength(1);
+    // The built-in baseline plus this save.
+    expect(history).toHaveLength(2);
   });
 
   it('refuses a save based on an outdated copy (two admins)', async () => {
@@ -137,8 +141,9 @@ describe('reports', () => {
     const { reports } = await (await admin('reports')).json();
     const res = await admin('report', { method: 'PATCH', body: JSON.stringify({ id: reports[0].id, status: 'resolved' }) });
     expect((await res.json()).report.status).toBe('resolved');
-    const after = (await (await admin('reports')).json()).reports;
-    expect(after[0].status).toBe('resolved');
+    const resolved = (await (await admin('reports', {}, '&status=resolved')).json()).reports;
+    expect(resolved[0].status).toBe('resolved');
+    expect((await (await admin('reports', {}, '&status=open')).json()).reports).toHaveLength(0);
   });
 
   it('silently drops honeypot submissions', async () => {
@@ -211,5 +216,56 @@ describe('photos', () => {
   it('returns 404 for unknown or malformed IDs', async () => {
     expect((await handlePhotoServe(new Request(`https://cairo.example/api/photo?id=${'b'.repeat(64)}`))).status).toBe(404);
     expect((await handlePhotoServe(new Request('https://cairo.example/api/photo?id=../content/current.json'))).status).toBe(404);
+  });
+});
+
+describe('review fixes', () => {
+  it('keeps the built-in content in history, so the first edit can be undone', async () => {
+    const { content } = await (await admin('content')).json();
+    const removed = content.places.shift();
+    await admin('content', { method: 'PUT', body: JSON.stringify({ content, etag: null, note: 'delete first place' }) });
+    const { history } = await (await admin('history')).json();
+    expect(history).toHaveLength(2);
+    const baseline = history[history.length - 1];
+    const { content: original } = await (await admin('version', {}, `&pathname=${encodeURIComponent(baseline.pathname)}`)).json();
+    expect(original.places.some((p: { id: number }) => p.id === removed.id)).toBe(true);
+  });
+
+  it('never reuses the ID of a deleted place, even if the browser forgets', async () => {
+    let { content, etag } = await (await admin('content')).json();
+    const top = Math.max(...content.places.map((p: { id: number }) => p.id));
+    content.places = content.places.filter((p: { id: number }) => p.id !== top);
+    delete content.maxPlaceId;
+    ({ etag } = await (await admin('content', { method: 'PUT', body: JSON.stringify({ content, etag, note: 'delete top' }) })).json());
+    _resetContentCache();
+    const saved = (await (await admin('content')).json()).content;
+    expect(saved.maxPlaceId).toBe(top);
+  });
+
+  it('files reports by status and pages through them', async () => {
+    for (let i = 0; i < 3; i++) await report({ type: 'closed', placeId: 1 + i });
+    let page = await (await admin('reports', {}, '&status=open')).json();
+    expect(page.total).toBe(3);
+    expect(page.counts).toEqual({ open: 3, resolved: 0, dismissed: 0 });
+    await admin('report', { method: 'PATCH', body: JSON.stringify({ id: page.reports[0].id, status: 'resolved' }) });
+    page = await (await admin('reports', {}, '&status=open')).json();
+    expect(page.counts).toEqual({ open: 2, resolved: 1, dismissed: 0 });
+    expect([...store.keys()].filter(k => k.startsWith('reports/resolved/'))).toHaveLength(1);
+    expect([...store.keys()].filter(k => k.startsWith('reports/open/'))).toHaveLength(2);
+    const second = await (await admin('reports', {}, '&status=open&offset=1')).json();
+    expect(second.reports).toHaveLength(1);
+    expect(second.reports[0].id).toBe(page.reports[1].id);
+  });
+
+  it('reaches old open reports beyond the first page', async () => {
+    for (let i = 0; i < 55; i++) {
+      const r = { id: `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`, createdAt: new Date(2026, 0, 1, 0, i).toISOString(), status: 'open' };
+      store.set(`reports/open/${r.createdAt.replace(/[:.]/g, '-')}_${r.id}.json`, { body: JSON.stringify({ ...r, type: 'closed', placeId: 1, placeName: 'x', message: '', lang: 'en' }), etag: 'x', uploadedAt: new Date() });
+    }
+    const first = await (await admin('reports', {}, '&status=open')).json();
+    expect(first.reports).toHaveLength(50);
+    expect(first.total).toBe(55);
+    const rest = await (await admin('reports', {}, '&status=open&offset=50')).json();
+    expect(rest.reports).toHaveLength(5);
   });
 });
