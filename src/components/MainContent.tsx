@@ -6,6 +6,7 @@ import { HistoricPlaceholder } from './HistoricPlaceholder';
 import { PlacePhoto } from './PlacePhoto';
 import { PhotoCredits } from './PhotoCredits';
 import { RouteProgress, VisitedBadge, VisitedToggle } from './Visited';
+import { NearMe } from './NearMe';
 import { placePhoto, routePhoto } from '../data/photos';
 import { Search, MapPin, Globe, Navigation, Map, List, ChevronRight, Cake, Coffee, Utensils, Hammer, BookOpen, Users, Landmark, ArrowUp, Share2, Clock, Route as RouteIcon, Star } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -130,6 +131,19 @@ export const MainContent: React.FC = () => {
   const fontClass = isArabic ? 'font-arabic' : 'font-sans';
   const headingFontClass = isArabic ? 'font-arabic font-bold' : 'font-serif';
   const currentRouteData = routes.find(r => r.id === selectedRoute) || routes[0];
+  // Memoized so "Near me" only resets its arrival state when the route changes.
+  const routePlaces = useMemo(() => locations.filter(l => l.routeId === selectedRoute), [selectedRoute]);
+
+  // Open a place from "Near me": show it expanded in the list and scroll to it.
+  const openPlace = (id: number) => {
+    setViewMode('list');
+    setSearchQuery('');
+    setSelectedCategory('all');
+    setSelectedLocation(id);
+    setTimeout(() => {
+      document.getElementById(`location-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 300);
+  };
 
   // Sync: Reset selection when route changes
   React.useEffect(() => {
@@ -270,15 +284,15 @@ export const MainContent: React.FC = () => {
               ))}
             </div>
 
-            <RouteProgress
-              placeIds={locations.filter(l => l.routeId === selectedRoute).map(l => l.id)}
-              isArabic={isArabic}
-            />
+            <RouteProgress placeIds={routePlaces.map(l => l.id)} isArabic={isArabic} />
 
-            <OfflineManager 
-              locations={locations.filter(l => l.routeId === selectedRoute)} 
-              routeName={currentRouteData.nameEn} 
-            />
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <NearMe places={routePlaces} isArabic={isArabic} onOpenPlace={openPlace} />
+              <OfflineManager 
+                locations={routePlaces} 
+                routeName={currentRouteData.nameEn} 
+              />
+            </div>
           </motion.div>
         </div>
 
