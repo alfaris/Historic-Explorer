@@ -15,6 +15,7 @@ import { parseArgs } from 'node:util';
 import sharp from 'sharp';
 import { photos as existingPhotos, type Photo } from '../src/data/photos.js';
 import { photoSources, type PhotoSource } from './photo-sources.js';
+import { isFreeLicense } from '../src/data/licenses.js';
 
 const { values: args } = parseArgs({
   options: {
@@ -29,7 +30,6 @@ const WIDTH = 960;
 const QUALITY = 72;
 // Wikimedia asks automated clients to identify themselves.
 const USER_AGENT = 'CairoWalksPhotoFetcher/1.0 (https://github.com/alfaris/Historic-Explorer)';
-const FREE_LICENSE = /^(cc[ -]by(-sa)?([ -][\d.]+)?|cc0|public domain|pd\b)/i;
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -112,7 +112,7 @@ async function commonsInfo(files: string[]) {
       }
       const meta = info.extmetadata ?? {};
       const license = stripHtml(meta.LicenseShortName?.value ?? '');
-      if (!FREE_LICENSE.test(license)) {
+      if (!isFreeLicense(license)) {
         result.set(file, { error: `license "${license || 'unknown'}" is not on the allowed list` });
         continue;
       }

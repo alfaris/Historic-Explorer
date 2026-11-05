@@ -12,8 +12,10 @@ interface PlacePhotoProps {
 }
 
 export function PlacePhoto({ photo, alt, className = '', fallback, showCredit = false }: PlacePhotoProps) {
-  const [failed, setFailed] = useState(false);
-  if (!photo || failed) return <>{fallback}</>;
+  // Remember which photo failed, not just that one did: the same component is
+  // reused when another place is selected, and that photo should still load.
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  if (!photo || failedSrc === photo.src) return <>{fallback}</>;
 
   return (
     <div className={`relative overflow-hidden bg-sand/30 ${className}`}>
@@ -24,7 +26,7 @@ export function PlacePhoto({ photo, alt, className = '', fallback, showCredit = 
         height={photo.height}
         loading="lazy"
         decoding="async"
-        onError={() => setFailed(true)}
+        onError={() => setFailedSrc(photo.src)}
         className="absolute inset-0 w-full h-full object-cover"
       />
       {showCredit && (

@@ -6,8 +6,8 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { locations, routes } from './locations';
 import { photos } from './photos';
+import { isFreeLicense } from './licenses';
 
-const FREE_LICENSE = /^(cc[ -]by(-sa)?([ -][\d.]+)?|cc0|public domain|pd\b)/i;
 const entries = Object.entries(photos);
 
 describe.runIf(entries.length > 0)('photos', () => {
@@ -24,7 +24,7 @@ describe.runIf(entries.length > 0)('photos', () => {
     // CC BY and CC BY-SA require naming the author.
     expect(photo.author.trim(), 'author is empty').not.toBe('');
     expect(photo.author, 'author is unknown').not.toMatch(/^unknown/i);
-    expect(photo.license, `license "${photo.license}" is not on the allowed list`).toMatch(FREE_LICENSE);
+    expect(isFreeLicense(photo.license), `license "${photo.license}" is not on the allowed list`).toBe(true);
     expect(photo.sourceUrl).toMatch(/^https:\/\/commons\.wikimedia\.org\//);
   });
 });
