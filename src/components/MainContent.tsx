@@ -169,11 +169,15 @@ export const MainContent: React.FC = () => {
   // asking for the compass) from the tap. Location turned on for the walk is
   // turned off again when it ends.
   const [walking, setWalking] = useState(false);
+  // Bumped on every start, so the error card below shows again on a new try.
+  // (Browsers remember a failed module download until the page reloads.)
+  const [walkAttempt, setWalkAttempt] = useState(0);
   const walkStartedLocation = React.useRef(false);
   const startWalk = () => {
     askForCompass();
     walkStartedLocation.current = !nearMe.on;
     if (!nearMe.on) nearMe.start();
+    setWalkAttempt(n => n + 1);
     setWalking(true);
   };
   const endWalk = () => {
@@ -749,7 +753,27 @@ export const MainContent: React.FC = () => {
         <NearMeOverlay nearMe={nearMe} isArabic={isArabic} onOpenPlace={openPlace} onShowTab={() => setViewMode('near')} />
       )}
       {walking && (
-        <LazyBoundary loading={null} failed={null}>
+        <LazyBoundary
+          key={walkAttempt}
+          loading={null}
+          failed={
+            // The walk's code couldn't download (e.g. offline before it was cached):
+            // say so, and give a way out that also turns location back off.
+            <div className="fixed z-[7000] inset-x-4 bottom-28 md:bottom-8 md:inset-x-auto md:end-8 md:w-96 bg-white rounded-3xl shadow-2xl border border-sand/50 p-5" role="alert" dir={isArabic ? 'rtl' : 'ltr'}>
+              <p className="text-sm text-ink mb-3">
+                {isArabic ? 'تعذّر فتح الجولة. تحقق من اتصالك بالإنترنت، ثم أعد تحميل الصفحة.' : "The walk couldn't open. Check your connection, then reload the page."}
+              </p>
+              <div className="flex gap-2">
+                <button onClick={() => window.location.reload()} className="px-4 py-2 rounded-xl bg-nile text-white text-xs font-bold uppercase tracking-widest">
+                  {isArabic ? 'إعادة التحميل' : 'Reload'}
+                </button>
+                <button onClick={endWalk} className="px-4 py-2 rounded-xl bg-chalk text-ink text-xs font-bold uppercase tracking-widest">
+                  {isArabic ? 'إغلاق' : 'Close'}
+                </button>
+              </div>
+            </div>
+          }
+        >
           <WalkMode route={currentRouteData} places={locations} nearMe={nearMe} isArabic={isArabic} onClose={endWalk} />
         </LazyBoundary>
       )}
