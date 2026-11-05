@@ -97,7 +97,7 @@ function ArrivalCard({ place, isArabic, onDismiss, onOpenPlace }: {
     <div>
       <div className="flex items-start justify-between gap-3 mb-3">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-gold mb-1">
+          <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-gold-ink mb-1">
             {isArabic ? 'لقد وصلت إلى' : "You've arrived at"}
           </p>
           <p className="text-lg text-ink font-serif leading-tight">{placeName(place, isArabic)}</p>

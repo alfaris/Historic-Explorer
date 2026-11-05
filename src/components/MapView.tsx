@@ -66,16 +66,20 @@ const MapUpdater: React.FC<{ locations: Location[]; selectedLocation: number | n
 // Custom Zoom Controls
 const CustomZoomControl: React.FC = () => {
   const map = useMap();
+  const { language } = useLanguage();
+  const ar = language === 'ar';
   return (
     <div className="absolute top-6 right-6 z-[1000] flex flex-col gap-2">
       <button 
         onClick={() => map.zoomIn()}
+        aria-label={ar ? 'تكبير' : 'Zoom in'}
         className="w-10 h-10 bg-white rounded-xl shadow-lg border border-stone-200 flex items-center justify-center text-nile hover:bg-gold hover:text-white transition-all duration-300"
       >
         <ZoomIn className="w-5 h-5" />
       </button>
       <button 
         onClick={() => map.zoomOut()}
+        aria-label={ar ? 'تصغير' : 'Zoom out'}
         className="w-10 h-10 bg-white rounded-xl shadow-lg border border-stone-200 flex items-center justify-center text-nile hover:bg-gold hover:text-white transition-all duration-300"
       >
         <ZoomOut className="w-5 h-5" />
@@ -103,8 +107,9 @@ const LocateControl: React.FC<{ onLocate: () => void, isLocating: boolean, isAra
     <div className={`absolute bottom-6 ${isArabic ? 'left-6' : 'right-6'} z-[1000]`}>
       <button 
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); onLocate(); }}
-        className="w-12 h-12 bg-nile text-white rounded-full shadow-xl border-2 border-white flex items-center justify-center hover:bg-nile-light hover:scale-110 transition-all active:scale-95 focus:outline-none"
+        className="w-12 h-12 bg-nile text-white rounded-full shadow-xl border-2 border-white flex items-center justify-center hover:bg-nile-light hover:scale-110 transition-all active:scale-95"
         title={isArabic ? 'موقعي الحالي' : 'My Location'}
+        aria-label={isArabic ? 'موقعي الحالي' : 'My Location'}
         disabled={isLocating}
       >
         <MapPin className={`w-5 h-5 ${isLocating ? 'animate-pulse' : ''}`} />
@@ -238,7 +243,7 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
                 }
               />
               <div className="px-1">
-                <p className="text-[10px] font-bold text-gold mb-2 uppercase tracking-[0.2em]">
+                <p className="text-[10px] font-bold text-gold-ink mb-2 uppercase tracking-[0.2em]">
                   {isArabic ? category?.nameAr : category?.nameEn}
                 </p>
                 <h3 className="font-serif italic text-xl text-ink leading-tight mb-2">
@@ -247,7 +252,7 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
                 <div className="w-8 h-px bg-gold/30 mb-3"></div>
                 <button 
                   onClick={() => onSelectLocation(loc.id)}
-                  className="text-[10px] font-bold text-nile underline underline-offset-4 uppercase tracking-widest hover:text-gold transition-colors"
+                  className="text-[10px] font-bold text-nile underline underline-offset-4 uppercase tracking-widest hover:text-gold-ink transition-colors"
                 >
                   {isArabic ? 'بدء الاستماع' : 'Start Lesson'}
                 </button>

@@ -192,7 +192,7 @@ export const MainContent: React.FC = () => {
           </div>
           <button 
             onClick={toggleLanguage}
-            className="group flex flex-col items-center gap-1 focus:outline-none"
+            className="group flex flex-col items-center gap-1"
             aria-label="Toggle Language"
           >
             <div className="w-12 h-12 rounded-full border border-sand hover:border-nile transition-all duration-500 flex items-center justify-center bg-white shadow-sm ring-0 group-hover:ring-4 group-hover:ring-nile/5">
@@ -212,7 +212,7 @@ export const MainContent: React.FC = () => {
           {selectedCategory !== 'all' && (
             <>
               <ChevronRight className={`w-3 h-3 ${isArabic ? 'rotate-180' : ''}`} />
-              <span className="text-gold">{isArabic ? categories.find(c => c.id === selectedCategory)?.nameAr : categories.find(c => c.id === selectedCategory)?.nameEn}</span>
+              <span className="text-gold-ink">{isArabic ? categories.find(c => c.id === selectedCategory)?.nameAr : categories.find(c => c.id === selectedCategory)?.nameEn}</span>
             </>
           )}
           {selectedLocation && (
@@ -228,13 +228,13 @@ export const MainContent: React.FC = () => {
         {/* Route Selector */}
         <div className="mb-8">
           <div className="flex items-center gap-4 mb-4">
-            <h3 className="text-xs font-bold text-nile uppercase tracking-[0.25em]">
+            <h2 className="text-xs font-bold text-nile uppercase tracking-[0.25em]">
               {t('routes')}
-            </h3>
+            </h2>
             <div className="h-px flex-1 bg-sand/50"></div>
           </div>
           <div className="flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-            {routes.map(route => (
+            {routes.map((route, routeIndex) => (
               <div key={route.id} className="flex-none w-[220px] md:w-[260px] snap-start flex flex-col gap-3">
                 <button
                   onClick={() => {
@@ -250,6 +250,8 @@ export const MainContent: React.FC = () => {
                   <PlacePhoto
                     photo={photoForRoute(route)}
                     alt={isArabic ? route.nameAr : route.nameEn}
+                    sizes="(min-width: 768px) 260px, 220px"
+                    priority={routeIndex < 2}
                     className="absolute inset-0 w-full h-full"
                     fallback={
                       <RoutePlaceholder 
@@ -580,6 +582,7 @@ export const MainContent: React.FC = () => {
                           <PlacePhoto
                             photo={photoForPlace(loc)}
                             alt={isArabic ? loc.nameAr : loc.nameEn}
+                            sizes="(min-width: 768px) 33vw, 100vw"
                             className="w-full h-full min-h-56"
                             showCredit={isSelected}
                             fallback={
@@ -595,7 +598,7 @@ export const MainContent: React.FC = () => {
                           <div className="flex justify-between items-start mb-4">
                             <div>
                               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-3">
-                                <p className="text-[10px] font-bold text-gold uppercase tracking-[0.3em]">
+                                <p className="text-[10px] font-bold text-gold-ink uppercase tracking-[0.3em]">
                                   {isArabic ? category?.nameAr : category?.nameEn}
                                 </p>
                                 <VisitedBadge placeId={loc.id} isArabic={isArabic} />
@@ -709,6 +712,7 @@ export const MainContent: React.FC = () => {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.8, y: 20 }}
             onClick={scrollToTop}
+            aria-label={isArabic ? 'العودة إلى الأعلى' : 'Back to top'}
             className={`fixed ${viewMode === 'list' && !showScrollTop ? 'bottom-24' : 'bottom-24'} md:bottom-8 ${isArabic ? 'left-8' : 'right-8'} w-14 h-14 rounded-full bg-nile text-white shadow-2xl flex items-center justify-center z-[3000] hover:bg-gold transition-colors duration-500`}
           >
             <ArrowUp className="w-5 h-5" />

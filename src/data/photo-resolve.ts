@@ -12,3 +12,10 @@ export const photoForRoute = (route: Pick<Route, 'id' | 'photo'>): Photo | undef
 
 /** Built-in photo only, ignoring any upload (shown in the admin editor). */
 export const builtInPhoto = (key: string): Photo | undefined => photos[key];
+
+/**
+ * The 480px copy of a built-in photo (made by scripts/photo-variants.ts), for
+ * srcset. Uploaded photos have only one size.
+ */
+export const smallPhotoSrc = (src: string) =>
+  /^\/images\/photos\/[\w-]+\.webp$/.test(src) ? src.replace(/\.webp$/, '-480.webp') : null;

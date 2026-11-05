@@ -151,7 +151,7 @@ function ReportCard({ report, content, save, setStatus, onEditPlace }: {
     <li className={`bg-white rounded-2xl border p-5 ${report.status === 'open' ? 'border-gold/50' : 'border-sand/50 opacity-80'}`}>
       <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gold">{TYPE_LABEL[report.type]}</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gold-ink">{TYPE_LABEL[report.type]}</p>
           <p className="text-lg font-serif leading-tight">
             {place ? place.nameEn : report.placeName}
             {!place && <span className="text-xs text-stone-400 font-sans"> (no longer in the app)</span>}
