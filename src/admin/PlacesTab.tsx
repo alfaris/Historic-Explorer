@@ -180,6 +180,9 @@ export function PlacesTab({ content, save, initialPlaceId, onSelected }: {
 
           {!isNew && original && (
             <AudioPanel
+              // A fresh panel per place, so a generation still running for the
+              // previous place can't update this one.
+              key={draft.id}
               placeId={draft.id}
               draftText={{ en: draft.descriptionEn, ar: draft.descriptionAr }}
               savedText={{ en: original.descriptionEn, ar: original.descriptionAr }}

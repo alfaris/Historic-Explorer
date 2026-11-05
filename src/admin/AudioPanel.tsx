@@ -36,7 +36,9 @@ export function AudioPanel({ placeId, draftText, savedText, generateOnLoad = fal
     setError(null);
     try {
       await api.generateAudio(placeId, lang, version);
-      setStates(s => (s ? { ...s, [lang]: { status: 'stored', version } } : s));
+      // Only if the panel still shows that text: a result for older text must
+      // not mark the current text as ready.
+      setStates(s => (s && s[lang].version === version ? { ...s, [lang]: { status: 'stored', version } } : s));
     } catch (err) {
       setError(`${lang === 'en' ? 'English' : 'Arabic'}: ${(err as Error).message}`);
     } finally {
@@ -90,7 +92,8 @@ export function AudioPanel({ placeId, draftText, savedText, generateOnLoad = fal
           else {
             status = <span className="text-amber-700">Not generated yet: the next visitor waits for it</span>;
             action = (
-              <Button variant="secondary" className="!py-1.5 !px-3" onClick={() => generate(lang, state.version!)}>
+              // type="button": inside the place form, a plain button would submit (and save) the draft.
+              <Button type="button" variant="secondary" className="!py-1.5 !px-3" onClick={() => generate(lang, state.version!)}>
                 Generate
               </Button>
             );
