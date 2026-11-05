@@ -22,7 +22,7 @@ const { values: args } = parseArgs({
   },
 });
 
-const langs: Lang[] = args.lang === 'en' || args.lang === 'ar' ? [args.lang] : ['en', 'ar'];
+const langs: Lang[] = args.lang === 'en' || args.lang === 'ar' || args.lang === 'fr' ? [args.lang] : ['en', 'ar', 'fr'];
 if (args.lang && langs.length !== 1) {
   console.error('--lang must be "en" or "ar"');
   process.exit(1);

@@ -3,6 +3,7 @@ import { Sparkles, Map, ExternalLink } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { LazyBoundary } from './LazyBoundary';
 
+import { L, currentLang } from '../i18n/lang';
 // The Markdown renderer is only needed once insights arrive. Loading starts when
 // they're requested, alongside the API call, so it's normally ready in time.
 const loadMarkdown = () => import('react-markdown');
@@ -28,7 +29,7 @@ export const LiveLocationInfo: React.FC<LiveLocationInfoProps> = ({ locationId }
 
     loadMarkdown().catch(() => {});
     try {
-      const res = await fetch(`/api/live-info?id=${locationId}&lang=${isArabic ? 'ar' : 'en'}`);
+      const res = await fetch(`/api/live-info?id=${locationId}&lang=${currentLang()}`);
       const data: { text?: string | null; links?: { uri: string; title?: string }[]; error?: string } = await res.json();
       if (!res.ok) {
         throw new Error(data.error || `Request failed (${res.status})`);
@@ -37,12 +38,12 @@ export const LiveLocationInfo: React.FC<LiveLocationInfoProps> = ({ locationId }
       if (data.text) {
         setInfo(data.text);
       } else {
-        setError(isArabic ? 'لم يتم العثور على معلومات دقيقة حالياً.' : 'No precise information found at the moment.');
+        setError(L('No precise information found at the moment.', 'لم يتم العثور على معلومات دقيقة حالياً.'));
       }
 
       setLinks((data.links ?? []).map(link => ({
         uri: link.uri,
-        title: link.title || (isArabic ? 'مصدر خارجي' : 'Web Source'),
+        title: link.title || (L('Web Source', 'مصدر خارجي')),
       })));
 
     } catch (err: any) {
@@ -66,7 +67,7 @@ export const LiveLocationInfo: React.FC<LiveLocationInfoProps> = ({ locationId }
       <div className="flex items-center justify-between mb-6">
         <h4 className={`text-[10px] font-bold text-nile uppercase tracking-[0.3em] flex items-center gap-2`}>
           <Sparkles className="w-4 h-4 text-gold" />
-          {isArabic ? 'بصيرة حية من الذكاء الاصطناعي' : 'Eclectic Live Insights'}
+          {L('Eclectic Live Insights', 'بصيرة حية من الذكاء الاصطناعي')}
         </h4>
         {!info && !loading && (
           <button
@@ -76,7 +77,7 @@ export const LiveLocationInfo: React.FC<LiveLocationInfoProps> = ({ locationId }
             }}
             className="text-[10px] font-bold bg-nile text-white px-5 py-2 rounded-xl hover:bg-nile-light transition-all duration-300 uppercase tracking-wider shadow-lg shadow-nile/10"
           >
-            {isArabic ? 'فتح البصيرة' : 'Unlock Insights'}
+            {L('Unlock Insights', 'فتح البصيرة')}
           </button>
         )}
       </div>
@@ -89,7 +90,7 @@ export const LiveLocationInfo: React.FC<LiveLocationInfoProps> = ({ locationId }
             <div className="h-2 bg-sand/60 rounded-full w-5/6"></div>
           </div>
           <p className="text-[10px] text-stone-400 italic text-center animate-pulse">
-            {isArabic ? 'جارٍ التشاور مع المصادر التاريخية...' : 'Consulting historical sources and live maps...'}
+            {L('Consulting historical sources and live maps...', 'جارٍ التشاور مع المصادر التاريخية...')}
           </p>
         </div>
       )}

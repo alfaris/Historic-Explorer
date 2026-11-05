@@ -4,11 +4,13 @@ import { useLanguage } from '../i18n/LanguageContext';
 import { textHash } from '../lib/text-hash';
 import { audioGuideUrl } from '../lib/offline-pack';
 import { track } from '../lib/track';
+import type { Lang } from '../i18n/lang';
 
+import { L } from '../i18n/lang';
 interface AudioGuideProps {
   locationId: number;
   text: string;
-  langCode: 'en' | 'ar';
+  langCode: Lang;
 }
 
 type GuideAudio = { audio: ArrayBuffer } | { script: string };
@@ -18,7 +20,7 @@ const guideCache = new Map<string, Promise<GuideAudio>>();
 
 // The URL includes a hash of the narrated text, so editing a description in
 // the admin dashboard gives it a new URL instead of a stale cached recording.
-const loadGuideAudio = (locationId: number, langCode: 'en' | 'ar', text: string) => {
+const loadGuideAudio = (locationId: number, langCode: Lang, text: string) => {
   const version = textHash(text);
   const key = `${locationId}:${langCode}:${version}`;
   let pending = guideCache.get(key);
@@ -159,10 +161,10 @@ export function AudioGuide({ locationId, text, langCode }: AudioGuideProps) {
   const useBrowserSpeech = (speechText: string) => {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(speechText);
-    utterance.lang = langCode === 'ar' ? 'ar-EG' : 'en-US';
+    utterance.lang = langCode === 'ar' ? 'ar-EG' : langCode === 'fr' ? 'fr-FR' : 'en-US';
     
     const voices = window.speechSynthesis.getVoices();
-    const targetLangPrefix = langCode === 'ar' ? 'ar' : 'en';
+    const targetLangPrefix = langCode;
     const voice = voices.find(v => v.lang.toLowerCase().startsWith(targetLangPrefix));
     if (voice) {
       utterance.voice = voice;
@@ -198,7 +200,7 @@ export function AudioGuide({ locationId, text, langCode }: AudioGuideProps) {
       {isLoading ? (
         <>
           <Loader2 className="w-4 h-4 animate-spin text-stone-400" />
-          {isArabic ? 'جاري التحضير...' : 'Loading Immersive Guide'}
+          {L('Loading Immersive Guide', 'جاري التحضير...')}
         </>
       ) : isPlaying ? (
         <>
@@ -207,12 +209,12 @@ export function AudioGuide({ locationId, text, langCode }: AudioGuideProps) {
             <div className="w-1 bg-white h-4 animate-[bounce_1s_infinite_0.2s]"></div>
             <div className="w-1 bg-white h-3 animate-[bounce_1s_infinite_0.4s]"></div>
           </div>
-          {isArabic ? 'إيقاف' : 'Stop'}
+          {L('Stop', 'إيقاف')}
         </>
       ) : (
         <>
           <Sparkles className="w-4 h-4" />
-          {isArabic ? 'دليل صوتي تفاعلي' : 'Immersive Audio'}
+          {L('Immersive Audio', 'دليل صوتي تفاعلي')}
         </>
       )}
     </button>

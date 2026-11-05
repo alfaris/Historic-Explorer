@@ -20,6 +20,9 @@ describe('validateContent', () => {
     ['highlight count mismatch', c => { c.routes[0].highlightsAr.pop(); }, /same number of lines/],
     ['too long', c => { c.places[0].descriptionEn = 'x'.repeat(2001); }, /longer than 2000/],
     ['no routes', c => { c.routes = []; c.places = []; }, /at least one route/],
+    ['French place description too long', c => { c.places[0].descriptionFr = 'x'.repeat(2001); }, /descriptionFr is longer than 2000/],
+    ['French route name too long', c => { c.routes[0].nameFr = 'x'.repeat(121); }, /nameFr is longer than 120/],
+    ['too many French highlights', c => { c.routes[0].highlightsFr = Array(9).fill('x'); }, /at most 8 French highlights/],
   ])('rejects %s', (_, mutate, message) => {
     const c = clone();
     mutate(c);
@@ -37,6 +40,21 @@ describe('normalizeContent', () => {
     expect(c.routes[0].nameEn).toBe('Padded');
     expect(c.places[0]).not.toHaveProperty('extra');
     expect(c.places[0].lat).toBe(30.03);
+  });
+
+  it('keeps French fields, and leaves empty ones out', () => {
+    const c = normalizeContent({
+      routes: [{ ...bundledContent.routes[0], nameFr: ' Parcours ', descriptionFr: '', highlightsFr: [' Un ', ''] }],
+      places: [{ ...bundledContent.places[0], nameFr: 'Mosquée', descriptionFr: '   ' }],
+    });
+    expect(c.routes[0].nameFr).toBe('Parcours');
+    expect(c.routes[0]).not.toHaveProperty('descriptionFr');
+    expect(c.routes[0].highlightsFr).toEqual(['Un']);
+    expect(c.places[0].nameFr).toBe('Mosquée');
+    expect(c.places[0]).not.toHaveProperty('descriptionFr');
+    const none = normalizeContent({ routes: [{ ...bundledContent.routes[0], nameFr: undefined, descriptionFr: undefined, highlightsFr: [] }], places: [] });
+    expect(none.routes[0]).not.toHaveProperty('highlightsFr');
+    expect(none.routes[0]).not.toHaveProperty('nameFr');
   });
 
   it('copes with garbage', () => {

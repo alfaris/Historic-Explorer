@@ -7,11 +7,14 @@ import { photoForPlace, photoForRoute, smallPhotoSrc } from '../data/photo-resol
 import { textHash } from './text-hash';
 import type { OfflineCacheKind } from './offline-caches';
 
-export type Lang = 'en' | 'ar';
+import { descriptionOf, type Lang } from '../i18n/lang.js';
+export type { Lang };
 
 /** The narrated text of a place's audio guide. */
-export const audioText = (place: Pick<Location, 'descriptionEn' | 'descriptionAr'>, lang: Lang) =>
-  (lang === 'ar' ? place.descriptionAr : place.descriptionEn) || '';
+// French falls back to the English description; the narration is still
+// written and spoken in French (see generateAudio on the server).
+export const audioText = (place: Pick<Location, 'descriptionEn' | 'descriptionAr' | 'descriptionFr'>, lang: Lang) =>
+  descriptionOf(place, lang);
 
 /**
  * The audio guide URL. It carries a hash of the narrated text, so editing a

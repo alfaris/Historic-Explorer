@@ -21,7 +21,7 @@ export interface Report {
   placeName: string;
   message: string;
   suggested?: { lat: number; lng: number; source: 'gps' | 'map'; accuracy?: number };
-  lang: 'en' | 'ar';
+  lang: 'en' | 'ar' | 'fr';
   adminNote?: string;
   updatedAt?: string;
 }
@@ -66,7 +66,7 @@ export async function buildReport(input: any, now = new Date()): Promise<Report 
     placeName: place.nameEn,
     message,
     ...(suggested ? { suggested } : {}),
-    lang: input?.lang === 'ar' ? 'ar' : 'en',
+    lang: input?.lang === 'ar' || input?.lang === 'fr' ? input.lang : 'en',
   };
 }
 

@@ -4,6 +4,7 @@ import { useContent } from '../data/ContentContext';
 import { photoForPlace, photoForRoute } from '../data/photo-resolve';
 import type { Photo } from '../data/photos';
 
+import { L, nameOf } from '../i18n/lang';
 // Every photo shown in the app, built-in (Wikimedia Commons) or uploaded in the
 // admin dashboard, listed with the credit its license requires.
 export function PhotoCredits({ isArabic }: { isArabic: boolean }) {
@@ -12,11 +13,11 @@ export function PhotoCredits({ isArabic }: { isArabic: boolean }) {
   const entries: [string, string, Photo][] = [];
   for (const r of routes) {
     const photo = photoForRoute(r);
-    if (photo) entries.push([`route-${r.id}`, isArabic ? r.nameAr : r.nameEn, photo]);
+    if (photo) entries.push([`route-${r.id}`, nameOf(r), photo]);
   }
   for (const l of locations) {
     const photo = photoForPlace(l);
-    if (photo) entries.push([`place-${l.id}`, isArabic ? l.nameAr : l.nameEn, photo]);
+    if (photo) entries.push([`place-${l.id}`, nameOf(l), photo]);
   }
   if (entries.length === 0) return null;
 
@@ -27,7 +28,7 @@ export function PhotoCredits({ isArabic }: { isArabic: boolean }) {
           onClick={() => setOpen(true)}
           className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400 hover:text-nile transition-colors"
         >
-          {isArabic ? 'حقوق الصور' : 'Photo credits'}
+          {L('Photo credits', 'حقوق الصور')}
         </button>
       </div>
 
@@ -37,7 +38,7 @@ export function PhotoCredits({ isArabic }: { isArabic: boolean }) {
           onClick={() => setOpen(false)}
           role="dialog"
           aria-modal="true"
-          aria-label={isArabic ? 'حقوق الصور' : 'Photo credits'}
+          aria-label={L('Photo credits', 'حقوق الصور')}
         >
           <div
             className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col"
@@ -45,20 +46,18 @@ export function PhotoCredits({ isArabic }: { isArabic: boolean }) {
           >
             <div className="flex items-center justify-between px-6 py-5 border-b border-sand/40">
               <h2 className="text-xs font-bold uppercase tracking-[0.25em] text-nile">
-                {isArabic ? 'حقوق الصور' : 'Photo credits'}
+                {L('Photo credits', 'حقوق الصور')}
               </h2>
               <button
                 onClick={() => setOpen(false)}
                 className="p-2 -m-2 text-stone-400 hover:text-ink"
-                aria-label={isArabic ? 'إغلاق' : 'Close'}
+                aria-label={L('Close', 'إغلاق')}
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
             <p className="px-6 pt-4 text-xs text-stone-500">
-              {isArabic
-                ? 'الصور من ويكيميديا كومنز ومساهمين آخرين، ومستخدمة وفق التراخيص المذكورة.'
-                : 'Photos from Wikimedia Commons and other contributors, used under the licenses listed.'}
+              {L('Photos from Wikimedia Commons and other contributors, used under the licenses listed.', 'الصور من ويكيميديا كومنز ومساهمين آخرين، ومستخدمة وفق التراخيص المذكورة.')}
             </p>
             <ul className="overflow-y-auto px-6 py-4 space-y-3 text-xs">
               {entries.map(([key, name, photo]) => (

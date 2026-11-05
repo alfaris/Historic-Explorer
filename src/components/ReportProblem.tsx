@@ -6,6 +6,7 @@ import { LazyBoundary } from './LazyBoundary';
 import { useDialog } from '../lib/useDialog';
 import type { LatLng } from './LocationPicker';
 
+import { L, nameOf, currentLang } from '../i18n/lang';
 const LocationPicker = lazy(() => import('./LocationPicker'));
 
 type ReportType = 'location' | 'text' | 'closed' | 'photo';
@@ -30,7 +31,7 @@ export function ReportProblem({ place, isArabic }: { place: Location; isArabic: 
         className="inline-flex items-center gap-1.5 text-[11px] text-stone-400 hover:text-nile transition-colors"
       >
         <Flag className="w-3.5 h-3.5" />
-        {isArabic ? 'الإبلاغ عن خطأ' : 'Report a problem'}
+        {L('Report a problem', 'الإبلاغ عن خطأ')}
       </button>
       {/* Portalled to <body>: the place cards are animated with CSS transforms,
           which would otherwise trap a position: fixed dialog inside the card. */}
@@ -50,7 +51,7 @@ function ReportDialog({ place, isArabic, onClose }: { place: Location; isArabic:
   const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle');
   const [error, setError] = useState<string | null>(null);
   const { ref: panelRef, guard } = useDialog<HTMLDivElement>(onClose);
-  const t = (en: string, ar: string) => (isArabic ? ar : en);
+  const t = L;
 
   const useMyLocation = () => {
     if (!('geolocation' in navigator)) return setError(t("This browser can't share your location.", 'تحديد الموقع غير مدعوم في هذا المتصفح.'));
@@ -87,7 +88,7 @@ function ReportDialog({ place, isArabic, onClose }: { place: Location; isArabic:
           type,
           placeId: place.id,
           message,
-          lang: isArabic ? 'ar' : 'en',
+          lang: currentLang(),
           website,
           ...(type === 'location' ? { suggested: { ...spot, source, accuracy } } : {}),
         }),
@@ -120,7 +121,7 @@ function ReportDialog({ place, isArabic, onClose }: { place: Location; isArabic:
         <div className="flex items-start justify-between gap-3 mb-4">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-gold-ink mb-1">{t('Report a problem', 'الإبلاغ عن خطأ')}</p>
-            <p className="text-lg text-ink font-serif leading-tight">{isArabic ? place.nameAr : place.nameEn}</p>
+            <p className="text-lg text-ink font-serif leading-tight">{nameOf(place)}</p>
           </div>
           <button onClick={onClose} className="p-1 text-stone-400 hover:text-ink" aria-label={t('Close', 'إغلاق')}>
             <X className="w-4 h-4" />
@@ -148,7 +149,7 @@ function ReportDialog({ place, isArabic, onClose }: { place: Location; isArabic:
                   }`}
                 >
                   <input type="radio" name="report-type" value={opt.id} checked={type === opt.id} onChange={() => setType(opt.id)} className="accent-[#1f4d3a]" />
-                  <span className="text-sm text-ink">{isArabic ? opt.ar : opt.en}</span>
+                  <span className="text-sm text-ink">{L(opt.en, opt.ar)}</span>
                 </label>
               ))}
             </fieldset>

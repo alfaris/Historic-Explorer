@@ -1,6 +1,8 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { initialLang, setCurrentLang, type Lang } from './lang';
 
-type Language = 'en' | 'ar';
+type Language = Lang;
+const STORAGE_KEY = 'cairo-walks:lang';
 
 interface LanguageContextType {
   language: Language;
@@ -49,19 +51,52 @@ const translations = {
     'nearby': 'أماكن قريبة',
     'directions': 'احصل على الاتجاهات',
     'routes': 'المسارات',
-  }
+  },
+  fr: {
+    'app.title': 'Explorateur du Caire historique',
+    'app.subtitle': 'Découvrez les monuments et la vie des rues historiques',
+    'explore': 'Explorer',
+    'categories': 'Catégories',
+    'all': 'Tous les lieux',
+    'search': 'Rechercher un lieu…',
+    'map': 'Carte',
+    'list': 'Liste',
+    'near': 'Autour de moi',
+    'monument': 'Monuments et patrimoine',
+    'coffee': 'Cafés',
+    'restaurant': 'Restaurants et cuisine',
+    'workshop': 'Ateliers et artisanat',
+    'stationary': 'Papeteries et jouets',
+    'meeting': 'Points de rendez-vous',
+    'nearby': 'Lieux à proximité',
+    'directions': 'Itinéraire',
+    'routes': 'Parcours',
+  },
 };
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [language, setLanguage] = useState<Language>('en');
-
-  useEffect(() => {
-    // Detect user language
-    const browserLang = navigator.language.startsWith('ar') ? 'ar' : 'en';
-    setLanguage(browserLang);
-  }, []);
+  // A saved choice, else the browser's language (Arabic, French or English).
+  const [language, setLanguageState] = useState<Language>(() => {
+    let saved: string | null = null;
+    try {
+      saved = window.localStorage.getItem(STORAGE_KEY);
+    } catch {
+      // No storage (private mode): use the browser's language.
+    }
+    return initialLang(saved, navigator.language || '');
+  });
+  const setLanguage = (lang: Language) => {
+    setLanguageState(lang);
+    try {
+      window.localStorage.setItem(STORAGE_KEY, lang);
+    } catch {
+      // Not remembered; still switches for this visit.
+    }
+  };
+  // L(), nameOf() and friends read this; set before the tree renders.
+  setCurrentLang(language);
 
   const t = (key: string) => {
     return translations[language][key as keyof typeof translations['en']] || key;

@@ -11,6 +11,10 @@ export interface Route {
   image: string;
   highlightsEn: string[];
   highlightsAr: string[];
+  /** French (optional): shown in French, falling back to English when empty. */
+  nameFr?: string;
+  descriptionFr?: string;
+  highlightsFr?: string[];
   distance: string;
   duration: string;
   /** Uploaded in the admin dashboard; replaces the built-in photo. */
@@ -25,6 +29,9 @@ export interface Location {
   category: Category;
   descriptionEn?: string;
   descriptionAr?: string;
+  /** French (optional): shown in French, falling back to English when empty. */
+  nameFr?: string;
+  descriptionFr?: string;
   lat: number;
   lng: number;
   image?: string;
@@ -42,6 +49,9 @@ export const routes: Route[] = [
     image: '',
     highlightsEn: ['20+ Spiritual sites', 'Unique Spiral Minaret', 'Traditional Handicrafts'],
     highlightsAr: ['أكثر من ٢٠ موقعاً روحياً', 'مئذنة ملتوية فريدة', 'حرف يدوية تقليدية'],
+    nameFr: "Parcours d'Ahl al-Bayt",
+    descriptionFr: "Un voyage entre histoire et spiritualité au cœur du Caire",
+    highlightsFr: ["Plus de 20 sites spirituels", "Un minaret en spirale unique", "Artisanat traditionnel"],
     distance: '2.5 km',
     duration: '2-3 hours'
   },
@@ -54,6 +64,9 @@ export const routes: Route[] = [
     image: '',
     highlightsEn: ['Medieval Architecture', 'Khan el-Khalili Bazaar', 'Ancient City Gates'],
     highlightsAr: ['عمارة العصور الوسطى', 'بازار خان الخليلي', 'بوابات المدينة القديمة'],
+    nameFr: "Rue Al-Muizz",
+    descriptionFr: "La plus grande concentration de trésors architecturaux médiévaux du monde islamique",
+    highlightsFr: ["Architecture médiévale", "Le bazar de Khan el-Khalili", "Les anciennes portes de la ville"],
     distance: '1.8 km',
     duration: '3-4 hours'
   },
@@ -66,6 +79,9 @@ export const routes: Route[] = [
     image: '',
     highlightsEn: ['The Hanging Church', 'Ben Ezra Synagogue', 'Roman Fortress Ruins'],
     highlightsAr: ['الكنيسة المعلقة', 'معبد بن عزرا', 'أنقاض الحصن الروماني'],
+    nameFr: "Le Caire copte (complexe des religions)",
+    descriptionFr: "Un petit quartier fortifié où les églises anciennes et la synagogue Ben Ezra se côtoient",
+    highlightsFr: ["L'Église suspendue", "La synagogue Ben Ezra", "Les vestiges de la forteresse romaine"],
     distance: '1.0 km',
     duration: '1.5-2 hours'
   },
@@ -78,6 +94,9 @@ export const routes: Route[] = [
     image: '',
     highlightsEn: ['Salah El-Din Citadel', 'Alabaster Mosque', 'Al-Azhar Park Views'],
     highlightsAr: ['قلعة صلاح الدين', 'مسجد الألبستر', 'إطلالات حديقة الأزهر'],
+    nameFr: "Al-Darb Al-Ahmar et la Citadelle",
+    descriptionFr: "Un quartier historique avec la majestueuse Citadelle et une superbe architecture mamelouke",
+    highlightsFr: ["La Citadelle de Saladin", "La mosquée d'albâtre", "Les vues du parc Al-Azhar"],
     distance: '2.2 km',
     duration: '3-4 hours'
   },
@@ -90,18 +109,21 @@ export const routes: Route[] = [
     image: '',
     highlightsEn: ['Abbasid Nilometer (861 AD)', 'Royal Mummies at NMEC', 'Oldest Mosque in Africa'],
     highlightsAr: ['مقياس النيل العباسي (٨٦١م)', 'المومياوات الملكية بمتحف الحضارة', 'أقدم مسجد في أفريقيا'],
+    nameFr: "Fustat, Roda et le Vieux-Caire",
+    descriptionFr: "Des palais du Nil et du nilomètre abbasside de l'île de Roda jusqu'à Fustat, la première capitale islamique de l'Égypte",
+    highlightsFr: ["Le nilomètre abbasside (861)", "Les momies royales au NMEC", "La plus ancienne mosquée d'Afrique"],
     distance: '7 km',
     duration: '3.5-4.5 hours'
   }
 ];
 
 export const categories = [
-  { id: 'monument', nameEn: 'Monuments & Historic', nameAr: 'آثار ومباني تاريخية', color: 'bg-nile', icon: 'Landmark' },
-  { id: 'coffee', nameEn: 'Coffee Shops', nameAr: 'مقاهي', color: 'bg-stone-500', icon: 'Coffee' },
-  { id: 'restaurant', nameEn: 'Restaurants & Food', nameAr: 'مطاعم وغذاء', color: 'bg-gold', icon: 'Utensils' },
-  { id: 'workshop', nameEn: 'Workshops & Handicrafts', nameAr: 'ورش ومنتجات يدوية', color: 'bg-stone-600', icon: 'Hammer' },
-  { id: 'stationary', nameEn: 'Stationary & Toys', nameAr: 'خردوات ومكتبات', color: 'bg-stone-400', icon: 'BookOpen' },
-  { id: 'meeting', nameEn: 'Meeting Points', nameAr: 'نقاط التجمع', color: 'bg-nile-light', icon: 'Users' },
+  { id: 'monument', nameEn: 'Monuments & Historic', nameAr: 'آثار ومباني تاريخية', nameFr: 'Monuments et patrimoine', color: 'bg-nile', icon: 'Landmark' },
+  { id: 'coffee', nameEn: 'Coffee Shops', nameAr: 'مقاهي', nameFr: 'Cafés', color: 'bg-stone-500', icon: 'Coffee' },
+  { id: 'restaurant', nameEn: 'Restaurants & Food', nameAr: 'مطاعم وغذاء', nameFr: 'Restaurants et cuisine', color: 'bg-gold', icon: 'Utensils' },
+  { id: 'workshop', nameEn: 'Workshops & Handicrafts', nameAr: 'ورش ومنتجات يدوية', nameFr: 'Ateliers et artisanat', color: 'bg-stone-600', icon: 'Hammer' },
+  { id: 'stationary', nameEn: 'Stationary & Toys', nameAr: 'خردوات ومكتبات', nameFr: 'Papeteries et jouets', color: 'bg-stone-400', icon: 'BookOpen' },
+  { id: 'meeting', nameEn: 'Meeting Points', nameAr: 'نقاط التجمع', nameFr: 'Points de rendez-vous', color: 'bg-nile-light', icon: 'Users' },
 ];
 
 export const locations: Location[] = [

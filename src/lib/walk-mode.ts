@@ -17,9 +17,14 @@ export function bearingDegrees(from: Point, to: Point): number {
 const EN = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 const AR = ['شمالًا', 'شمال شرق', 'شرقًا', 'جنوب شرق', 'جنوبًا', 'جنوب غرب', 'غربًا', 'شمال غرب'];
 
-/** "NE" / "شمال شرق": the nearest of the eight compass points. */
-export const compassPoint = (bearing: number, isArabic: boolean) =>
-  (isArabic ? AR : EN)[Math.round((((bearing % 360) + 360) % 360) / 45) % 8];
+const FR_POINTS = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
+
+/** "NE" / "شمال شرق" / "NO": the nearest of the eight compass points. */
+export const compassPoint = (bearing: number, lang: 'en' | 'ar' | 'fr' | boolean) => {
+  // `true` / `false` (Arabic or not) still works for older callers.
+  const l = lang === true ? 'ar' : lang === false ? 'en' : lang;
+  return (l === 'ar' ? AR : l === 'fr' ? FR_POINTS : EN)[Math.round((((bearing % 360) + 360) % 360) / 45) % 8];
+};
 
 /**
  * How far to turn the direction arrow. With the phone's heading it points

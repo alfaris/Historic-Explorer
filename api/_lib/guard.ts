@@ -1,7 +1,7 @@
 // Request checks that run before any Gemini work, so the API can't be used to
 // run up the Gemini bill.
 
-type Lang = 'en' | 'ar';
+type Lang = 'en' | 'ar' | 'fr';
 
 const json = (body: unknown, status: number, headers: Record<string, string> = {}) =>
   new Response(JSON.stringify(body), {
@@ -27,9 +27,9 @@ export const parseCanonicalQuery = (
     keys.length === expected &&
     new Set(keys).size === expected &&
     /^[1-9]\d{0,5}$/.test(id) &&
-    (lang === 'en' || lang === 'ar') &&
+    (lang === 'en' || lang === 'ar' || lang === 'fr') &&
     (version === null || (allowVersion && /^[0-9a-f]{8}$/.test(version)));
-  if (!valid) return json({ error: `Expected ?id=<number>&lang=en|ar${allowVersion ? '[&v=<hash>]' : ''}` }, 400);
+  if (!valid) return json({ error: `Expected ?id=<number>&lang=en|ar|fr${allowVersion ? '[&v=<hash>]' : ''}` }, 400);
   return { id: Number(id), lang, version };
 };
 
