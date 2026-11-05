@@ -6,9 +6,9 @@ import { HistoricPlaceholder } from './HistoricPlaceholder';
 import { PlacePhoto } from './PlacePhoto';
 import { PhotoCredits } from './PhotoCredits';
 import { RouteProgress, VisitedBadge, VisitedToggle } from './Visited';
-import { NearMe } from './NearMe';
+import { NearMeOverlay, NearMeView, useNearMe } from './NearMe';
 import { placePhoto, routePhoto } from '../data/photos';
-import { Search, MapPin, Globe, Navigation, Map, List, ChevronRight, Cake, Coffee, Utensils, Hammer, BookOpen, Users, Landmark, ArrowUp, Share2, Clock, Route as RouteIcon, Star } from 'lucide-react';
+import { Search, MapPin, Globe, Navigation, Map, List, ChevronRight, Cake, Coffee, Utensils, Hammer, BookOpen, Users, Landmark, ArrowUp, Share2, Clock, Route as RouteIcon, Star, LocateFixed } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { LiveLocationInfo } from './LiveLocationInfo';
 import { AudioGuide } from './AudioGuide';
@@ -61,7 +61,7 @@ export const MainContent: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<Category | 'all'>('all');
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
   const [selectedRoute, setSelectedRoute] = useState<string>(routes[0].id);
-  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'map' | 'near'>('list');
 
   // Fetch the map code in the background so switching to the map is instant.
   useEffect(() => {
@@ -134,8 +134,14 @@ export const MainContent: React.FC = () => {
   // Memoized so "Near me" only resets its arrival state when the route changes.
   const routePlaces = useMemo(() => locations.filter(l => l.routeId === selectedRoute), [selectedRoute]);
 
-  // Open a place from "Near me": show it expanded in the list and scroll to it.
+  // Near me keeps watching location across all three tabs until stopped.
+  const nearMe = useNearMe(isArabic);
+
+  // Open a place from "Near me" (possibly on another route): show it expanded
+  // in the list and scroll to it.
   const openPlace = (id: number) => {
+    const place = locations.find(l => l.id === id);
+    if (place) setSelectedRoute(place.routeId);
     setViewMode('list');
     setSearchQuery('');
     setSelectedCategory('all');
@@ -145,10 +151,9 @@ export const MainContent: React.FC = () => {
     }, 300);
   };
 
-  // Sync: Reset selection when route changes
-  React.useEffect(() => {
-    setSelectedLocation(null);
-  }, [selectedRoute]);
+  // Selection is cleared by the route buttons themselves. Clearing it in an
+  // effect on every route change also wiped selections made together with a
+  // route change (shared ?loc= links, opening a place from Near me).
 
   return (
     <div className={`min-h-screen pb-20 ${fontClass}`}>
@@ -286,13 +291,10 @@ export const MainContent: React.FC = () => {
 
             <RouteProgress placeIds={routePlaces.map(l => l.id)} isArabic={isArabic} />
 
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              <NearMe places={routePlaces} isArabic={isArabic} onOpenPlace={openPlace} />
-              <OfflineManager 
-                locations={routePlaces} 
-                routeName={currentRouteData.nameEn} 
-              />
-            </div>
+            <OfflineManager 
+              locations={routePlaces} 
+              routeName={currentRouteData.nameEn} 
+            />
           </motion.div>
         </div>
 
@@ -335,6 +337,17 @@ export const MainContent: React.FC = () => {
                 <Map className="w-3.5 h-3.5" />
                 {t('map')}
               </button>
+              <button
+                onClick={() => setViewMode('near')}
+                className={`flex-none flex items-center justify-center gap-2 px-8 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
+                  viewMode === 'near' 
+                    ? 'bg-white text-nile shadow-sm' 
+                    : 'text-stone-400 hover:text-stone-600'
+                }`}
+              >
+                <LocateFixed className={`w-3.5 h-3.5 ${nearMe.on ? 'text-gold' : ''}`} />
+                {t('near')}
+              </button>
             </div>
           </div>
 
@@ -374,7 +387,15 @@ export const MainContent: React.FC = () => {
         </div>
 
         {/* Content Area */}
-        {viewMode === 'map' ? (
+        {viewMode === 'near' ? (
+          <NearMeView
+            nearMe={nearMe}
+            routePlaces={routePlaces}
+            routeName={isArabic ? currentRouteData.nameAr : currentRouteData.nameEn}
+            isArabic={isArabic}
+            onOpenPlace={openPlace}
+          />
+        ) : viewMode === 'map' ? (
           <div className="mb-8">
             <div className="rounded-3xl overflow-hidden shadow-2xl border border-sand h-[600px] md:h-[75vh] min-h-[600px]">
               <LazyBoundary
@@ -641,6 +662,10 @@ export const MainContent: React.FC = () => {
         <PhotoCredits isArabic={isArabic} />
       </main>
 
+      {viewMode !== 'near' && (
+        <NearMeOverlay nearMe={nearMe} isArabic={isArabic} onOpenPlace={openPlace} onShowTab={() => setViewMode('near')} />
+      )}
+
       {/* Floating Scroll Top */}
       <AnimatePresence>
         {showScrollTop && (
@@ -679,6 +704,17 @@ export const MainContent: React.FC = () => {
         >
           <Map className="w-4 h-4" />
           {t('map')}
+        </button>
+        <button
+          onClick={() => setViewMode('near')}
+          className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all ${
+            viewMode === 'near' 
+              ? 'bg-nile text-white shadow-md' 
+              : 'text-stone-400 hover:text-stone-600'
+          }`}
+        >
+          <LocateFixed className={`w-4 h-4 ${nearMe.on && viewMode !== 'near' ? 'text-gold animate-pulse' : ''}`} />
+          {t('near')}
         </button>
       </div>
     </div>
