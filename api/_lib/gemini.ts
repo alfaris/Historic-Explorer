@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { GoogleGenAI, Modality, ThinkingLevel } from '@google/genai';
-import { get, put } from '@vercel/blob';
+import { BlobNotFoundError, get, head, put } from '@vercel/blob';
 import { locations, type Location } from '../../src/data/locations.js';
 import { parseCanonicalQuery, rateLimit } from './guard.js';
 
@@ -13,7 +13,7 @@ const getClient = () => {
   return client;
 };
 
-type Lang = 'en' | 'ar';
+export type Lang = 'en' | 'ar';
 
 // Runs the rate limit and query checks shared by both endpoints. Returns the
 // place and language, or an error response to send back as is.
@@ -87,16 +87,20 @@ const readStoredBlob = async (pathname: string, useCache = true) => {
   }
 };
 
+// Returns whether the blob was stored. Failures are logged, not thrown, so a
+// request can still be answered when Blob is unavailable.
 const storeBlob = async (pathname: string, body: Uint8Array | string, contentType: string) => {
-  if (!hasBlobStore()) return;
+  if (!hasBlobStore()) return false;
   try {
     await put(pathname, typeof body === 'string' ? body : Buffer.from(body), {
       access: 'private',
       contentType,
       allowOverwrite: true,
     });
+    return true;
   } catch (err) {
     console.warn(`Storing ${pathname} in Blob failed:`, err);
+    return false;
   }
 };
 
@@ -107,6 +111,39 @@ const loadOrGenerateAudio = async (text: string, lang: Lang, pathname: string) =
   await storeBlob(pathname, wav, 'audio/wav');
   return wav;
 };
+
+// The exact text the audio is generated from and keyed by. The request handler
+// and the pre-generation script must both use this, or their keys won't match.
+const audioText = (location: Location, lang: Lang) =>
+  (lang === 'ar' ? location.descriptionAr : location.descriptionEn) || null;
+
+/** Whether this place's audio is already in Blob for the current description and AUDIO_VERSION. */
+export async function audioStatus(location: Location, lang: Lang): Promise<'stored' | 'missing' | 'no-text'> {
+  if (!hasBlobStore()) throw new Error('BLOB_READ_WRITE_TOKEN is not set');
+  const text = audioText(location, lang);
+  if (!text) return 'no-text';
+  try {
+    await head(audioBlobPath(text, lang));
+    return 'stored';
+  } catch (err) {
+    if (err instanceof BlobNotFoundError) return 'missing';
+    throw err;
+  }
+}
+
+/** Generates this place's audio and stores it in Blob. Throws if either step fails. */
+export async function generateAndStoreAudio(location: Location, lang: Lang): Promise<void> {
+  const text = audioText(location, lang);
+  if (!text) throw new Error('Place has no description in this language');
+  let wav: Uint8Array;
+  try {
+    wav = await generateAudio(text, lang);
+  } catch (err) {
+    if (err instanceof ScriptOnlyError) throw new Error('Text-to-speech failed (the app would fall back to the browser voice)');
+    throw err;
+  }
+  if (!(await storeBlob(audioBlobPath(text, lang), wav, 'audio/wav'))) throw new Error('Storing the audio in Blob failed');
+}
 
 // Live info is regenerated at most once a day per place and language, however
 // many people ask for it. Bump the version when the prompt or model changes.
@@ -205,7 +242,7 @@ export async function handleAudioGuide(request: Request): Promise<Response> {
   const checked = checkRequest(request);
   if (checked instanceof Response) return checked;
   const { location, lang } = checked;
-  const text = lang === 'ar' ? location.descriptionAr : location.descriptionEn;
+  const text = audioText(location, lang);
   if (!text) return json({ error: 'Unknown location' }, 404);
 
   const key = audioBlobPath(text, lang);
