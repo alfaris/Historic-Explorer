@@ -64,13 +64,29 @@ Requires Node.js 20+.
    npm run dev
    ```
 
-Other scripts: `npm run build` (production build in `dist/`), `npm run preview`, `npm run lint` (type check).
+Other scripts: `npm run build` (production build in `dist/`), `npm run preview`, `npm run lint` (type check), `npm run pregenerate-audio` (see [Pre-generating the audio guides](#pre-generating-the-audio-guides)).
 
 ## Deploying
 
 The app deploys to Vercel from this repository. Set `GEMINI_API_KEY` in the Vercel project's environment variables. Only the functions in `api/` read it, and it is not included in the frontend build.
 
 For persistent audio, create a **private** Blob store under the project's Storage tab and connect it to the project. This adds `BLOB_READ_WRITE_TOKEN`. Without it, the app still works, but audio is regenerated after each deploy.
+
+### Pre-generating the audio guides
+
+Audio is otherwise generated the first time a visitor plays a place, which makes that visitor wait. To generate every place in both languages ahead of time:
+
+```bash
+vercel env pull .env.local
+```
+
+```bash
+npm run pregenerate-audio
+```
+
+The first command copies `GEMINI_API_KEY` and `BLOB_READ_WRITE_TOKEN` from the Vercel project into `.env.local`. The script skips audio that's already stored for the current description and `AUDIO_VERSION`, so it's safe to run again at any time: after adding or editing places, after bumping `AUDIO_VERSION`, or to retry places that failed. It waits 2 seconds between Gemini calls to stay under rate limits.
+
+Options: `-- --dry-run` lists what's missing without generating anything, `-- --lang=en` (or `ar`) does one language, and `-- --delay=5000` changes the wait in milliseconds.
 
 ## Adding or editing places
 
