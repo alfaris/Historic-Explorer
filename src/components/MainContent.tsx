@@ -49,7 +49,12 @@ export const MainContent: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<Category | 'all'>('all');
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
-  const [selectedRoute, setSelectedRoute] = useState<string>(routes[0].id);
+  // Start on the route of a shared place (?loc=), so the first screen, and the
+  // route-open count, aren't briefly the first route.
+  const [selectedRoute, setSelectedRoute] = useState<string>(() => {
+    const id = Number(new URLSearchParams(window.location.search).get('loc'));
+    return locations.find(l => l.id === id)?.routeId ?? routes[0].id;
+  });
   const [viewMode, setViewMode] = useState<'list' | 'map' | 'near'>('list');
 
   // Fetch the map code in the background so switching to the map is instant.
@@ -139,9 +144,13 @@ export const MainContent: React.FC = () => {
   // Memoized so "Near me" only resets its arrival state when the route changes.
   const routePlaces = useMemo(() => locations.filter(l => l.routeId === selectedRoute), [selectedRoute, locations]);
   // Anonymous count of which routes are opened (once per route per visit).
+  // A shared link to a place only in the live content resolves once that
+  // arrives; until then (?loc= still in the URL) the route shown isn't the
+  // visitor's choice, so don't count it.
   useEffect(() => {
+    if (new URLSearchParams(window.location.search).has('loc')) return;
     if (routes.some(r => r.id === selectedRoute)) track({ t: 'route', id: selectedRoute });
-  }, [selectedRoute, routes]);
+  }, [selectedRoute, routes, locations]);
   // Stop numbers and the walk to the next stop, in the route's walking order.
   const plan = useMemo(() => walkPlan(locations, selectedRoute), [locations, selectedRoute]);
 

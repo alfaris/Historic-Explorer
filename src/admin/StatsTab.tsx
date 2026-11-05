@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import type { Content } from '../data/content';
 import { walkStops } from '../lib/walk';
@@ -65,11 +65,18 @@ export function StatsTab({ content, onSignedOut }: { content: Content; onSignedO
   const [data, setData] = useState<StatsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Each load is numbered; only the latest may update the screen, so a slow
+  // answer for the previous period can't replace the current one.
+  const latest = useRef(0);
   const load = useCallback(async () => {
+    const request = ++latest.current;
     try {
-      setData(await api.stats(days));
+      const next = await api.stats(days);
+      if (request !== latest.current) return;
+      setData(next);
       setError(null);
     } catch (err) {
+      if (request !== latest.current) return;
       if (err instanceof ApiError && err.status === 401) return onSignedOut();
       setError((err as Error).message);
     }
