@@ -19,7 +19,12 @@ const devApi = (): Plugin => ({
       if (!handlerName) return next();
       try {
         const mod = await server.ssrLoadModule('/api/_lib/gemini.ts');
-        const response: Response = await mod[handlerName](url);
+        const headers = new Headers();
+        for (const [key, value] of Object.entries(req.headers)) {
+          if (typeof value === 'string') headers.set(key, value);
+        }
+        headers.set('x-real-ip', req.socket.remoteAddress ?? 'local');
+        const response: Response = await mod[handlerName](new Request(url, { headers }));
         res.statusCode = response.status;
         response.headers.forEach((value, key) => res.setHeader(key, value));
         res.end(Buffer.from(await response.arrayBuffer()));
