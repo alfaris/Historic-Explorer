@@ -12,6 +12,7 @@
 //   POST photo?width=&height= (image body) → { src, width, height }
 //   GET  audio?id=n / POST audio {id, lang, version}  (see admin-audio.ts)
 //   GET  stats?days=7|30|90 → { total, perDay }  (see stats.ts)
+//   GET  digest → { configured, to }   POST digest-test → sends a test email  (see digest.ts)
 //
 // Everything except session and login requires a signed-in admin.
 
@@ -31,6 +32,7 @@ import { listReports, updateReport } from './reports.js';
 import { handlePhotoUpload } from './photos.js';
 import { handleAdminAudio } from './admin-audio.js';
 import { readStats } from './stats.js';
+import { digestConfigured, sendTestEmail } from './digest.js';
 import { normalizeContent, validateContent } from '../../src/data/content.js';
 
 const cookieValue = (request: Request) =>
@@ -105,6 +107,15 @@ export async function handleAdmin(request: Request): Promise<Response> {
 
     if (action === 'photo' && method === 'POST') {
       return await handlePhotoUpload(request);
+    }
+
+    if (action === 'digest' && method === 'GET') {
+      return json({ configured: digestConfigured(), to: digestConfigured() ? process.env.ADMIN_EMAIL : null });
+    }
+
+    if (action === 'digest-test' && method === 'POST') {
+      await sendTestEmail(url.origin);
+      return json({ ok: true });
     }
 
     if (action === 'stats' && method === 'GET') {

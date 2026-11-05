@@ -123,6 +123,12 @@ What to download is worked out in `src/lib/offline-pack.ts`, and the download it
 `/admin` is a password-protected dashboard for managing the content without a code change:
 
 - **Reports**: visitor reports, newest first. Apply a suggested map position in one click, delete a place reported as closed, or open it in the editor. Mark reports resolved or dismissed.
+  Optionally, a **daily email** lists the reports that arrived since the last one (sent around 8 am Cairo time, and only on days with new reports). To turn it on:
+  1. Create a free [Resend](https://resend.com) account and an API key.
+  2. In Vercel, set `RESEND_API_KEY`, `ADMIN_EMAIL` (one address, or several separated by commas) and `CRON_SECRET` (any long random string), then redeploy.
+  3. Use **Send test email** on the Reports tab to check it works.
+
+  By default, emails come from Resend's shared test address, which can only send to the email you signed up to Resend with. To send to other addresses, verify your domain in Resend and set `DIGEST_FROM`, for example `Cairo Walks <reports@yourdomain.com>`. The job is `api/_lib/digest.ts`, scheduled in `vercel.json`.
 - **Places**: edit, add or delete places, including moving them by dragging a pin, and upload a photo with its credit.
   Each place shows whether its **audio guide** is ready in English and Arabic for the saved description. After a save that changes a description, or adds a place, the new audio is generated straight away, so visitors never wait for it. Missing audio can also be generated with one tap. Generation is admin-only, skips audio that already exists, refuses text that hasn't been saved yet, and is capped at 30 per 10 minutes.
 - **Routes**: edit, add or delete routes and their photos (a route can only be deleted once it has no places), and set the stops' **walking order**.
