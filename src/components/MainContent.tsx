@@ -22,7 +22,7 @@ import { track } from '../lib/track';
 import { matchScore, searchPlaces } from '../lib/search';
 import { OtherRouteResults } from './OtherRouteResults';
 import { ShareRoute } from './ShareRoute';
-import { routeFromSearch } from '../lib/share';
+import { isRouteLink, routeFromLocation } from '../lib/share';
 import { askForCompass } from '../lib/useWalkSensors';
 import { LazyBoundary } from './LazyBoundary';
 
@@ -62,7 +62,7 @@ export const MainContent: React.FC = () => {
     const id = Number(new URLSearchParams(window.location.search).get('loc'));
     return (
       locations.find(l => l.id === id)?.routeId ??
-      routeFromSearch(window.location.search, routes.map(r => r.id)) ??
+      routeFromLocation(window.location, routes.map(r => r.id)) ??
       routes[0].id
     );
   });
@@ -106,18 +106,15 @@ export const MainContent: React.FC = () => {
     }
   }, [locations]);
 
-  // A shared route link (?route=). Re-checked when the live content arrives,
-  // so links to routes added in the admin work too. The parameter is then
-  // removed, like ?loc=, so it doesn't stick to later navigation.
+  // A shared route link (/r/<id> or ?route=<id>). Re-checked when the live
+  // content arrives, so links to routes added in the admin work too. The
+  // address then goes back to the home page, so it doesn't stick.
   useEffect(() => {
-    const id = routeFromSearch(window.location.search, routes.map(r => r.id));
+    const id = routeFromLocation(window.location, routes.map(r => r.id));
     if (!id) return;
     setSelectedRoute(id);
     setSelectedLocation(null);
-    const params = new URLSearchParams(window.location.search);
-    params.delete('route');
-    const rest = params.toString();
-    window.history.replaceState({}, '', window.location.pathname + (rest ? `?${rest}` : ''));
+    window.history.replaceState({}, '', '/');
   }, [routes]);
 
   // If the selected route was deleted in the admin dashboard, fall back to the first one.
@@ -179,10 +176,10 @@ export const MainContent: React.FC = () => {
   // since deleted), so route opens are counted again from here on.
   const pendingSharedLink = () => {
     const params = new URLSearchParams(window.location.search);
-    return params.has('loc') || params.has('route');
+    return params.has('loc') || isRouteLink(window.location);
   };
   const clearSharedLink = () => {
-    if (pendingSharedLink()) window.history.replaceState({}, '', window.location.pathname);
+    if (pendingSharedLink()) window.history.replaceState({}, '', '/');
   };
 
   // A shared link to a place only in the live content resolves once that

@@ -1,14 +1,8 @@
 {
   "rewrites": [
     {
-      "source": "/",
-      "has": [
-        {
-          "type": "query",
-          "key": "route"
-        }
-      ],
-      "destination": "/api/share"
+      "source": "/r/:route",
+      "destination": "/api/share?route=:route"
     },
     {
       "source": "/admin",

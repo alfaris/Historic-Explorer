@@ -13,7 +13,7 @@ describe('withRoutePreview', () => {
 
   it('names the page after the route and adds preview tags', () => {
     expect(html).toContain('<title>Fustat, Roda &amp; Old Cairo · الفسطاط والروضة ومصر القديمة | Cairo Historic Explorer</title>');
-    expect(html).toContain('<meta property="og:url" content="https://cairo.example/?route=fustat-roda" />');
+    expect(html).toContain('<meta property="og:url" content="https://cairo.example/r/fustat-roda" />');
     expect(html).toContain('<meta property="og:image" content="https://cairo.example/images/photos/route-fustat-roda.webp" />');
     expect(html).toContain('summary_large_image');
     expect(html).toMatch(/<meta name="description" content="From the Nile palaces/);

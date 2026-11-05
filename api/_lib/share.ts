@@ -1,5 +1,7 @@
-// Link previews for shared routes. `/?route=<id>` is rewritten here (see
-// vercel.json): the app's own index.html is returned with the route's title,
+// Link previews for shared routes. `/r/<id>` is rewritten here (see
+// vercel.json; it has to be a path with no file behind it, because Vercel
+// serves a real file such as index.html before any rewrite). The app's own
+// index.html is returned with the route's title,
 // description and photo as Open Graph / Twitter tags, so WhatsApp, iMessage and
 // social sites show a proper card. People get the normal app either way.
 
@@ -12,7 +14,7 @@ const escapeHtml = (s: string) =>
 
 /** Adds the preview tags for a route to the app's HTML, and names the page after it. */
 export function withRoutePreview(html: string, route: Route, origin: string): string {
-  const url = `${origin}/?route=${encodeURIComponent(route.id)}`;
+  const url = `${origin}/r/${encodeURIComponent(route.id)}`;
   const title = `${route.nameEn} · ${route.nameAr} | Cairo Historic Explorer`;
   const description = `${route.descriptionEn}. ${route.distance}, ${route.duration}. Self-guided walk with audio guides that work offline.`;
   const photo = photoForRoute(route);
