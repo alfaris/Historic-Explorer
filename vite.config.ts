@@ -83,6 +83,17 @@ export default defineConfig(({mode}) => {
               }
             },
             {
+              // Place photos: cached the first time they're seen (or when a
+              // route is downloaded), not precached, so installing stays small.
+              urlPattern: ({ url }) => url.origin === self.location.origin && url.pathname.startsWith('/images/photos/'),
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'place-photos',
+                expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 365 },
+                cacheableResponse: { statuses: [200] },
+              },
+            },
+            {
               urlPattern: /^https:\/\/images\.unsplash\.com\/.*/i,
               handler: 'CacheFirst',
               options: {
