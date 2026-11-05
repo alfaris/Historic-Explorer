@@ -10,7 +10,7 @@ import { RouteProgress, VisitedBadge, VisitedToggle } from './Visited';
 import { NearMeOverlay, NearMeView, useNearMe } from './NearMe';
 import { ReportProblem } from './ReportProblem';
 import { photoForPlace, photoForRoute } from '../data/photo-resolve';
-import { Search, MapPin, Globe, Navigation, Map, List, ChevronRight, Cake, Coffee, Utensils, Hammer, BookOpen, Users, Landmark, ArrowUp, Share2, Clock, Route as RouteIcon, Star, LocateFixed, Footprints } from 'lucide-react';
+import { Search, MapPin, Globe, Navigation, Map, List, ChevronRight, Cake, Coffee, Utensils, Hammer, BookOpen, Users, Landmark, ArrowUp, Clock, Route as RouteIcon, Star, LocateFixed, Footprints } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { LiveLocationInfo } from './LiveLocationInfo';
 import { AudioGuide } from './AudioGuide';
@@ -23,8 +23,8 @@ import { matchScore, searchPlaces } from '../lib/search';
 import { formatDistance, formatDuration } from '../lib/route-format';
 import { HoursBadge, PlaceHours } from './PlaceHours';
 import { OtherRouteResults } from './OtherRouteResults';
-import { ShareRoute } from './ShareRoute';
-import { isRouteLink, routeFromLocation } from '../lib/share';
+import { SharePlace, ShareRoute } from './ShareRoute';
+import { isPlaceLink, isRouteLink, placeFromLocation, routeFromLocation } from '../lib/share';
 import { askForCompass } from '../lib/useWalkSensors';
 import { LazyBoundary } from './LazyBoundary';
 
@@ -62,7 +62,7 @@ export const MainContent: React.FC = () => {
   // Start on the route of a shared place (?loc=) or route (?route=), so the
   // first screen, and the route-open count, aren't briefly the first route.
   const [selectedRoute, setSelectedRoute] = useState<string>(() => {
-    const id = Number(new URLSearchParams(window.location.search).get('loc'));
+    const id = placeFromLocation(window.location);
     return (
       locations.find(l => l.id === id)?.routeId ??
       routeFromLocation(window.location, routes.map(r => r.id)) ??
@@ -86,10 +86,8 @@ export const MainContent: React.FC = () => {
   useEffect(() => {
     // Check URL for shared location. Re-checked when the live content
     // arrives, so links to places added in the admin dashboard work too.
-    const params = new URLSearchParams(window.location.search);
-    const locIdParam = params.get('loc');
-    if (locIdParam) {
-      const locId = parseInt(locIdParam, 10);
+    const locId = placeFromLocation(window.location);
+    if (locId !== null) {
       const loc = locations.find(l => l.id === locId);
       if (loc) {
         setSelectedRoute(loc.routeId);
@@ -174,8 +172,7 @@ export const MainContent: React.FC = () => {
   // The route a shared link in the address asks for: undefined if there's no
   // link, null if it can't be resolved (yet, or ever).
   const sharedLinkTarget = (): string | null | undefined => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.has('loc')) return locations.find(l => l.id === Number(params.get('loc')))?.routeId ?? null;
+    if (isPlaceLink(window.location)) return locations.find(l => l.id === placeFromLocation(window.location))?.routeId ?? null;
     if (isRouteLink(window.location)) return routeFromLocation(window.location, routes.map(r => r.id));
     return undefined;
   };
@@ -623,19 +620,7 @@ export const MainContent: React.FC = () => {
                                 {t('directions')}
                               </button>
                               <VisitedToggle placeId={loc.id} isArabic={isArabic} className="py-5 rounded-2xl" />
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const url = new URL(window.location.href);
-                                  url.searchParams.set('loc', loc.id.toString());
-                                  navigator.clipboard.writeText(url.toString());
-                                  alert(L('Link copied to clipboard', 'تم نسخ الرابط'));
-                                }}
-                                className="flex justify-center items-center py-5 px-6 bg-chalk hover:bg-sand/30 text-ink rounded-2xl transition-all duration-300"
-                                aria-label="Share Location"
-                              >
-                                <Share2 className="w-5 h-5" />
-                              </button>
+                              <SharePlace place={loc} className="flex justify-center items-center py-5 px-6 bg-chalk hover:bg-sand/30 text-ink rounded-2xl transition-all duration-300" />
                             </div>
                             <div className="mt-4 text-center">
                               <ReportProblem place={loc} isArabic={isArabic} />
@@ -756,19 +741,7 @@ export const MainContent: React.FC = () => {
                                       {t('directions')}
                                     </button>
                                     <VisitedToggle placeId={loc.id} isArabic={isArabic} className="py-4" />
-                                    <button 
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        const url = new URL(window.location.href);
-                                        url.searchParams.set('loc', loc.id.toString());
-                                        navigator.clipboard.writeText(url.toString());
-                                        alert(L('Link copied to clipboard', 'تم نسخ الرابط'));
-                                      }}
-                                      className="flex justify-center items-center py-4 px-6 bg-chalk hover:bg-sand/30 text-ink rounded-xl transition-all duration-300"
-                                      aria-label="Share Location"
-                                    >
-                                      <Share2 className="w-4 h-4" />
-                                    </button>
+                                    <SharePlace place={loc} className="flex justify-center items-center py-4 px-6 bg-chalk hover:bg-sand/30 text-ink rounded-xl transition-all duration-300" />
                                   </div>
                                   <div className="mt-4 text-center">
                                     <ReportProblem place={loc} isArabic={isArabic} />

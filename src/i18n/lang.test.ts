@@ -63,3 +63,12 @@ describe('optionalText', () => {
     expect(optionalText(undefined, undefined, undefined, 'fr')).toEqual({ text: '', lang: undefined });
   });
 });
+
+describe('initialLang from a shared link', () => {
+  it('uses the link’s language unless the visitor already chose one', () => {
+    expect(initialLang(null, 'en-US', 'fr')).toBe('fr');
+    expect(initialLang('ar', 'en-US', 'fr')).toBe('ar');
+    expect(initialLang(null, 'fr-FR', 'de')).toBe('fr');
+    expect(initialLang(null, 'en-US', null)).toBe('en');
+  });
+});

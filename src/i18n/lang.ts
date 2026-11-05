@@ -41,8 +41,15 @@ export const highlightsOf = (r: { highlightsEn: string[]; highlightsAr: string[]
   lang === 'ar' ? r.highlightsAr : lang === 'fr' && r.highlightsFr?.length ? r.highlightsFr : r.highlightsEn;
 
 /** The language to start in: a saved choice, else the browser's, else English. */
-export function initialLang(saved: string | null, browser: string): Lang {
-  if (saved === 'en' || saved === 'ar' || saved === 'fr') return saved;
+const isLang = (v: string | null | undefined): v is Lang => v === 'en' || v === 'ar' || v === 'fr';
+
+/**
+ * The language to start in: the visitor's own earlier choice, else the
+ * language of the link they opened (`?lang=` on a shared place), else the browser's.
+ */
+export function initialLang(saved: string | null, browser: string, fromLink?: string | null): Lang {
+  if (isLang(saved)) return saved;
+  if (isLang(fromLink)) return fromLink;
   if (browser.startsWith('ar')) return 'ar';
   if (browser.startsWith('fr')) return 'fr';
   return 'en';
