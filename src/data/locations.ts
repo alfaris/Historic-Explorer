@@ -15,6 +15,12 @@ export interface Route {
   nameFr?: string;
   descriptionFr?: string;
   highlightsFr?: string[];
+  /** Length of the walk, in kilometres. */
+  distanceKm: number;
+  /** Walking time in hours, as a range (the same number twice for a single value). */
+  hoursMin: number;
+  hoursMax: number;
+  /** English text of the above, kept for app versions that read it. */
   distance: string;
   duration: string;
   /** Uploaded in the admin dashboard; replaces the built-in photo. */
@@ -52,6 +58,9 @@ export const routes: Route[] = [
     nameFr: "Parcours d'Ahl al-Bayt",
     descriptionFr: "Un voyage entre histoire et spiritualité au cœur du Caire",
     highlightsFr: ["Plus de 20 sites spirituels", "Un minaret en spirale unique", "Artisanat traditionnel"],
+    distanceKm: 2.5,
+    hoursMin: 2,
+    hoursMax: 3,
     distance: '2.5 km',
     duration: '2-3 hours'
   },
@@ -67,6 +76,9 @@ export const routes: Route[] = [
     nameFr: "Rue Al-Muizz",
     descriptionFr: "La plus grande concentration de trésors architecturaux médiévaux du monde islamique",
     highlightsFr: ["Architecture médiévale", "Le bazar de Khan el-Khalili", "Les anciennes portes de la ville"],
+    distanceKm: 1.8,
+    hoursMin: 3,
+    hoursMax: 4,
     distance: '1.8 km',
     duration: '3-4 hours'
   },
@@ -82,7 +94,10 @@ export const routes: Route[] = [
     nameFr: "Le Caire copte (complexe des religions)",
     descriptionFr: "Un petit quartier fortifié où les églises anciennes et la synagogue Ben Ezra se côtoient",
     highlightsFr: ["L'Église suspendue", "La synagogue Ben Ezra", "Les vestiges de la forteresse romaine"],
-    distance: '1.0 km',
+    distanceKm: 1,
+    hoursMin: 1.5,
+    hoursMax: 2,
+    distance: '1 km',
     duration: '1.5-2 hours'
   },
   {
@@ -97,6 +112,9 @@ export const routes: Route[] = [
     nameFr: "Al-Darb Al-Ahmar et la Citadelle",
     descriptionFr: "Un quartier historique avec la majestueuse Citadelle et une superbe architecture mamelouke",
     highlightsFr: ["La Citadelle de Saladin", "La mosquée d'albâtre", "Les vues du parc Al-Azhar"],
+    distanceKm: 2.2,
+    hoursMin: 3,
+    hoursMax: 4,
     distance: '2.2 km',
     duration: '3-4 hours'
   },
@@ -112,6 +130,9 @@ export const routes: Route[] = [
     nameFr: "Fustat, Roda et le Vieux-Caire",
     descriptionFr: "Des palais du Nil et du nilomètre abbasside de l'île de Roda jusqu'à Fustat, la première capitale islamique de l'Égypte",
     highlightsFr: ["Le nilomètre abbasside (861)", "Les momies royales au NMEC", "La plus ancienne mosquée d'Afrique"],
+    distanceKm: 7,
+    hoursMin: 3.5,
+    hoursMax: 4.5,
     distance: '7 km',
     duration: '3.5-4.5 hours'
   }

@@ -13,6 +13,8 @@
   --color-gold: #c5a059;
   /* Gold dark enough for small text (4.9:1 on white). --color-gold stays for icons and decoration. */
   --color-gold-ink: #86672a;
+  /* Soft gold for large decorative text (the stop numbers): 3.4:1 on white, 3.1:1 on chalk, above the 3:1 for large text. */
+  --color-gold-soft: #a3875a;
   /* Tailwind's stone-400/500 are slightly too light for text on chalk and
      white (2.4:1 and 4.46:1). These keep the look and meet WCAG AA (4.5:1). */
   --color-stone-400: #736c66;

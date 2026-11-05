@@ -8,6 +8,7 @@ import { builtInPhoto } from '../data/photo-resolve';
 import { applyStopOrder, walkPlan, walkStops } from '../lib/walk';
 import { RouteQr } from './RouteQr';
 import { FillFrenchButton, withOptional } from './french';
+import { routeText } from '../lib/route-format';
 
 const blankRoute = (): Route => ({
   id: '',
@@ -18,6 +19,9 @@ const blankRoute = (): Route => ({
   image: '',
   highlightsEn: [],
   highlightsAr: [],
+  distanceKm: NaN,
+  hoursMin: NaN,
+  hoursMax: NaN,
   distance: '',
   duration: '',
 });
@@ -57,6 +61,14 @@ export function RoutesTab({ content, save }: { content: Content; save: SaveFn })
   const placeCount = (id: string) => content.places.filter(p => p.routeId === id).length;
 
   const set = <K extends keyof Route>(key: K, value: Route[K]) => setDraft(d => (d ? { ...d, [key]: value } : d));
+  // Number fields: empty is NaN (the save check says what's missing). The English text follows the numbers.
+  const setNumber = (key: 'distanceKm' | 'hoursMin' | 'hoursMax', value: string) =>
+    setDraft(d => {
+      if (!d) return d;
+      const next = { ...d, [key]: value === '' ? NaN : Number(value) };
+      return { ...next, ...routeText(next) };
+    });
+  const numberValue = (n: number) => (Number.isFinite(n) ? String(n) : '');
   const setFrench = (key: 'nameFr' | 'descriptionFr', value: string) => setDraft(d => (d ? withOptional(d, key, value) : d));
 
   // Empty French fields, with the English to draft them from. Highlights go line by line.
@@ -168,11 +180,15 @@ export function RoutesTab({ content, save }: { content: Content; save: SaveFn })
             <div className="flex items-end">
               <FillFrenchButton key={draft.id} missing={missingFrench} onFilled={applyFrench} />
             </div>
-            <Field label="Distance" hint='e.g. "2.5 km"'>
-              <input value={draft.distance} onChange={e => set('distance', e.target.value)} className={inputClass} />
+            <Field label="Distance (km)" hint="e.g. 2.5">
+              <input type="number" inputMode="decimal" min="0.1" max="50" step="0.1" value={numberValue(draft.distanceKm)} onChange={e => setNumber('distanceKm', e.target.value)} className={inputClass} />
             </Field>
-            <Field label="Duration" hint='e.g. "2-3 hours"'>
-              <input value={draft.duration} onChange={e => set('duration', e.target.value)} className={inputClass} />
+            <Field label="Walking time (hours)" hint="From and to, e.g. 2 to 3. Use the same number twice for one value.">
+              <div className="flex items-center gap-2">
+                <input type="number" inputMode="decimal" min="0.25" max="24" step="0.25" value={numberValue(draft.hoursMin)} onChange={e => setNumber('hoursMin', e.target.value)} className={inputClass} aria-label="Walking time from (hours)" />
+                <span className="text-stone-400 text-sm">to</span>
+                <input type="number" inputMode="decimal" min="0.25" max="24" step="0.25" value={numberValue(draft.hoursMax)} onChange={e => setNumber('hoursMax', e.target.value)} className={inputClass} aria-label="Walking time to (hours)" />
+              </div>
             </Field>
           </div>
           <PhotoField

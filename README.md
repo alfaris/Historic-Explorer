@@ -6,7 +6,7 @@ A walking guide (English, Arabic and French) to historic Cairo. Pick a route, br
 
 ## Features
 
-- **Five curated walking routes**: Ahl al-Bayt, Al-Muizz Street, Coptic Cairo, Al-Darb Al-Ahmar & the Citadel, and Fustat, Roda & Old Cairo, each with distance, duration and highlights.
+- **Five curated walking routes**: Ahl al-Bayt, Al-Muizz Street, Coptic Cairo, Al-Darb Al-Ahmar & the Citadel, and Fustat, Roda & Old Cairo, each with distance, walking time and highlights. Distance and walking time are stored as numbers (`distanceKm`, `hoursMin`, `hoursMax`) and written in the visitor's language ("2,5 km · 2 à 3 heures", "2.5 كم · 2–3 ساعات"). Older content with text such as "2-3 hours" is read as numbers, and the English text is still stored next to the numbers for app versions that read it. See `src/lib/route-format.ts`.
 - **List and map views**: filter places by category (monuments, coffee shops, restaurants, workshops, stationery & toys, meeting points) or search by name. The map shows the route line, clustered markers and your current location, with a modern and an antique style.
 - **Immersive audio guide**: Gemini rewrites each place's description as a short narrated story and voices it. If AI audio isn't available, the browser's built-in voice reads it instead.
 - **Live insights**: an on-demand, Google Search–grounded summary of current visitor info and reviews for a place, with source links.

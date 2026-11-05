@@ -64,7 +64,7 @@ export const formatDate = (iso: string) =>
 
 /** Deep equality for plain content objects, ignoring key order (an optional field removed and re-added moves to the end). */
 export function sameValue(a: unknown, b: unknown): boolean {
-  if (a === b) return true;
+  if (Object.is(a, b) || a === b) return true;
   if (typeof a !== 'object' || typeof b !== 'object' || !a || !b || Array.isArray(a) !== Array.isArray(b)) return false;
   const ka = Object.keys(a).filter(k => (a as Record<string, unknown>)[k] !== undefined);
   const kb = Object.keys(b).filter(k => (b as Record<string, unknown>)[k] !== undefined);

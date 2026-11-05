@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { BarChart3, History, Inbox, LogOut, MapPinned, Route as RouteIcon } from 'lucide-react';
 import type { Content } from '../data/content';
-import { validateContent, withMaxPlaceId } from '../data/content';
+import { normalizeContent, validateContent, withMaxPlaceId } from '../data/content';
 import { api, ApiError } from './api';
 import { ReportsTab } from './ReportsTab';
 import { PlacesTab } from './PlacesTab';
@@ -97,7 +97,8 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
   const load = useCallback(async () => {
     try {
       const data = await api.content();
-      setContent(data.content);
+      // The server already normalizes; doing it here too keeps the editors on the current model.
+      setContent(normalizeContent(data.content));
       setEtag(data.etag);
       setLoadError(null);
       setSaveError(null);

@@ -20,6 +20,7 @@ import { NextStop, StopNumber } from './WalkInfo';
 import { walkPlan } from '../lib/walk';
 import { track } from '../lib/track';
 import { matchScore, searchPlaces } from '../lib/search';
+import { formatDistance, formatDuration } from '../lib/route-format';
 import { OtherRouteResults } from './OtherRouteResults';
 import { ShareRoute } from './ShareRoute';
 import { isRouteLink, routeFromLocation } from '../lib/share';
@@ -370,11 +371,11 @@ export const MainContent: React.FC = () => {
             <div className={`flex items-center gap-6 mb-6 text-[10px] font-bold uppercase tracking-widest text-nile`}>
               <div className="flex items-center gap-2">
                 <RouteIcon className="w-3.5 h-3.5 text-gold" />
-                <span>{currentRouteData.distance}</span>
+                <span>{formatDistance(currentRouteData.distanceKm, currentLang())}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Clock className="w-3.5 h-3.5 text-gold" />
-                <span>{currentRouteData.duration}</span>
+                <span>{formatDuration(currentRouteData.hoursMin, currentRouteData.hoursMax, currentLang())}</span>
               </div>
             </div>
 
@@ -704,7 +705,7 @@ export const MainContent: React.FC = () => {
                               {plan.get(loc.id) && <div className="mt-2"><StopNumber info={plan.get(loc.id)!} isArabic={isArabic} /></div>}
                             </div>
                             {plan.get(loc.id) && (
-                              <div className="text-3xl font-serif text-sand/50 italic opacity-50" aria-hidden="true">
+                              <div className="text-3xl font-serif text-gold-soft italic" aria-hidden="true">
                                 {String(plan.get(loc.id)!.number).padStart(2, '0')}
                               </div>
                             )}

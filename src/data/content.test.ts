@@ -20,6 +20,9 @@ describe('validateContent', () => {
     ['highlight count mismatch', c => { c.routes[0].highlightsAr.pop(); }, /same number of lines/],
     ['too long', c => { c.places[0].descriptionEn = 'x'.repeat(2001); }, /longer than 2000/],
     ['no routes', c => { c.routes = []; c.places = []; }, /at least one route/],
+    ['missing distance', c => { (c.routes[0] as any).distanceKm = null; (c.routes[0] as any).distance = ''; }, /distance must be/],
+    ['walking time backwards', c => { c.routes[0].hoursMin = 4; c.routes[0].hoursMax = 2; }, /walking time must be/],
+    ['walking time zero', c => { c.routes[0].hoursMin = 0; }, /walking time must be/],
     ['French place description too long', c => { c.places[0].descriptionFr = 'x'.repeat(2001); }, /descriptionFr is longer than 2000/],
     ['French route name too long', c => { c.routes[0].nameFr = 'x'.repeat(121); }, /nameFr is longer than 120/],
     ['too many French highlights', c => { c.routes[0].highlightsFr = Array(9).fill('x'); }, /at most 8 French highlights/],
@@ -55,6 +58,24 @@ describe('normalizeContent', () => {
     const none = normalizeContent({ routes: [{ ...bundledContent.routes[0], nameFr: undefined, descriptionFr: undefined, highlightsFr: [] }], places: [] });
     expect(none.routes[0]).not.toHaveProperty('highlightsFr');
     expect(none.routes[0]).not.toHaveProperty('nameFr');
+  });
+
+  it('reads old text distance and walking time as numbers, and keeps the English text', () => {
+    const { distanceKm, hoursMin, hoursMax, ...old } = bundledContent.routes[0];
+    const c = normalizeContent({ routes: [{ ...old, distance: '1.8 km', duration: '1.5-2 hours' }], places: [] });
+    expect(c.routes[0]).toMatchObject({ distanceKm: 1.8, hoursMin: 1.5, hoursMax: 2, distance: '1.8 km', duration: '1.5-2 hours' });
+  });
+
+  it('prefers the numbers and rewrites the English text from them', () => {
+    const c = normalizeContent({ routes: [{ ...bundledContent.routes[0], distanceKm: '3', hoursMin: 1, hoursMax: 1, distance: 'stale', duration: 'stale' }], places: [] });
+    expect(c.routes[0]).toMatchObject({ distanceKm: 3, hoursMin: 1, hoursMax: 1, distance: '3 km', duration: '1 hour' });
+  });
+
+  it('keeps the bundled routes as they are', () => {
+    for (const r of bundledContent.routes) {
+      const n = normalizeContent({ routes: [r], places: [] }).routes[0];
+      expect([n.distanceKm, n.hoursMin, n.hoursMax, n.distance, n.duration]).toEqual([r.distanceKm, r.hoursMin, r.hoursMax, r.distance, r.duration]);
+    }
   });
 
   it('copes with garbage', () => {
