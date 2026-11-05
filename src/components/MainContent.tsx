@@ -157,6 +157,14 @@ export const MainContent: React.FC = () => {
     }, 300);
   };
 
+  // "Next stop" in map view: clear the search and category filters first, so
+  // the next stop's marker is on the map and the map can move to it.
+  const openStopOnMap = (id: number) => {
+    setSearchQuery('');
+    setSelectedCategory('all');
+    setSelectedLocation(id);
+  };
+
   // Selection is cleared by the route buttons themselves. Clearing it in an
   // effect on every route change also wiped selections made together with a
   // route change (shared ?loc= links, opening a place from Near me).
@@ -482,7 +490,7 @@ export const MainContent: React.FC = () => {
                             </div>
                             {plan.get(loc.id) && (
                               <div className="mb-6">
-                                <NextStop info={plan.get(loc.id)!} isArabic={isArabic} onOpen={setSelectedLocation} />
+                                <NextStop info={plan.get(loc.id)!} isArabic={isArabic} onOpen={openStopOnMap} />
                               </div>
                             )}
                             
