@@ -215,15 +215,21 @@ export const MainContent: React.FC = () => {
     setWalkAttempt(n => n + 1);
     setWalking(true);
   };
+  // The finish screen: shown when the last stop of a route gets marked visited
+  // (from a card, Near me or the walk), or from "Finish the walk". A route
+  // completed during the walk waits for the walk to end, so the walk (with the
+  // last stop's audio guide) and the summary are never open at once.
+  const [finishedRoute, setFinishedRoute] = useState<string | null>(null);
+  const finishAfterWalk = React.useRef<string | null>(null);
+  const walkingRef = React.useRef(false);
+  walkingRef.current = walking;
   const endWalk = () => {
     setWalking(false);
     if (walkStartedLocation.current) nearMe.stop();
     walkStartedLocation.current = false;
+    if (finishAfterWalk.current) setFinishedRoute(finishAfterWalk.current);
+    finishAfterWalk.current = null;
   };
-
-  // The finish screen: shown when the last stop of a route gets marked visited
-  // (from a card, Near me or the walk), or from "Finish the walk".
-  const [finishedRoute, setFinishedRoute] = useState<string | null>(null);
   const visited = useVisited();
   const visitedBefore = React.useRef<{ places: unknown; counts: globalThis.Map<string, number> } | null>(null);
   useEffect(() => {
@@ -234,7 +240,10 @@ export const MainContent: React.FC = () => {
     for (const r of routes) {
       const summary = walkSummary(locations, r.id, visited);
       counts.set(r.id, summary.visited);
-      if (!fresh && justCompleted(visitedBefore.current!.counts.get(r.id) ?? null, summary)) setFinishedRoute(r.id);
+      if (!fresh && justCompleted(visitedBefore.current!.counts.get(r.id) ?? null, summary)) {
+        if (walkingRef.current) finishAfterWalk.current = r.id;
+        else setFinishedRoute(r.id);
+      }
     }
     visitedBefore.current = { places: locations, counts };
   }, [visited, locations, routes]);
