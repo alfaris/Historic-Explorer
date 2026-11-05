@@ -6,6 +6,7 @@ import { Button, Field, inputClass } from './ui';
 import { PhotoField } from './PhotoField';
 import { builtInPhoto } from '../data/photo-resolve';
 import { applyStopOrder, walkPlan, walkStops } from '../lib/walk';
+import { RouteQr } from './RouteQr';
 
 const blankRoute = (): Route => ({
   id: '',
@@ -158,6 +159,7 @@ export function RoutesTab({ content, save }: { content: Content; save: SaveFn })
               return photo ? { ...rest, photo } : rest;
             })}
           />
+          {!isNew && original && <RouteQr route={original} />}
           {!isNew && order.length > 0 && (
             <div>
               <p className="text-xs font-bold text-stone-600 mb-1">Walking order</p>
