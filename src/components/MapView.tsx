@@ -15,6 +15,7 @@ import { PlacePhoto } from './PlacePhoto';
 import { photoForPlace } from '../data/photo-resolve';
 import { useVisited } from '../lib/visited';
 
+import { L as T, nameOf } from '../i18n/lang';
 // Fix for default marker icons in React Leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -72,14 +73,14 @@ const CustomZoomControl: React.FC = () => {
     <div className="absolute top-6 right-6 z-[1000] flex flex-col gap-2">
       <button 
         onClick={() => map.zoomIn()}
-        aria-label={ar ? 'تكبير' : 'Zoom in'}
+        aria-label={T('Zoom in', 'تكبير')}
         className="w-10 h-10 bg-white rounded-xl shadow-lg border border-stone-200 flex items-center justify-center text-nile hover:bg-gold hover:text-white transition-all duration-300"
       >
         <ZoomIn className="w-5 h-5" />
       </button>
       <button 
         onClick={() => map.zoomOut()}
-        aria-label={ar ? 'تصغير' : 'Zoom out'}
+        aria-label={T('Zoom out', 'تصغير')}
         className="w-10 h-10 bg-white rounded-xl shadow-lg border border-stone-200 flex items-center justify-center text-nile hover:bg-gold hover:text-white transition-all duration-300"
       >
         <ZoomOut className="w-5 h-5" />
@@ -108,8 +109,8 @@ const LocateControl: React.FC<{ onLocate: () => void, isLocating: boolean, isAra
       <button 
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); onLocate(); }}
         className="w-12 h-12 bg-nile text-white rounded-full shadow-xl border-2 border-white flex items-center justify-center hover:bg-nile-light hover:scale-110 transition-all active:scale-95"
-        title={isArabic ? 'موقعي الحالي' : 'My Location'}
-        aria-label={isArabic ? 'موقعي الحالي' : 'My Location'}
+        title={T('My Location', 'موقعي الحالي')}
+        aria-label={T('My Location', 'موقعي الحالي')}
         disabled={isLocating}
       >
         <MapPin className={`w-5 h-5 ${isLocating ? 'animate-pulse' : ''}`} />
@@ -129,7 +130,7 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
 
   const locateUser = () => {
     if (!navigator.geolocation) {
-      alert(isArabic ? 'تحديد الموقع غير مدعوم في هذا المتصفح' : 'Geolocation is not supported by your browser');
+      alert(T('Geolocation is not supported by your browser', 'تحديد الموقع غير مدعوم في هذا المتصفح'));
       return;
     }
 
@@ -146,7 +147,7 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
       (error) => {
         console.error('Error getting location:', error);
         setIsLocating(false);
-        alert(isArabic ? 'تعذر الوصول إلى موقعك' : 'Unable to retrieve your location');
+        alert(T('Unable to retrieve your location', 'تعذر الوصول إلى موقعك'));
       },
       { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
     );
@@ -210,7 +211,7 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
             <div className="flex flex-col items-center gap-3 p-3 bg-white rounded-2xl shadow-2xl border border-sand/50 max-w-[160px]">
               <PlacePhoto
                 photo={photoForPlace(loc)}
-                alt={isArabic ? loc.nameAr : loc.nameEn}
+                alt={nameOf(loc)}
                 className="w-full h-12 rounded-xl shadow-md"
                 fallback={
                   <HistoricPlaceholder 
@@ -222,7 +223,7 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
               />
               <div className="text-center px-1">
                 <p className="font-bold text-nile text-[10px] leading-tight text-balance uppercase tracking-wider">
-                  {isArabic ? loc.nameAr : loc.nameEn}
+                  {nameOf(loc)}
                 </p>
               </div>
             </div>
@@ -231,7 +232,7 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
             <div className="p-4 bg-[#fdfcf8] min-w-[240px]">
               <PlacePhoto
                 photo={photoForPlace(loc)}
-                alt={isArabic ? loc.nameAr : loc.nameEn}
+                alt={nameOf(loc)}
                 className="w-full h-40 rounded-xl mb-4 shadow-sm border border-sand/30"
                 showCredit
                 fallback={
@@ -244,17 +245,17 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
               />
               <div className="px-1">
                 <p className="text-[10px] font-bold text-gold-ink mb-2 uppercase tracking-[0.2em]">
-                  {isArabic ? category?.nameAr : category?.nameEn}
+                  {(category ? nameOf(category) : undefined)}
                 </p>
                 <h3 className="font-serif italic text-xl text-ink leading-tight mb-2">
-                  {isArabic ? loc.nameAr : loc.nameEn}
+                  {nameOf(loc)}
                 </h3>
                 <div className="w-8 h-px bg-gold/30 mb-3"></div>
                 <button 
                   onClick={() => onSelectLocation(loc.id)}
                   className="text-[10px] font-bold text-nile underline underline-offset-4 uppercase tracking-widest hover:text-gold-ink transition-colors"
                 >
-                  {isArabic ? 'بدء الاستماع' : 'Start Lesson'}
+                  {T('Start Lesson', 'بدء الاستماع')}
                 </button>
               </div>
             </div>
@@ -262,7 +263,7 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
         </Marker>
       );
     });
-  }, [locations, isArabic, onSelectLocation, selectedLocation, visited]);
+  }, [locations, isArabic, language, onSelectLocation, selectedLocation, visited]);
 
   const userIcon = L.divIcon({
     className: 'user-location-marker',
@@ -333,7 +334,7 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
         {userLocation && (
           <Marker position={userLocation} icon={userIcon as L.DivIcon} zIndexOffset={1000}>
             <Tooltip direction="top" opacity={1}>
-              <span className="font-bold">{isArabic ? 'موقعك الحالي' : 'Your Location'}</span>
+              <span className="font-bold">{T('Your Location', 'موقعك الحالي')}</span>
             </Tooltip>
           </Marker>
         )}
@@ -357,7 +358,7 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
         className={`absolute bottom-6 ${isArabic ? 'right-6' : 'left-6'} z-[1000] px-4 py-2 bg-white rounded-xl shadow-lg border border-stone-200 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-nile hover:bg-stone-50 transition-all hover:scale-105 active:scale-95`}
       >
         <Layers className="w-4 h-4" />
-        {isArabic ? (mapStyle === 'voyager' ? 'نمط قديم' : 'نمط حديث') : (mapStyle === 'voyager' ? 'Antique Map' : 'Modern Map')}
+        {mapStyle === 'voyager' ? T('Antique Map', 'نمط قديم') : T('Modern Map', 'نمط حديث')}
       </button>
 
       <LocateControl onLocate={locateUser} isLocating={isLocating} isArabic={isArabic} />

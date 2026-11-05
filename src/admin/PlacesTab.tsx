@@ -1,12 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, Search } from 'lucide-react';
+import { Languages, Plus, Search } from 'lucide-react';
 import { categories } from '../data/locations';
 import { nextPlaceId, type Content, type Location } from '../data/content';
 import type { SaveFn } from './AdminApp';
-import { Button, Field, inputClass, MapPicker } from './ui';
+import { Button, Field, inputClass, MapPicker, sameValue } from './ui';
 import { PhotoField } from './PhotoField';
 import { builtInPhoto } from '../data/photo-resolve';
+import { descriptionOf } from '../i18n/lang';
+import { api } from './api';
 import { AudioPanel } from './AudioPanel';
+import { FillFrenchButton, missingPlaceFrench, withOptional } from './french';
 
 const CAIRO_CENTRE = { lat: 30.0444, lng: 31.2357 };
 
@@ -23,6 +26,7 @@ export function PlacesTab({ content, save, initialPlaceId, onSelected }: {
   const [busy, setBusy] = useState(false);
   // A place added in this session gets its audio made as soon as it's saved.
   const [justAdded, setJustAdded] = useState<number | null>(null);
+  const [bulk, setBulk] = useState<{ text: string; error: boolean } | null>(null);
 
   // Opened from a report: select that place.
   useEffect(() => {
@@ -39,7 +43,7 @@ export function PlacesTab({ content, save, initialPlaceId, onSelected }: {
   const list = useMemo(() => {
     const q = query.trim().toLowerCase();
     return content.places.filter(
-      p => (routeFilter === 'all' || p.routeId === routeFilter) && (!q || p.nameEn.toLowerCase().includes(q) || p.nameAr.includes(query.trim())),
+      p => (routeFilter === 'all' || p.routeId === routeFilter) && (!q || p.nameEn.toLowerCase().includes(q) || p.nameAr.includes(query.trim()) || !!p.nameFr?.toLowerCase().includes(q)),
     );
   }, [content.places, routeFilter, query]);
 
@@ -62,7 +66,7 @@ export function PlacesTab({ content, save, initialPlaceId, onSelected }: {
   };
 
   const original = draft && !isNew ? content.places.find(p => p.id === draft.id) : undefined;
-  const changed = draft && (isNew || JSON.stringify(original) !== JSON.stringify(draft));
+  const changed = draft && (isNew || !sameValue(original, draft));
 
   const submit = async () => {
     if (!draft) return;
@@ -87,6 +91,44 @@ export function PlacesTab({ content, save, initialPlaceId, onSelected }: {
   };
 
   const set = <K extends keyof Location>(key: K, value: Location[K]) => setDraft(d => (d ? { ...d, [key]: value } : d));
+  const setFrench = (key: 'nameFr' | 'descriptionFr', value: string) => setDraft(d => (d ? withOptional(d, key, value) : d));
+
+  // Places still missing French (the app shows their English meanwhile).
+  const missingFrench = content.places.filter(p => Object.keys(missingPlaceFrench(p)).length > 0);
+
+  /** Drafts every missing French name and description with Gemini, then saves once (so it's one History entry). */
+  const fillAllFrench = async () => {
+    if (!window.confirm(`Draft the missing French for ${missingFrench.length} places with Gemini and save it? You can review each place afterwards and restore the previous version from History.`)) return;
+    setBusy(true);
+    setBulk(null);
+    try {
+      const filled = new Map<number, Record<string, string>>();
+      const CHUNK = 8;
+      for (let i = 0; i < missingFrench.length; i += CHUNK) {
+        setBulk({ text: `Translating ${Math.min(i + CHUNK, missingFrench.length)} of ${missingFrench.length}…`, error: false });
+        const texts: Record<string, string> = {};
+        for (const p of missingFrench.slice(i, i + CHUNK)) {
+          for (const [field, english] of Object.entries(missingPlaceFrench(p))) texts[`${p.id}.${field}`] = english;
+        }
+        const { texts: french } = await api.translate(texts);
+        for (const [key, value] of Object.entries(french)) {
+          const [id, field] = key.split('.');
+          filled.set(Number(id), { ...filled.get(Number(id)), [field]: value });
+        }
+      }
+      const places = content.places.map(p => {
+        const fields = filled.get(p.id);
+        return fields ? { ...p, ...fields } : p;
+      });
+      if (await save({ ...content, places }, `Filled in missing French with Gemini (${filled.size} places)`)) {
+        setBulk({ text: `French drafted for ${filled.size} places and saved. Review them place by place.`, error: false });
+      } else setBulk(null);
+    } catch (err) {
+      setBulk({ text: `Nothing was saved: ${(err as Error).message}`, error: true });
+    } finally {
+      setBusy(false);
+    }
+  };
   const routeName = (id: string) => content.routes.find(r => r.id === id)?.nameEn ?? id;
 
   return (
@@ -109,6 +151,19 @@ export function PlacesTab({ content, save, initialPlaceId, onSelected }: {
         <Button onClick={startNew} className="w-full mb-3 flex items-center justify-center gap-2">
           <Plus className="w-4 h-4" /> Add place
         </Button>
+        {missingFrench.length > 0 && (
+          <Button
+            variant="secondary"
+            onClick={fillAllFrench}
+            // An open draft with unsaved edits would be confusing next to a bulk save.
+            disabled={busy || !!changed}
+            title={changed ? 'Save or discard the open place first.' : undefined}
+            className="w-full mb-3 flex items-center justify-center gap-2"
+          >
+            <Languages className="w-4 h-4" /> Fill in missing French ({missingFrench.length})
+          </Button>
+        )}
+        {bulk && <p className={`text-xs mb-3 ${bulk.error ? 'text-red-700' : 'text-stone-500'}`} role={bulk.error ? 'alert' : 'status'}>{bulk.text}</p>}
         <ul className="max-h-[60vh] overflow-y-auto -mx-2">
           {list.map(p => (
             <li key={p.id}>
@@ -178,14 +233,32 @@ export function PlacesTab({ content, save, initialPlaceId, onSelected }: {
             <textarea value={draft.descriptionAr} onChange={e => set('descriptionAr', e.target.value)} className={inputClass} rows={4} dir="rtl" maxLength={2000} />
           </Field>
 
+          <div className="rounded-xl border border-sand/60 p-4 space-y-4">
+            <div>
+              <p className="text-xs font-bold text-stone-600">French (optional)</p>
+              <p className="text-[11px] text-stone-400">Empty fields show the English. French audio is narrated from the French description, or from the English one until there is one.</p>
+            </div>
+            <Field label="Name (French)">
+              <input value={draft.nameFr ?? ''} onChange={e => setFrench('nameFr', e.target.value)} className={inputClass} lang="fr" maxLength={120} />
+            </Field>
+            <Field label="Description (French)">
+              <textarea value={draft.descriptionFr ?? ''} onChange={e => setFrench('descriptionFr', e.target.value)} className={inputClass} rows={4} lang="fr" maxLength={2000} />
+            </Field>
+            <FillFrenchButton
+              key={draft.id}
+              missing={missingPlaceFrench(draft)}
+              onFilled={texts => setDraft(d => (d ? { ...d, ...texts } : d))}
+            />
+          </div>
+
           {!isNew && original && (
             <AudioPanel
               // A fresh panel per place, so a generation still running for the
               // previous place can't update this one.
               key={draft.id}
               placeId={draft.id}
-              draftText={{ en: draft.descriptionEn, ar: draft.descriptionAr }}
-              savedText={{ en: original.descriptionEn, ar: original.descriptionAr }}
+              draftText={{ en: draft.descriptionEn, ar: draft.descriptionAr, fr: descriptionOf(draft, 'fr') }}
+              savedText={{ en: original.descriptionEn, ar: original.descriptionAr, fr: descriptionOf(original, 'fr') }}
               generateOnLoad={justAdded === draft.id}
             />
           )}

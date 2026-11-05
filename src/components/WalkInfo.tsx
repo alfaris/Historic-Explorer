@@ -4,13 +4,14 @@ import type { Location } from '../data/locations';
 import { formatDistance } from '../lib/geo';
 import type { StopInfo } from '../lib/walk';
 
-const minutesLabel = (n: number, ar: boolean) => (ar ? `${n} ${n === 1 ? 'دقيقة' : n === 2 ? 'دقيقتان' : n <= 10 ? 'دقائق' : 'دقيقة'} سيرًا` : `${n} min walk`);
+import { L, currentLang, nameOf } from '../i18n/lang';
+const minutesLabel = (n: number, ar: boolean) => (ar ? `${n} ${n === 1 ? 'دقيقة' : n === 2 ? 'دقيقتان' : n <= 10 ? 'دقائق' : 'دقيقة'} سيرًا` : currentLang() === 'fr' ? `${n} min à pied` : `${n} min walk`);
 
 /** "Stop 3 of 12", shown above a stop's name. */
 export function StopNumber({ info, isArabic }: { info: StopInfo<Location>; isArabic: boolean }) {
   return (
     <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400">
-      {isArabic ? `المحطة ${info.number} من ${info.total}` : `Stop ${info.number} of ${info.total}`}
+      {isArabic ? `المحطة ${info.number} من ${info.total}` : currentLang() === 'fr' ? `Étape ${info.number} sur ${info.total}` : `Stop ${info.number} of ${info.total}`}
     </span>
   );
 }
@@ -25,7 +26,7 @@ export function NextStop({ info, isArabic, onOpen }: {
     return (
       <p className="flex items-center gap-2 text-xs text-stone-400">
         <Flag className="w-3.5 h-3.5" />
-        {isArabic ? 'آخر محطة في هذا المسار' : 'Last stop on this route'}
+        {L('Last stop on this route', 'آخر محطة في هذا المسار')}
       </p>
     );
   }
@@ -41,9 +42,9 @@ export function NextStop({ info, isArabic, onOpen }: {
       <Footprints className="w-4 h-4 shrink-0 text-gold" />
       <span className="min-w-0 flex-1">
         <span className="block text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400">
-          {isArabic ? 'المحطة التالية' : 'Next stop'}
+          {L('Next stop', 'المحطة التالية')}
         </span>
-        <span className="block truncate text-sm text-ink group-hover/next:text-nile">{isArabic ? next.nameAr : next.nameEn}</span>
+        <span className="block truncate text-sm text-ink group-hover/next:text-nile">{nameOf(next)}</span>
       </span>
       <span className="shrink-0 text-end text-xs text-stone-500">
         <span className="block font-bold">{minutesLabel(minutes, isArabic)}</span>

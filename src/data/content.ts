@@ -78,6 +78,12 @@ export function normalizeContent(input: unknown): Content {
       image: '',
       highlightsEn: Array.isArray(r?.highlightsEn) ? r.highlightsEn.map(str).filter(Boolean) : [],
       highlightsAr: Array.isArray(r?.highlightsAr) ? r.highlightsAr.map(str).filter(Boolean) : [],
+      // French is optional; empty fields are left out (the app falls back to English).
+      ...(str(r?.nameFr) ? { nameFr: str(r.nameFr) } : {}),
+      ...(str(r?.descriptionFr) ? { descriptionFr: str(r.descriptionFr) } : {}),
+      ...(Array.isArray(r?.highlightsFr) && r.highlightsFr.map(str).filter(Boolean).length
+        ? { highlightsFr: r.highlightsFr.map(str).filter(Boolean) }
+        : {}),
       distance: str(r?.distance),
       duration: str(r?.duration),
       ...(normalizePhoto(r?.photo) ? { photo: normalizePhoto(r?.photo) } : {}),
@@ -90,6 +96,8 @@ export function normalizeContent(input: unknown): Content {
       category: str(p?.category) as Category,
       descriptionEn: str(p?.descriptionEn),
       descriptionAr: str(p?.descriptionAr),
+      ...(str(p?.nameFr) ? { nameFr: str(p.nameFr) } : {}),
+      ...(str(p?.descriptionFr) ? { descriptionFr: str(p.descriptionFr) } : {}),
       lat: Number(p?.lat),
       lng: Number(p?.lng),
       ...(normalizePhoto(p?.photo) ? { photo: normalizePhoto(p?.photo) } : {}),
@@ -120,6 +128,10 @@ export function validateContent(content: Content): string[] {
     if (!r.distance || !r.duration) problems.push(`${label}: distance and duration are required.`);
     if (r.highlightsEn.length !== r.highlightsAr.length) problems.push(`${label}: English and Arabic highlights must have the same number of lines.`);
     if (r.highlightsEn.length > LIMITS.highlights) problems.push(`${label}: at most ${LIMITS.highlights} highlights.`);
+    if (r.highlightsFr && r.highlightsFr.length > LIMITS.highlights) problems.push(`${label}: at most ${LIMITS.highlights} French highlights.`);
+    for (const [field, max] of [['nameFr', LIMITS.name], ['descriptionFr', LIMITS.description]] as const) {
+      if ((r[field] ?? '').length > max) problems.push(`${label}: ${field} is longer than ${max} characters.`);
+    }
     for (const [field, max] of [['nameEn', LIMITS.name], ['nameAr', LIMITS.name], ['descriptionEn', LIMITS.description], ['descriptionAr', LIMITS.description], ['distance', LIMITS.short], ['duration', LIMITS.short]] as const) {
       if (r[field].length > max) problems.push(`${label}: ${field} is longer than ${max} characters.`);
     }
@@ -140,7 +152,7 @@ export function validateContent(content: Content): string[] {
     // The audio guide narrates these, so both languages need one.
     if (!p.descriptionEn) problems.push(`${label}: English description is empty.`);
     if (!hasArabic(p.descriptionAr ?? '')) problems.push(`${label}: Arabic description is missing.`);
-    for (const [field, max] of [['nameEn', LIMITS.name], ['nameAr', LIMITS.name], ['descriptionEn', LIMITS.description], ['descriptionAr', LIMITS.description]] as const) {
+    for (const [field, max] of [['nameEn', LIMITS.name], ['nameAr', LIMITS.name], ['descriptionEn', LIMITS.description], ['descriptionAr', LIMITS.description], ['nameFr', LIMITS.name], ['descriptionFr', LIMITS.description]] as const) {
       if ((p[field] ?? '').length > max) problems.push(`${label}: ${field} is longer than ${max} characters.`);
     }
     problems.push(...photoProblems(label, p.photo));

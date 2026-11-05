@@ -49,3 +49,11 @@ describe('searchPlaces', () => {
     expect(matchScore(locations[0], '')).toBe(0);
   });
 });
+
+describe('French names', () => {
+  it('finds a place by its French name, ignoring accents', () => {
+    const place = { id: 1, nameEn: 'Al-Azhar Mosque', nameAr: 'الجامع الأزهر', nameFr: 'Mosquée Al-Azhar' };
+    expect(matchScore(place, 'mosquee')).toBe(3);
+    expect(matchScore({ ...place, nameFr: undefined }, 'mosquee')).toBe(0);
+  });
+});

@@ -26,6 +26,7 @@ import { isRouteLink, routeFromLocation } from '../lib/share';
 import { askForCompass } from '../lib/useWalkSensors';
 import { LazyBoundary } from './LazyBoundary';
 
+import { L, nameOf, descriptionOf, highlightsOf, currentLang, fallbackLang } from '../i18n/lang';
 // The map (Leaflet, marker clustering and their CSS) is the largest part of the
 // app, so it's loaded only when needed: in the background once the page is idle,
 // or straight away if the map is opened first.
@@ -158,9 +159,6 @@ export const MainContent: React.FC = () => {
     return searchPlaces(others, searchQuery);
   }, [searchQuery, selectedCategory, selectedRoute, locations]);
 
-  const toggleLanguage = () => {
-    setLanguage(language === 'en' ? 'ar' : 'en');
-  };
 
   const isArabic = language === 'ar';
   const fontClass = isArabic ? 'font-arabic' : 'font-sans';
@@ -256,43 +254,52 @@ export const MainContent: React.FC = () => {
             <Logo className="h-10 w-10 md:h-12 md:w-12 text-nile shrink-0" />
             <div className={`flex flex-col ${isArabic ? 'border-r-2 border-gold pr-4' : 'border-l-2 border-gold pl-4'}`}>
               <h1 className={`text-xl md:text-2xl text-ink font-bold ${headingFontClass}`}>
-                {isArabic ? 'القاهرة' : 'CAIRO'}
+                {L('CAIRO', 'القاهرة')}
               </h1>
               <span className={`text-[10px] text-stone-500 uppercase font-medium whitespace-nowrap mt-0.5 ${isArabic ? 'tracking-[0.2em]' : 'tracking-[0.3em]'}`}>
-                {isArabic ? 'مستكشف التاريخ' : 'Historic Explorer'}
+                {L('Historic Explorer', 'مستكشف التاريخ')}
               </span>
             </div>
           </div>
-          <button 
-            onClick={toggleLanguage}
-            className="group flex flex-col items-center gap-1"
-            aria-label="Toggle Language"
-          >
-            <div className="w-12 h-12 rounded-full border border-sand hover:border-nile transition-all duration-500 flex items-center justify-center bg-white shadow-sm ring-0 group-hover:ring-4 group-hover:ring-nile/5">
-              <Globe className="w-4 h-4 text-stone-400 group-hover:text-nile transition-colors" />
-            </div>
-            <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">{language === 'en' ? 'عربي' : 'English'}</span>
-          </button>
+          {/* Language: English, Arabic, French. A native select, so it's keyboard and screen-reader friendly. */}
+          <label className="group flex flex-col items-center gap-1 cursor-pointer">
+            <span className="relative w-12 h-12 rounded-full border border-sand group-hover:border-nile transition-all duration-500 flex items-center justify-center bg-white shadow-sm">
+              <Globe className="w-4 h-4 text-stone-400 group-hover:text-nile transition-colors" aria-hidden="true" />
+              <select
+                value={language}
+                onChange={e => setLanguage(e.target.value as typeof language)}
+                aria-label="Language / اللغة / Langue"
+                className="absolute inset-0 opacity-0 cursor-pointer"
+              >
+                <option value="en">English</option>
+                <option value="ar">العربية</option>
+                <option value="fr">Français</option>
+              </select>
+            </span>
+            <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest" aria-hidden="true">
+              {language === 'en' ? 'English' : language === 'ar' ? 'العربية' : 'Français'}
+            </span>
+          </label>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 md:py-8 pb-28 md:pb-8">
         {/* Breadcrumbs */}
-        <div className="flex items-center gap-2 mb-6 text-[10px] uppercase tracking-widest text-stone-400 font-bold overflow-x-auto whitespace-nowrap pb-2">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-6 text-[10px] uppercase tracking-widest text-stone-400 font-bold pb-2">
           <span className="hover:text-nile cursor-pointer transition-colors" onClick={() => setSelectedLocation(null)}>{t('app.title')}</span>
           <ChevronRight className={`w-3 h-3 ${isArabic ? 'rotate-180' : ''}`} />
-          <span className="text-nile">{isArabic ? currentRouteData.nameAr : currentRouteData.nameEn}</span>
+          <span className="text-nile">{nameOf(currentRouteData)}</span>
           {selectedCategory !== 'all' && (
             <>
               <ChevronRight className={`w-3 h-3 ${isArabic ? 'rotate-180' : ''}`} />
-              <span className="text-gold-ink">{isArabic ? categories.find(c => c.id === selectedCategory)?.nameAr : categories.find(c => c.id === selectedCategory)?.nameEn}</span>
+              <span className="text-gold-ink">{(() => { const c = categories.find(x => x.id === selectedCategory); return c ? nameOf(c) : ''; })()}</span>
             </>
           )}
           {selectedLocation && (
             <>
               <ChevronRight className={`w-3 h-3 ${isArabic ? 'rotate-180' : ''}`} />
               <span className="text-nile-light truncate max-w-[150px]">
-                {isArabic ? locations.find(l => l.id === selectedLocation)?.nameAr : locations.find(l => l.id === selectedLocation)?.nameEn}
+                {(() => { const p = locations.find(l => l.id === selectedLocation); return p ? nameOf(p) : ''; })()}
               </span>
             </>
           )}
@@ -323,14 +330,14 @@ export const MainContent: React.FC = () => {
                 >
                   <PlacePhoto
                     photo={photoForRoute(route)}
-                    alt={isArabic ? route.nameAr : route.nameEn}
+                    alt={nameOf(route)}
                     sizes="(min-width: 768px) 260px, 220px"
                     priority={routeIndex < 2}
                     className="absolute inset-0 w-full h-full"
                     fallback={
                       <RoutePlaceholder 
                         routeId={route.id} 
-                        name={isArabic ? route.nameAr : route.nameEn}
+                        name={nameOf(route)}
                         className="absolute inset-0 w-full h-full"
                       />
                     }
@@ -339,7 +346,7 @@ export const MainContent: React.FC = () => {
                 </button>
                 <div className="text-center px-2">
                   <h3 className={`text-sm md:text-base text-ink ${headingFontClass}`}>
-                    {isArabic ? route.nameAr : route.nameEn}
+                    {nameOf(route)}
                   </h3>
                 </div>
               </div>
@@ -357,7 +364,7 @@ export const MainContent: React.FC = () => {
             className="flex flex-col items-center"
           >
             <h2 className={`text-4xl md:text-5xl text-ink mb-2 ${headingFontClass}`}>
-              {isArabic ? currentRouteData.nameAr : currentRouteData.nameEn}
+              {nameOf(currentRouteData)}
             </h2>
             
             <div className={`flex items-center gap-6 mb-6 text-[10px] font-bold uppercase tracking-widest text-nile`}>
@@ -372,11 +379,11 @@ export const MainContent: React.FC = () => {
             </div>
 
             <p className="text-stone-500 italic text-base md:text-lg leading-relaxed font-serif mb-8">
-              "{isArabic ? currentRouteData.descriptionAr : currentRouteData.descriptionEn}"
+              "{descriptionOf(currentRouteData)}"
             </p>
 
             <div className="flex flex-wrap justify-center gap-3 mb-8">
-              {(isArabic ? currentRouteData.highlightsAr : currentRouteData.highlightsEn).map((highlight, i) => (
+              {(highlightsOf(currentRouteData)).map((highlight, i) => (
                 <span key={i} className="px-4 py-2 bg-chalk/80 text-stone-600 rounded-full text-[10px] font-bold uppercase tracking-wider border border-sand/30 flex items-center gap-2">
                   <Star className="w-3 h-3 text-gold fill-gold" />
                   {highlight}
@@ -393,7 +400,7 @@ export const MainContent: React.FC = () => {
                 className="flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-nile text-white text-xs font-bold uppercase tracking-widest shadow-lg hover:bg-nile-light transition-colors"
               >
                 <Footprints className="w-4 h-4" />
-                {isArabic ? 'ابدأ الجولة' : 'Start the walk'}
+                {L('Start the walk', 'ابدأ الجولة')}
               </button>
             )}
             <ShareRoute route={currentRouteData} isArabic={isArabic} />
@@ -484,7 +491,7 @@ export const MainContent: React.FC = () => {
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5 opacity-70" />
-                  {isArabic ? cat.nameAr : cat.nameEn}
+                  {nameOf(cat)}
                 </button>
               );
             })}
@@ -497,7 +504,7 @@ export const MainContent: React.FC = () => {
             nearMe={nearMe}
             routePlaces={routePlaces}
             allPlaces={locations}
-            routeName={isArabic ? currentRouteData.nameAr : currentRouteData.nameEn}
+            routeName={nameOf(currentRouteData)}
             isArabic={isArabic}
             onOpenPlace={openPlace}
           />
@@ -510,9 +517,7 @@ export const MainContent: React.FC = () => {
                   <div className="w-full h-full bg-chalk flex flex-col items-center justify-center gap-4 p-8 text-center">
                     <Map className="w-10 h-10 text-stone-300" />
                     <p className="text-sm text-stone-500 max-w-xs">
-                      {isArabic
-                        ? 'تعذّر تحميل الخريطة. تحقق من اتصالك بالإنترنت.'
-                        : "The map couldn't load. Check your connection."}
+                      {L("The map couldn't load. Check your connection.", 'تعذّر تحميل الخريطة. تحقق من اتصالك بالإنترنت.')}
                     </p>
                     <button
                       // Browsers remember a failed module download, so retrying
@@ -520,7 +525,7 @@ export const MainContent: React.FC = () => {
                       onClick={() => window.location.reload()}
                       className="text-[10px] font-bold bg-nile text-white px-5 py-2 rounded-xl hover:bg-nile-light transition-all duration-300 uppercase tracking-wider"
                     >
-                      {isArabic ? 'حاول مرة أخرى' : 'Try again'}
+                      {L('Try again', 'حاول مرة أخرى')}
                     </button>
                   </div>
                 }
@@ -552,7 +557,7 @@ export const MainContent: React.FC = () => {
                         <div className="md:col-span-1">
                           <PlacePhoto
                             photo={photoForPlace(loc)}
-                            alt={isArabic ? loc.nameAr : loc.nameEn}
+                            alt={nameOf(loc)}
                             className="w-full h-80 rounded-3xl shadow-xl"
                             showCredit
                             fallback={
@@ -567,11 +572,11 @@ export const MainContent: React.FC = () => {
                           <div>
                             <div className="flex justify-between items-start mb-6">
                               <div>
-                                <h3 className={`text-4xl text-ink leading-tight ${headingFontClass}`}>
-                                  {isArabic ? loc.nameAr : loc.nameEn}
+                                <h3 className={`text-4xl text-ink leading-tight ${headingFontClass}`} lang={fallbackLang(loc.nameFr)}>
+                                  {nameOf(loc)}
                                 </h3>
                                 <p className="text-[10px] font-bold text-nile mt-3 uppercase tracking-[0.3em]">
-                                  {isArabic ? category?.nameAr : category?.nameEn}
+                                  {(category ? nameOf(category) : undefined)}
                                 </p>
                                 {plan.get(loc.id) && <div className="mt-2"><StopNumber info={plan.get(loc.id)!} isArabic={isArabic} /></div>}
                               </div>
@@ -589,15 +594,13 @@ export const MainContent: React.FC = () => {
                             )}
                             
                             <div className="mb-8">
-                              <p className="text-stone-600 text-lg leading-relaxed mb-4 font-serif italic">
-                                {isArabic 
-                                  ? (loc.descriptionAr || 'لا يوجد وصف متاح حالياً لهذا الموقع.')
-                                  : (loc.descriptionEn || 'No description available for this location at the moment.')}
+                              <p className="text-stone-600 text-lg leading-relaxed mb-4 font-serif italic" lang={fallbackLang(loc.descriptionFr)}>
+                                {descriptionOf(loc) || L('No description available for this location at the moment.', 'لا يوجد وصف متاح حالياً لهذا الموقع.')}
                               </p>
                               <AudioGuide 
                                 locationId={loc.id}
-                                text={isArabic ? (loc.descriptionAr || '') : (loc.descriptionEn || '')}
-                                langCode={isArabic ? 'ar' : 'en'} 
+                                text={descriptionOf(loc)}
+                                langCode={currentLang()} 
                               />
                             </div>
                             
@@ -622,7 +625,7 @@ export const MainContent: React.FC = () => {
                                   const url = new URL(window.location.href);
                                   url.searchParams.set('loc', loc.id.toString());
                                   navigator.clipboard.writeText(url.toString());
-                                  alert(isArabic ? 'تم نسخ الرابط' : 'Link copied to clipboard');
+                                  alert(L('Link copied to clipboard', 'تم نسخ الرابط'));
                                 }}
                                 className="flex justify-center items-center py-5 px-6 bg-chalk hover:bg-sand/30 text-ink rounded-2xl transition-all duration-300"
                                 aria-label="Share Location"
@@ -673,7 +676,7 @@ export const MainContent: React.FC = () => {
                         <div className="md:w-1/3 h-56 md:h-auto overflow-hidden">
                           <PlacePhoto
                             photo={photoForPlace(loc)}
-                            alt={isArabic ? loc.nameAr : loc.nameEn}
+                            alt={nameOf(loc)}
                             sizes="(min-width: 768px) 33vw, 100vw"
                             className="w-full h-full min-h-56"
                             showCredit={isSelected}
@@ -691,12 +694,12 @@ export const MainContent: React.FC = () => {
                             <div>
                               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-3">
                                 <p className="text-[10px] font-bold text-gold-ink uppercase tracking-[0.3em]">
-                                  {isArabic ? category?.nameAr : category?.nameEn}
+                                  {(category ? nameOf(category) : undefined)}
                                 </p>
                                 <VisitedBadge placeId={loc.id} isArabic={isArabic} />
                               </div>
-                              <h3 className={`text-3xl text-ink leading-tight ${headingFontClass}`}>
-                                {isArabic ? loc.nameAr : loc.nameEn}
+                              <h3 className={`text-3xl text-ink leading-tight ${headingFontClass}`} lang={fallbackLang(loc.nameFr)}>
+                                {nameOf(loc)}
                               </h3>
                               {plan.get(loc.id) && <div className="mt-2"><StopNumber info={plan.get(loc.id)!} isArabic={isArabic} /></div>}
                             </div>
@@ -722,15 +725,13 @@ export const MainContent: React.FC = () => {
                               >
                                 <div className="pt-8 mt-8 border-t border-chalk">
                                   <div className="mb-8">
-                                    <p className="text-stone-600 text-lg leading-relaxed mb-4 font-serif italic">
-                                      {isArabic 
-                                        ? (loc.descriptionAr || 'لا يوجد وصف متاح حالياً لهذا الموقع.')
-                                        : (loc.descriptionEn || 'No description available for this location at the moment.')}
+                                    <p className="text-stone-600 text-lg leading-relaxed mb-4 font-serif italic" lang={fallbackLang(loc.descriptionFr)}>
+                                      {descriptionOf(loc) || L('No description available for this location at the moment.', 'لا يوجد وصف متاح حالياً لهذا الموقع.')}
                                     </p>
                                     <AudioGuide 
                                       locationId={loc.id}
-                                      text={isArabic ? (loc.descriptionAr || '') : (loc.descriptionEn || '')}
-                                      langCode={isArabic ? 'ar' : 'en'} 
+                                      text={descriptionOf(loc)}
+                                      langCode={currentLang()} 
                                     />
                                   </div>
                                   
@@ -755,7 +756,7 @@ export const MainContent: React.FC = () => {
                                         const url = new URL(window.location.href);
                                         url.searchParams.set('loc', loc.id.toString());
                                         navigator.clipboard.writeText(url.toString());
-                                        alert(isArabic ? 'تم نسخ الرابط' : 'Link copied to clipboard');
+                                        alert(L('Link copied to clipboard', 'تم نسخ الرابط'));
                                       }}
                                       className="flex justify-center items-center py-4 px-6 bg-chalk hover:bg-sand/30 text-ink rounded-xl transition-all duration-300"
                                       aria-label="Share Location"
@@ -782,13 +783,13 @@ export const MainContent: React.FC = () => {
               <div className="text-center py-32 bg-white rounded-[3rem] border border-dashed border-sand">
                 <Search className="w-12 h-12 text-stone-200 mx-auto mb-6" />
                 <h3 className={`text-3xl text-stone-400 ${headingFontClass}`}>
-                  {isArabic ? 'لم يتم العثور على نتائج' : 'No explorations found'}
+                  {L('No explorations found', 'لم يتم العثور على نتائج')}
                 </h3>
               </div>
             )}
             {filteredLocations.length === 0 && otherRouteMatches.length > 0 && (
               <p className="text-center text-stone-500">
-                {isArabic ? 'لا نتائج في هذا المسار، لكن وجدنا أماكن في مسارات أخرى:' : 'Nothing on this route, but there are matches on other routes:'}
+                {L('Nothing on this route, but there are matches on other routes:', 'لا نتائج في هذا المسار، لكن وجدنا أماكن في مسارات أخرى:')}
               </p>
             )}
             <OtherRouteResults places={otherRouteMatches} routes={routes} isArabic={isArabic} onOpen={openPlace} />
@@ -810,14 +811,14 @@ export const MainContent: React.FC = () => {
             // say so, and give a way out that also turns location back off.
             <div className="fixed z-[7000] inset-x-4 bottom-28 md:bottom-8 md:inset-x-auto md:end-8 md:w-96 bg-white rounded-3xl shadow-2xl border border-sand/50 p-5" role="alert" dir={isArabic ? 'rtl' : 'ltr'}>
               <p className="text-sm text-ink mb-3">
-                {isArabic ? 'تعذّر فتح الجولة. تحقق من اتصالك بالإنترنت، ثم أعد تحميل الصفحة.' : "The walk couldn't open. Check your connection, then reload the page."}
+                {L("The walk couldn't open. Check your connection, then reload the page.", 'تعذّر فتح الجولة. تحقق من اتصالك بالإنترنت، ثم أعد تحميل الصفحة.')}
               </p>
               <div className="flex gap-2">
                 <button onClick={() => window.location.reload()} className="px-4 py-2 rounded-xl bg-nile text-white text-xs font-bold uppercase tracking-widest">
-                  {isArabic ? 'إعادة التحميل' : 'Reload'}
+                  {L('Reload', 'إعادة التحميل')}
                 </button>
                 <button onClick={endWalk} className="px-4 py-2 rounded-xl bg-chalk text-ink text-xs font-bold uppercase tracking-widest">
-                  {isArabic ? 'إغلاق' : 'Close'}
+                  {L('Close', 'إغلاق')}
                 </button>
               </div>
             </div>
@@ -835,7 +836,7 @@ export const MainContent: React.FC = () => {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.8, y: 20 }}
             onClick={scrollToTop}
-            aria-label={isArabic ? 'العودة إلى الأعلى' : 'Back to top'}
+            aria-label={L('Back to top', 'العودة إلى الأعلى')}
             className={`fixed ${viewMode === 'list' && !showScrollTop ? 'bottom-24' : 'bottom-24'} md:bottom-8 ${isArabic ? 'left-8' : 'right-8'} w-14 h-14 rounded-full bg-nile text-white shadow-2xl flex items-center justify-center z-[3000] hover:bg-gold transition-colors duration-500`}
           >
             <ArrowUp className="w-5 h-5" />

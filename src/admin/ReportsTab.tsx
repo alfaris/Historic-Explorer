@@ -161,7 +161,7 @@ function ReportCard({ report, content, save, setStatus, onEditPlace }: {
           <p>{formatDate(report.createdAt)}</p>
           <p className="capitalize">
             {report.status}
-            {report.lang === 'ar' ? ' · sent in Arabic' : ''}
+            {report.lang === 'ar' ? ' · sent in Arabic' : report.lang === 'fr' ? ' · sent in French' : ''}
           </p>
         </div>
       </div>

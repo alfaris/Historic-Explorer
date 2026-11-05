@@ -61,3 +61,12 @@ export function MapPicker(props: { value: LatLng; onChange: (v: LatLng) => void;
 
 export const formatDate = (iso: string) =>
   new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+
+/** Deep equality for plain content objects, ignoring key order (an optional field removed and re-added moves to the end). */
+export function sameValue(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a !== 'object' || typeof b !== 'object' || !a || !b || Array.isArray(a) !== Array.isArray(b)) return false;
+  const ka = Object.keys(a).filter(k => (a as Record<string, unknown>)[k] !== undefined);
+  const kb = Object.keys(b).filter(k => (b as Record<string, unknown>)[k] !== undefined);
+  return ka.length === kb.length && ka.every(k => sameValue((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k]));
+}

@@ -46,3 +46,10 @@ describe('startIndex', () => {
     expect(startIndex([1, 2], new Set([1, 2]))).toBe(0);
   });
 });
+
+describe('compassPoint in French', () => {
+  it('uses O for west', () => {
+    expect(compassPoint(270, 'fr')).toBe('O');
+    expect(compassPoint(315, 'fr')).toBe('NO');
+  });
+});

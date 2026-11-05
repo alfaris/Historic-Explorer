@@ -7,6 +7,10 @@ const q = (s: string, allowVersion = false) => parseCanonicalQuery(new URL(`http
 
 describe('parseCanonicalQuery', () => {
   it('accepts the plain query', () => expect(q('id=1&lang=en')).toEqual({ id: 1, lang: 'en', version: null }));
+  it('accepts French and rejects other languages', () => {
+    expect(q('id=1&lang=fr')).toEqual({ id: 1, lang: 'fr', version: null });
+    expect(q('id=1&lang=de')).toBeInstanceOf(Response);
+  });
   it('accepts a version only where allowed', () => {
     expect(q('id=1&lang=ar&v=0a1b2c3d', true)).toEqual({ id: 1, lang: 'ar', version: '0a1b2c3d' });
     expect(q('id=1&lang=ar&v=0a1b2c3d')).toBeInstanceOf(Response);

@@ -5,8 +5,10 @@ import { track } from '../lib/track';
 import { distanceMeters, formatDistance, MAX_ACCURACY_METERS, updateArrival, type ArrivalState } from '../lib/geo';
 import { useVisited } from '../lib/visited';
 import { AudioGuide } from './AudioGuide';
+import { useLanguage } from '../i18n/LanguageContext';
 import { VisitedToggle } from './Visited';
 
+import { L, nameOf, descriptionOf, currentLang } from '../i18n/lang';
 type Fix = { lat: number; lng: number; accuracy: number };
 
 export interface NearMeState {
@@ -26,6 +28,7 @@ export interface NearMeState {
  * tabs; only stop() ends it.
  */
 export function useNearMe(isArabic: boolean, places: Location[]): NearMeState {
+  const { language } = useLanguage(); // its messages are in the current language
   const [on, setOn] = useState(false);
   const [fix, setFix] = useState<Fix | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +40,7 @@ export function useNearMe(isArabic: boolean, places: Location[]): NearMeState {
   useEffect(() => {
     if (!on) return;
     if (!('geolocation' in navigator)) {
-      setError(isArabic ? 'تحديد الموقع غير مدعوم في هذا المتصفح.' : "This browser can't share your location.");
+      setError(L("This browser can't share your location.", 'تحديد الموقع غير مدعوم في هذا المتصفح.'));
       return;
     }
     setError(null);
@@ -57,18 +60,14 @@ export function useNearMe(isArabic: boolean, places: Location[]): NearMeState {
       err => {
         setError(
           err.code === err.PERMISSION_DENIED
-            ? isArabic
-              ? 'اسمح بالوصول إلى موقعك لاستخدام هذه الميزة.'
-              : 'Allow location access to use Near me.'
-            : isArabic
-              ? 'تعذر تحديد موقعك الآن.'
-              : "Couldn't get your location right now.",
+            ? L('Allow location access to use Near me.', 'اسمح بالوصول إلى موقعك لاستخدام هذه الميزة.')
+            : L("Couldn't get your location right now.", 'تعذر تحديد موقعك الآن.'),
         );
       },
       { enableHighAccuracy: true, maximumAge: 10_000, timeout: 20_000 },
     );
     return () => navigator.geolocation.clearWatch(watchId);
-  }, [on, isArabic]);
+  }, [on, isArabic, language]);
 
   const start = useCallback(() => setOn(true), []);
   const stop = useCallback(() => {
@@ -84,7 +83,7 @@ export function useNearMe(isArabic: boolean, places: Location[]): NearMeState {
   return { on, fix, error, arrivedPlace, start, stop, dismissArrival };
 }
 
-const placeName = (p: Location, isArabic: boolean) => (isArabic ? p.nameAr : p.nameEn);
+const placeName = (p: Location, isArabic: boolean) => (nameOf(p));
 
 /** "You've arrived at …" with the audio guide's Play button. Audio never starts by itself. */
 function ArrivalCard({ place, isArabic, onDismiss, onOpenPlace }: {
@@ -98,18 +97,18 @@ function ArrivalCard({ place, isArabic, onDismiss, onOpenPlace }: {
       <div className="flex items-start justify-between gap-3 mb-3">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-gold-ink mb-1">
-            {isArabic ? 'لقد وصلت إلى' : "You've arrived at"}
+            {L("You've arrived at", 'لقد وصلت إلى')}
           </p>
           <p className="text-lg text-ink font-serif leading-tight">{placeName(place, isArabic)}</p>
         </div>
-        <button onClick={onDismiss} className="p-1 text-stone-400 hover:text-ink" aria-label={isArabic ? 'إغلاق' : 'Dismiss'}>
+        <button onClick={onDismiss} className="p-1 text-stone-400 hover:text-ink" aria-label={L('Dismiss', 'إغلاق')}>
           <X className="w-4 h-4" />
         </button>
       </div>
       <AudioGuide
         locationId={place.id}
-        text={(isArabic ? place.descriptionAr : place.descriptionEn) ?? ''}
-        langCode={isArabic ? 'ar' : 'en'}
+        text={(descriptionOf(place)) ?? ''}
+        langCode={currentLang()}
       />
       <div className="flex gap-2 mt-4">
         <VisitedToggle placeId={place.id} isArabic={isArabic} className="py-3 flex-1" />
@@ -117,7 +116,7 @@ function ArrivalCard({ place, isArabic, onDismiss, onOpenPlace }: {
           onClick={() => onOpenPlace(place.id)}
           className="flex-1 py-3 rounded-xl bg-ink text-white text-xs font-bold uppercase tracking-widest hover:bg-nile transition-colors"
         >
-          {isArabic ? 'التفاصيل' : 'Details'}
+          {L('Details', 'التفاصيل')}
         </button>
       </div>
     </div>
@@ -150,13 +149,13 @@ export function NearMeOverlay({ nearMe, isArabic, onOpenPlace, onShowTab }: {
       <div className="pointer-events-auto flex items-center gap-1 bg-nile text-white rounded-full shadow-xl ps-4 pe-1 py-1">
         <button onClick={onShowTab} className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest py-1.5">
           <LocateFixed className="w-3.5 h-3.5 animate-pulse" />
-          {isArabic ? '«بالقرب مني» يعمل' : 'Near me on'}
+          {L('Near me on', '«بالقرب مني» يعمل')}
         </button>
         <button
           onClick={nearMe.stop}
           className="ms-2 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 text-[11px] font-bold uppercase tracking-widest"
         >
-          {isArabic ? 'إيقاف' : 'Stop'}
+          {L('Stop', 'إيقاف')}
         </button>
       </div>
     </div>
@@ -200,7 +199,7 @@ export function NearMeView({ nearMe, routePlaces, allPlaces, routeName, isArabic
 
       <div className="bg-white rounded-3xl shadow-xl border border-sand/50 p-6">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-          <div className="flex p-1 bg-chalk rounded-xl" role="group" aria-label={isArabic ? 'نطاق البحث' : 'Which places'}>
+          <div className="flex p-1 bg-chalk rounded-xl" role="group" aria-label={L('Which places', 'نطاق البحث')}>
             {(['route', 'all'] as const).map(s => (
               <button
                 key={s}
@@ -210,13 +209,13 @@ export function NearMeView({ nearMe, routePlaces, allPlaces, routeName, isArabic
                   scope === s ? 'bg-white text-nile shadow-sm' : 'text-stone-400 hover:text-stone-600'
                 }`}
               >
-                {s === 'route' ? routeName : isArabic ? 'كل المسارات' : 'All routes'}
+                {s === 'route' ? routeName : L('All routes', 'كل المسارات')}
               </button>
             ))}
           </div>
           {on && (
             <button onClick={nearMe.stop} className="text-[10px] font-bold uppercase tracking-widest text-stone-400 hover:text-nile">
-              {isArabic ? 'إيقاف تحديد الموقع' : 'Stop location'}
+              {L('Stop location', 'إيقاف تحديد الموقع')}
             </button>
           )}
         </div>
@@ -227,17 +226,17 @@ export function NearMeView({ nearMe, routePlaces, allPlaces, routeName, isArabic
             className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-nile text-white text-xs font-bold uppercase tracking-widest"
           >
             <LocateFixed className="w-4 h-4" />
-            {isArabic ? 'ابدأ «بالقرب مني»' : 'Start Near me'}
+            {L('Start Near me', 'ابدأ «بالقرب مني»')}
           </button>
         ) : error ? (
           <p className="text-sm text-stone-600 py-4">{error}</p>
         ) : !fix ? (
-          <p className="text-sm text-stone-500 animate-pulse py-4">{isArabic ? 'جارٍ تحديد موقعك…' : 'Finding your location…'}</p>
+          <p className="text-sm text-stone-500 animate-pulse py-4">{L('Finding your location…', 'جارٍ تحديد موقعك…')}</p>
         ) : (
           <>
             {fix.accuracy > MAX_ACCURACY_METERS && (
               <p className="text-[11px] text-stone-400 mb-3">
-                {isArabic ? 'دقة الموقع منخفضة، قد تتأخر التنبيهات.' : 'Location is approximate; arrival alerts may be delayed.'}
+                {L('Location is approximate; arrival alerts may be delayed.', 'دقة الموقع منخفضة، قد تتأخر التنبيهات.')}
               </p>
             )}
             <ol className="divide-y divide-sand/30">
@@ -252,10 +251,10 @@ export function NearMeView({ nearMe, routePlaces, allPlaces, routeName, isArabic
                           {placeName(place, isArabic)}
                         </span>
                         <span className="block text-[10px] uppercase tracking-[0.2em] text-stone-400 mt-0.5">
-                          {isArabic ? category?.nameAr : category?.nameEn}
+                          {(category ? nameOf(category) : undefined)}
                         </span>
                       </span>
-                      {visited.has(place.id) && <CircleCheck className="w-4 h-4 text-nile shrink-0" aria-label={isArabic ? 'تمت الزيارة' : 'Visited'} />}
+                      {visited.has(place.id) && <CircleCheck className="w-4 h-4 text-nile shrink-0" aria-label={L('Visited', 'تمت الزيارة')} />}
                       <span className="flex items-center gap-1 text-xs font-bold text-nile whitespace-nowrap" dir="ltr">
                         <Navigation className="w-3.5 h-3.5" />
                         {formatDistance(meters, isArabic)}

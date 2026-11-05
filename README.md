@@ -1,6 +1,6 @@
 # Cairo Walks
 
-A bilingual (English / Arabic) walking guide to historic Cairo. Pick a route, browse the monuments, cafés, workshops and meeting points along it, and listen to an audio guide while you stand in front of each place.
+A walking guide (English, Arabic and French) to historic Cairo. Pick a route, browse the monuments, cafés, workshops and meeting points along it, and listen to an audio guide while you stand in front of each place.
 
 **Live:** [cairowalks.vercel.app](https://cairowalks.vercel.app)
 
@@ -13,7 +13,7 @@ A bilingual (English / Arabic) walking guide to historic Cairo. Pick a route, br
 - **Near me tab**: a third tab beside List and Map that lists places by distance (this route or all routes). Once it's on, location keeps running on every tab, with a small "Near me on · Stop" pill, and arriving within about 30 m of any place offers its audio guide with a Play button (audio never starts by itself).
 - **Visited tracking**: mark places as visited and see each route's progress ("6 / 14 visited"). Visited places show a check on their card and on the map. Progress is saved in the browser, so it works offline and needs no account.
 - **Report a problem**: every place has a link to report a wrong location (drag a pin or send your GPS position), wrong text, a closure or a photo problem. Reports go to the admin dashboard and don't include any personal details.
-- **English and Arabic**, with full right-to-left layout.
+- **English, Arabic and French**, with full right-to-left layout for Arabic. The language picker in the header remembers the choice; the first visit follows the browser's language. French content is optional: routes and places without French show their English (marked `lang="en"` for screen readers), and French audio is narrated in French from the English description until there is a French one. Interface strings live in `src/i18n/fr.ts`, keyed by the English text; a test fails if a component string has no French.
 - **Share a route**: a **Share route** button opens the phone's share sheet, or copies the link where there's none. Links like `/r/fustat-roda` open the app on that route (`/?route=fustat-roda` works too), and show the route's photo, name and description as a preview in WhatsApp, iMessage and social apps: `vercel.json` rewrites `/r/…` to `api/share.ts`, which adds the preview tags to the app's page. In the admin, each route has a **QR code** to download or print as a card in English and Arabic (make cards from the live site's admin, since the code uses its address).
 - **Search across all routes**: searching shows matches on the current route as usual, plus an **Also on other routes** list (with each place's route) that switches to the route and opens the place. Matching forgives how names are typed: Arabic vowel marks, tatweel and letter variants (أ/إ/آ/ا, ة/ه, ى/ي), and English case, accents, hyphens and apostrophes ("rifai" finds "Al-Rifa'i"). It runs on the content in the app, so it works offline. See `src/lib/search.ts`.
 - **Start the walk**: a full-screen guided mode for a route. It shows the current stop with its photo and audio guide, and the next stop with the live distance and a direction arrow (it turns with the phone's compass where available, otherwise shows "NE" and so on). Arriving at the next stop moves the walk there, marks it visited and offers its audio guide; audio never plays by itself. The screen stays on (Screen Wake Lock), and with a downloaded route it all works offline. See `src/components/WalkMode.tsx` and `src/lib/walk-mode.ts`.
@@ -38,7 +38,7 @@ api/
 src/
   components/        UI: MainContent, MapView, AudioGuide, LiveLocationInfo, RouteDownload…
   data/locations.ts  Routes, categories and places (the content lives here)
-  i18n/              English/Arabic strings and RTL handling
+  i18n/              Interface strings (English, Arabic, French) and RTL handling
 ```
 
 The browser never receives the Gemini API key. It requests audio and insights by location ID, and the server builds the prompts from `src/data/locations.ts`. Generated audio is stored in Vercel Blob (keyed by the description text), so each place is generated once and survives deploys. Editing a description regenerates its audio automatically, and bumping `AUDIO_VERSION` in `api/_lib/gemini.ts` regenerates everything, for example after changing the voice or prompt.
@@ -83,7 +83,7 @@ For persistent audio, create a **private** Blob store under the project's Storag
 
 ### Pre-generating the audio guides
 
-Audio is otherwise generated the first time a visitor plays a place, which makes that visitor wait. To generate every place in both languages ahead of time:
+Audio is otherwise generated the first time a visitor plays a place, which makes that visitor wait. To generate every place in all three languages ahead of time:
 
 ```bash
 vercel env pull .env.local
@@ -95,7 +95,7 @@ npm run pregenerate-audio
 
 The first command copies `GEMINI_API_KEY` and `BLOB_READ_WRITE_TOKEN` from the Vercel project into `.env.local`. The script skips audio that's already stored for the current description and `AUDIO_VERSION`, so it's safe to run again at any time: after adding or editing places, after bumping `AUDIO_VERSION`, or to retry places that failed. It waits 2 seconds between Gemini calls to stay under rate limits.
 
-Options: `-- --dry-run` lists what's missing without generating anything, `-- --lang=en` (or `ar`) does one language, and `-- --delay=5000` changes the wait in milliseconds.
+Options: `-- --dry-run` lists what's missing without generating anything, `-- --lang=en` (or `ar`, `fr`) does one language, and `-- --delay=5000` changes the wait in milliseconds.
 
 ## Photos
 
@@ -133,7 +133,8 @@ What to download is worked out in `src/lib/offline-pack.ts`, and the download it
 
   By default, emails come from Resend's shared test address, which can only send to the email you signed up to Resend with. To send to other addresses, verify your domain in Resend and set `DIGEST_FROM`, for example `Cairo Walks <reports@yourdomain.com>`. The job is `api/_lib/digest.ts`, scheduled in `vercel.json`.
 - **Places**: edit, add or delete places, including moving them by dragging a pin, and upload a photo with its credit.
-  Each place shows whether its **audio guide** is ready in English and Arabic for the saved description. After a save that changes a description, or adds a place, the new audio is generated straight away, so visitors never wait for it. Missing audio can also be generated with one tap. Generation is admin-only, skips audio that already exists, refuses text that hasn't been saved yet, and is capped at 30 per 10 minutes.
+  Each place shows whether its **audio guide** is ready in English, Arabic and French for the saved description. After a save that changes a description, or adds a place, the new audio is generated straight away, so visitors never wait for it. Missing audio can also be generated with one tap. Generation is admin-only, skips audio that already exists, refuses text that hasn't been saved yet, and is capped at 30 per 10 minutes.
+- **French**: places and routes have optional French fields. **Fill in missing French** drafts the empty ones with Gemini: in a place or route editor it fills the form for you to check and save; on the Places list it drafts every place missing French and saves once, as one History entry you can restore. Nothing is translated on its own. See `api/_lib/translate.ts`.
 - **Routes**: edit, add or delete routes and their photos (a route can only be deleted once it has no places), and set the stops' **walking order**.
 - **Stats**: anonymous usage for the last 7, 30 or 90 days: audio plays, route opens and Near me arrivals, plays per day, the most-played audio guides, and for each route the plays at every stop in walking order (where visitors stop following it). Only daily totals are kept, in Blob (`stats/days/YYYY-MM-DD.json`): no cookies, visitor IDs or IP addresses. Each audio guide, route and arrival counts once per visit and is sent in one small batch. Visitors with Global Privacy Control or Do Not Track on aren't counted. See `src/lib/stats.ts`, `src/lib/track.ts` and `api/_lib/stats.ts`.
 - **History**: every save is kept, and any earlier version can be restored.

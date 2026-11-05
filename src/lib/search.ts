@@ -21,17 +21,17 @@ export function normalizeForSearch(text: string): string {
     .trim();
 }
 
-type Searchable = { id: number; nameEn: string; nameAr: string };
+type Searchable = { id: number; nameEn: string; nameAr: string; nameFr?: string };
 
 /**
  * How well a place matches: 3 = a name starts with the query, 2 = a word in
  * it does, 1 = it's contained anywhere, 0 = no match. Every word of the query
- * must appear (in either language's name).
+ * must appear (in any language's name).
  */
 export function matchScore(place: Searchable, query: string): number {
   const q = normalizeForSearch(query);
   if (!q) return 0;
-  const names = [normalizeForSearch(place.nameEn), normalizeForSearch(place.nameAr)];
+  const names = [place.nameEn, place.nameAr, place.nameFr ?? ''].filter(Boolean).map(normalizeForSearch);
   // Also try the English name with spaces removed, so "alazhar" finds "Al Azhar".
   const joined = names.map(n => n.replace(/ /g, ''));
   const words = q.split(' ');

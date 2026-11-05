@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { ArrowDown, ArrowUp, Plus } from 'lucide-react';
 import type { Content, Route } from '../data/content';
 import type { SaveFn } from './AdminApp';
-import { Button, Field, inputClass } from './ui';
+import { Button, Field, inputClass, sameValue } from './ui';
 import { PhotoField } from './PhotoField';
 import { builtInPhoto } from '../data/photo-resolve';
 import { applyStopOrder, walkPlan, walkStops } from '../lib/walk';
 import { RouteQr } from './RouteQr';
+import { FillFrenchButton, withOptional } from './french';
 
 const blankRoute = (): Route => ({
   id: '',
@@ -27,23 +28,23 @@ export function RoutesTab({ content, save }: { content: Content; save: SaveFn })
   const [busy, setBusy] = useState(false);
   // Highlights are edited as raw text (one per line) and split only when saving,
   // so spaces and new lines aren't trimmed away while typing.
-  const [highlights, setHighlights] = useState({ en: '', ar: '' });
+  const [highlights, setHighlights] = useState({ en: '', ar: '', fr: '' });
   // The stops' walking order, as place IDs. Applied to the places when saving.
   const [order, setOrder] = useState<number[]>([]);
 
   const lines = (text: string) => text.split('\n').map(s => s.trim()).filter(Boolean);
   const open = (route: Route, asNew: boolean) => {
     setDraft({ ...route, highlightsEn: [...route.highlightsEn], highlightsAr: [...route.highlightsAr] });
-    setHighlights({ en: route.highlightsEn.join('\n'), ar: route.highlightsAr.join('\n') });
+    setHighlights({ en: route.highlightsEn.join('\n'), ar: route.highlightsAr.join('\n'), fr: (route.highlightsFr ?? []).join('\n') });
     setOrder(asNew ? [] : walkStops(content.places, route.id).map(p => p.id));
     setIsNew(asNew);
   };
-  const finalDraft = draft && { ...draft, highlightsEn: lines(highlights.en), highlightsAr: lines(highlights.ar) };
+  const finalDraft = draft && withOptional({ ...draft, highlightsEn: lines(highlights.en), highlightsAr: lines(highlights.ar) }, 'highlightsFr', lines(highlights.fr));
 
   const original = draft && !isNew ? content.routes.find(r => r.id === draft.id) : undefined;
   const savedOrder = draft && !isNew ? walkStops(content.places, draft.id).map(p => p.id) : [];
   const orderChanged = order.join() !== savedOrder.join();
-  const changed = finalDraft && (isNew || orderChanged || JSON.stringify(original) !== JSON.stringify(finalDraft));
+  const changed = finalDraft && (isNew || orderChanged || !sameValue(original, finalDraft));
   // Walking times for the order being edited, so the effect of a move shows straight away.
   const orderedPlaces = draft && !isNew ? applyStopOrder(content.places, draft.id, order) : [];
   const plan = draft && !isNew ? walkPlan(orderedPlaces, draft.id) : new Map();
@@ -56,6 +57,18 @@ export function RoutesTab({ content, save }: { content: Content; save: SaveFn })
   const placeCount = (id: string) => content.places.filter(p => p.routeId === id).length;
 
   const set = <K extends keyof Route>(key: K, value: Route[K]) => setDraft(d => (d ? { ...d, [key]: value } : d));
+  const setFrench = (key: 'nameFr' | 'descriptionFr', value: string) => setDraft(d => (d ? withOptional(d, key, value) : d));
+
+  // Empty French fields, with the English to draft them from. Highlights go line by line.
+  const missingFrench: Record<string, string> = {};
+  if (draft && !draft.nameFr && draft.nameEn.trim()) missingFrench.nameFr = draft.nameEn;
+  if (draft && !draft.descriptionFr && draft.descriptionEn.trim()) missingFrench.descriptionFr = draft.descriptionEn;
+  if (!lines(highlights.fr).length) lines(highlights.en).forEach((line, i) => (missingFrench[`h${i}`] = line));
+  const applyFrench = (texts: Record<string, string>) => {
+    setDraft(d => d && ['nameFr', 'descriptionFr'].reduce((acc, key) => (texts[key] ? { ...acc, [key]: texts[key] } : acc), d));
+    const french = lines(highlights.en).map((_, i) => texts[`h${i}`]).filter(Boolean);
+    if (french.length) setHighlights(h => (lines(h.fr).length ? h : { ...h, fr: french.join('\n') }));
+  };
 
   const submit = async () => {
     if (!finalDraft) return;
@@ -67,7 +80,7 @@ export function RoutesTab({ content, save }: { content: Content; save: SaveFn })
           routes: content.routes.map(r => (r.id === finalDraft.id ? finalDraft : r)),
           places: applyStopOrder(content.places, finalDraft.id, order),
         };
-    const detailsChanged = isNew || JSON.stringify(original) !== JSON.stringify(finalDraft);
+    const detailsChanged = isNew || !sameValue(original, finalDraft);
     const message = isNew
       ? `Added route "${finalDraft.nameEn}"`
       : !detailsChanged
@@ -143,6 +156,18 @@ export function RoutesTab({ content, save }: { content: Content; save: SaveFn })
             <Field label="Highlights (Arabic)" hint="Same number of lines as English.">
               <textarea value={highlights.ar} onChange={e => setHighlights(h => ({ ...h, ar: e.target.value }))} className={inputClass} rows={3} dir="rtl" />
             </Field>
+            <Field label="Name (French)" hint="Optional. Empty French fields show the English.">
+              <input value={draft.nameFr ?? ''} onChange={e => setFrench('nameFr', e.target.value)} className={inputClass} lang="fr" />
+            </Field>
+            <Field label="Description (French)">
+              <textarea value={draft.descriptionFr ?? ''} onChange={e => setFrench('descriptionFr', e.target.value)} className={inputClass} rows={3} lang="fr" />
+            </Field>
+            <Field label="Highlights (French)" hint="Optional. One per line, up to 8.">
+              <textarea value={highlights.fr} onChange={e => setHighlights(h => ({ ...h, fr: e.target.value }))} className={inputClass} rows={3} lang="fr" />
+            </Field>
+            <div className="flex items-end">
+              <FillFrenchButton key={draft.id} missing={missingFrench} onFilled={applyFrench} />
+            </div>
             <Field label="Distance" hint='e.g. "2.5 km"'>
               <input value={draft.distance} onChange={e => set('distance', e.target.value)} className={inputClass} />
             </Field>

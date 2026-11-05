@@ -10,17 +10,21 @@ let places = locations.map(l => ({ ...l }));
 vi.mock('./content.js', () => ({
   getContentWithEtag: async () => ({ content: { routes: [], places }, etag: 'e' }),
 }));
-vi.mock('./gemini.js', () => ({
-  audioStatus: async (p: { id: number; descriptionEn: string; descriptionAr: string }, lang: 'en' | 'ar') => {
-    const text = lang === 'ar' ? p.descriptionAr : p.descriptionEn;
-    if (!text) return 'no-text';
-    return stored.has(`${lang}:${text}`) ? 'stored' : 'missing';
-  },
-  generateAndStoreAudio: async (p: { id: number; descriptionEn: string; descriptionAr: string }, lang: 'en' | 'ar') => {
-    generated.push(`${p.id}:${lang}`);
-    stored.add(`${lang}:${lang === 'ar' ? p.descriptionAr : p.descriptionEn}`);
-  },
-}));
+vi.mock('./gemini.js', async () => {
+  const { descriptionOf } = await import('../../src/i18n/lang');
+  type P = { id: number; nameEn: string; nameAr: string; descriptionEn: string; descriptionAr: string; descriptionFr?: string };
+  return {
+    audioStatus: async (p: P, lang: 'en' | 'ar' | 'fr') => {
+      const text = descriptionOf(p, lang);
+      if (!text) return 'no-text';
+      return stored.has(`${lang}:${text}`) ? 'stored' : 'missing';
+    },
+    generateAndStoreAudio: async (p: P, lang: 'en' | 'ar' | 'fr') => {
+      generated.push(`${p.id}:${lang}`);
+      stored.add(`${lang}:${descriptionOf(p, lang)}`);
+    },
+  };
+});
 
 const { handleAdminAudio } = await import('./admin-audio');
 
@@ -46,7 +50,17 @@ describe('admin audio', () => {
     expect(await res.json()).toEqual({
       en: { status: 'stored', version: textHash(place.descriptionEn) },
       ar: { status: 'missing', version: textHash(place.descriptionAr) },
+      // No French description yet: French audio is narrated from the English text.
+      fr: { status: 'missing', version: textHash(place.descriptionEn) },
     });
+  });
+
+  it('uses the French description for French audio once there is one', async () => {
+    places[0].descriptionFr = 'Une description en français.';
+    const body = await (await get(place.id)).json();
+    expect(body.fr.version).toBe(textHash('Une description en français.'));
+    expect((await post({ id: place.id, lang: 'fr', version: textHash('Une description en français.') })).status).toBe(200);
+    expect(generated).toEqual([`${place.id}:fr`]);
   });
 
   it('says when there is no Blob store', async () => {
@@ -76,7 +90,7 @@ describe('admin audio', () => {
   });
 
   it.each([
-    [{ id: place.id, lang: 'fr', version: 'x' }, 400],
+    [{ id: place.id, lang: 'de', version: 'x' }, 400],
     [{ id: 999999, lang: 'en', version: 'x' }, 404],
   ])('rejects %j', async (body, status) => {
     expect((await post(body)).status).toBe(status);

@@ -13,7 +13,7 @@ export interface Report {
   placeName: string;
   message: string;
   suggested?: { lat: number; lng: number; source: 'gps' | 'map'; accuracy?: number };
-  lang: 'en' | 'ar';
+  lang: 'en' | 'ar' | 'fr';
   adminNote?: string;
   updatedAt?: string;
 }
@@ -72,8 +72,11 @@ export const api = {
   digest: () => call<{ configured: boolean; to: string | null }>('digest'),
   sendTestEmail: () => call<{ ok: true }>('digest-test', { method: 'POST' }),
   stats: (days: 7 | 30 | 90) => call<StatsResponse>('stats', {}, `&days=${days}`),
-  audioStatus: (placeId: number) => call<{ en: AudioState; ar: AudioState }>('audio', {}, `&id=${placeId}`),
-  generateAudio: (placeId: number, lang: 'en' | 'ar', version: string) =>
+  audioStatus: (placeId: number) => call<{ en: AudioState; ar: AudioState; fr: AudioState }>('audio', {}, `&id=${placeId}`),
+  generateAudio: (placeId: number, lang: 'en' | 'ar' | 'fr', version: string) =>
     call<{ state: 'stored' }>('audio', { method: 'POST', body: JSON.stringify({ id: placeId, lang, version }) }),
+  /** French drafts from Gemini for the given English texts; nothing is saved. */
+  translate: (texts: Record<string, string>) =>
+    call<{ texts: Record<string, string> }>('translate', { method: 'POST', body: JSON.stringify({ texts }) }),
   version: (pathname: string) => call<{ content: Content & { note?: string } }>('version', {}, `&pathname=${encodeURIComponent(pathname)}`),
 };

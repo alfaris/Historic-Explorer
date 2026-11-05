@@ -3,6 +3,7 @@ import { CheckCircle, Download, RefreshCw, Trash2, WifiOff, X } from 'lucide-rea
 import { useLanguage } from '../i18n/LanguageContext';
 import type { Location, Route } from '../data/locations';
 import { routePack } from '../lib/offline-pack';
+import { L, currentLang } from '../i18n/lang';
 import {
   filesStillCached,
   missingFiles,
@@ -32,7 +33,7 @@ const useOnline = () => {
 const formatSize = (bytes: number, ar: boolean) => {
   const mb = bytes / (1024 * 1024);
   const value = mb >= 10 ? Math.round(mb).toString() : mb.toFixed(1);
-  return ar ? `${value} ميجابايت` : `${value} MB`;
+  return ar ? `${value} ميجابايت` : `${value} ${L('MB', 'ميجابايت')}`;
 };
 
 /**
@@ -42,7 +43,7 @@ const formatSize = (bytes: number, ar: boolean) => {
 export function RouteDownload({ route, places }: { route: Route; places: Location[] }) {
   const { language } = useLanguage();
   const ar = language === 'ar';
-  const lang = ar ? 'ar' : 'en';
+  const lang = currentLang();
   const online = useOnline();
   const saved = useOfflineRoutes();
   const key = savedRouteKey(route.id, lang);
@@ -79,7 +80,7 @@ export function RouteDownload({ route, places }: { route: Route; places: Locatio
     setError(null);
     try {
       const result = await saveRoute(key, needed, { signal: controller.signal, onProgress: setProgress, recheck: cleared });
-      if (result.files.length === 0) setError(ar ? 'تعذّر التنزيل. تحقق من الاتصال وحاول مرة أخرى.' : 'Download failed. Check your connection and try again.');
+      if (result.files.length === 0) setError(L('Download failed. Check your connection and try again.', 'تعذّر التنزيل. تحقق من الاتصال وحاول مرة أخرى.'));
     } catch (err) {
       if ((err as Error).name !== 'AbortError') setError((err as Error).message);
     } finally {
@@ -89,7 +90,7 @@ export function RouteDownload({ route, places }: { route: Route; places: Locatio
   };
 
   const remove = async () => {
-    if (!window.confirm(ar ? 'حذف النسخة المحفوظة لهذا المسار من الجهاز؟' : 'Remove the offline copy of this route from this device?')) return;
+    if (!window.confirm(L('Remove the offline copy of this route from this device?', 'حذف النسخة المحفوظة لهذا المسار من الجهاز؟'))) return;
     await removeRoute(key);
   };
 
@@ -97,7 +98,7 @@ export function RouteDownload({ route, places }: { route: Route; places: Locatio
   const offlineBadge = !online && (
     <span className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-100 text-stone-500 rounded-lg text-[10px] font-bold uppercase tracking-widest shrink-0">
       <WifiOff className="w-3.5 h-3.5" />
-      {ar ? 'غير متصل بالإنترنت' : 'Offline'}
+      {L('Offline', 'غير متصل بالإنترنت')}
     </span>
   );
 
@@ -108,14 +109,14 @@ export function RouteDownload({ route, places }: { route: Route; places: Locatio
       <div className="flex items-center gap-3 w-full max-w-xs" role="status" aria-live="polite">
         <div className="flex-1">
           <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest text-stone-500 mb-1">
-            <span>{ar ? 'جاري التنزيل' : 'Downloading'}</span>
+            <span>{L('Downloading', 'جاري التنزيل')}</span>
             <span>{pct}%</span>
           </div>
           <div className="h-1.5 bg-chalk rounded-full overflow-hidden border border-sand/40">
             <div className="h-full bg-nile transition-all" style={{ width: `${pct}%` }} />
           </div>
         </div>
-        <button onClick={() => abortRef.current?.abort()} className="p-2 rounded-lg text-stone-400 hover:text-ink" aria-label={ar ? 'إلغاء' : 'Cancel'}>
+        <button onClick={() => abortRef.current?.abort()} className="p-2 rounded-lg text-stone-400 hover:text-ink" aria-label={L('Cancel', 'إلغاء')}>
           <X className="w-4 h-4" />
         </button>
       </div>
@@ -124,7 +125,7 @@ export function RouteDownload({ route, places }: { route: Route; places: Locatio
     body = (
       <button onClick={start} disabled={!online} className={`${pill} ${online ? 'bg-white border border-sand hover:border-nile text-ink shadow-sm group' : 'opacity-50 cursor-not-allowed bg-chalk text-stone-400'}`}>
         <Download className="w-4 h-4 text-stone-400 group-hover:text-nile transition-colors" />
-        {ar ? 'تنزيل للاستخدام دون إنترنت' : 'Download for offline'}
+        {L('Download for offline', 'تنزيل للاستخدام دون إنترنت')}
       </button>
     );
   } else {
@@ -133,7 +134,7 @@ export function RouteDownload({ route, places }: { route: Route; places: Locatio
       <div className="flex flex-wrap items-center justify-center gap-2">
         <span className={`${pill} bg-nile/10 text-nile`}>
           <CheckCircle className="w-4 h-4" />
-          {ar ? 'متاح دون إنترنت' : 'Available offline'} · {formatSize(savedRoute.bytes, ar)}
+          {L('Available offline', 'متاح دون إنترنت')} · {formatSize(savedRoute.bytes, ar)}
         </span>
         {!upToDate && (
           <button onClick={start} disabled={!online} className={`${pill} bg-white border border-gold/60 text-ink shadow-sm hover:border-nile disabled:opacity-50`}>
@@ -141,13 +142,13 @@ export function RouteDownload({ route, places }: { route: Route; places: Locatio
             {retryOnly && !cleared
               ? ar
                 ? `إعادة المحاولة (${missingAudio || missing.length} ناقصة)`
-                : `Retry (${missingAudio ? `${missingAudio} audio` : missing.length} missing)`
-              : ar
-                ? 'تحديث النسخة المحفوظة'
-                : 'Update offline copy'}
+                : currentLang() === 'fr'
+                  ? `Réessayer (${missingAudio ? `${missingAudio} audio` : missing.length} manquant${(missingAudio || missing.length) > 1 ? 's' : ''})`
+                  : `Retry (${missingAudio ? `${missingAudio} audio` : missing.length} missing)`
+              : L('Update offline copy', 'تحديث النسخة المحفوظة')}
           </button>
         )}
-        <button onClick={remove} className="p-2.5 rounded-xl text-stone-400 hover:text-red-700 hover:bg-red-50" aria-label={ar ? 'حذف النسخة المحفوظة' : 'Remove offline copy'} title={ar ? 'حذف النسخة المحفوظة' : 'Remove offline copy'}>
+        <button onClick={remove} className="p-2.5 rounded-xl text-stone-400 hover:text-red-700 hover:bg-red-50" aria-label={L('Remove offline copy', 'حذف النسخة المحفوظة')} title={L('Remove offline copy', 'حذف النسخة المحفوظة')}>
           <Trash2 className="w-4 h-4" />
         </button>
       </div>
@@ -162,7 +163,7 @@ export function RouteDownload({ route, places }: { route: Route; places: Locatio
       </div>
       {!progress && !savedRoute && (
         <p className="text-[11px] text-stone-400">
-          {ar ? 'الأدلة الصوتية والصور والخريطة، لتعمل دون اتصال.' : 'Audio guides, photos and map, so the walk works with no signal.'}
+          {L('Audio guides, photos and map, so the walk works with no signal.', 'الأدلة الصوتية والصور والخريطة، لتعمل دون اتصال.')}
         </p>
       )}
       {error && <p className="text-xs text-red-700" role="alert">{error}</p>}

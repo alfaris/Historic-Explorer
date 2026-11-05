@@ -11,6 +11,7 @@
 
 import type { Location } from '../../src/data/locations.js';
 import { textHash } from '../../src/lib/text-hash.js';
+import { descriptionOf } from '../../src/i18n/lang.js';
 import { getContentWithEtag } from './content.js';
 import { audioStatus, generateAndStoreAudio, type Lang } from './gemini.js';
 import { createRateLimiter } from './guard.js';
@@ -22,7 +23,7 @@ export type AudioState = { status: 'stored' | 'missing' | 'no-text' | 'unavailab
 // so a stuck button or script can't run up the bill.
 export const audioGenerateLimit = createRateLimiter(30, 10 * 60_000, 'Too many audio generations. Try again in a few minutes.');
 
-const textFor = (place: Location, lang: Lang) => (lang === 'ar' ? place.descriptionAr : place.descriptionEn) || '';
+const textFor = (place: Location, lang: Lang) => descriptionOf(place, lang); // must match the app's audio URL
 
 // Fresh from storage, not the short memory cache: right after a save, another
 // server instance may still hold the old text.
@@ -40,15 +41,15 @@ export async function handleAdminAudio(request: Request, url: URL): Promise<Resp
     const id = Number(url.searchParams.get('id'));
     const place = Number.isInteger(id) ? await findPlace(id) : undefined;
     if (!place) return json({ error: 'Place not found. Save it first.' }, 404);
-    const [en, ar] = await Promise.all([stateFor(place, 'en'), stateFor(place, 'ar')]);
-    return json({ en, ar });
+    const [en, ar, fr] = await Promise.all([stateFor(place, 'en'), stateFor(place, 'ar'), stateFor(place, 'fr')]);
+    return json({ en, ar, fr });
   }
 
   if (request.method === 'POST') {
     const body = await readJson(request, 1_000);
     if (body instanceof Response) return body;
     const { id, lang, version } = (body ?? {}) as { id?: unknown; lang?: unknown; version?: unknown };
-    if (lang !== 'en' && lang !== 'ar') return json({ error: 'lang must be en or ar.' }, 400);
+    if (lang !== 'en' && lang !== 'ar' && lang !== 'fr') return json({ error: 'lang must be en, ar or fr.' }, 400);
     if (!hasBlobStore()) return json({ error: 'No Blob store is connected, so audio can’t be stored.' }, 503);
     const place = typeof id === 'number' ? await findPlace(id) : undefined;
     if (!place) return json({ error: 'Place not found. Save it first.' }, 404);
