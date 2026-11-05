@@ -11,6 +11,7 @@ import { useLanguage } from '../i18n/LanguageContext';
 import { HistoricPlaceholder } from './HistoricPlaceholder';
 import { PlacePhoto } from './PlacePhoto';
 import { placePhoto } from '../data/photos';
+import { useVisited } from '../lib/visited';
 
 // Fix for default marker icons in React Leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -179,17 +180,24 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
       .map(l => [l.lat, l.lng] as [number, number]);
   }, [locations]);
 
+  const visited = useVisited();
+
   const markers = React.useMemo(() => {
     return locations.map((loc, idx) => {
       const category = categories.find(c => c.id === loc.category);
       const isSelected = selectedLocation === loc.id;
+      const isVisited = visited.has(loc.id);
+      // Visited places show a check instead of the pulsing dot.
+      const centre = isVisited
+        ? '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>'
+        : '<div class="w-1.5 h-1.5 bg-white rounded-full shadow-sm animate-pulse"></div>';
       
       const customIcon = L.divIcon({
         className: 'custom-leaflet-marker',
         html: `<div class="group relative flex items-center justify-center transition-all duration-300 animate-[fade-in_0.5s_ease-out_forwards]" style="animation-delay: ${idx * 50}ms">
                 <div class="absolute -inset-2 bg-white/20 rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                <div class="w-10 h-10 rounded-full flex items-center justify-center text-white shadow-xl border-2 border-white ${category?.color || 'bg-nile'} transition-all duration-500 ${isSelected ? 'marker-selected scale-125 ring-4 ring-gold/30 ring-offset-2' : 'hover:scale-125'}">
-                  <div class="w-1.5 h-1.5 bg-white rounded-full shadow-sm animate-pulse"></div>
+                <div class="w-10 h-10 rounded-full flex items-center justify-center text-white shadow-xl border-2 ${isVisited ? 'border-gold' : 'border-white'} ${category?.color || 'bg-nile'} transition-all duration-500 ${isSelected ? 'marker-selected scale-125 ring-4 ring-gold/30 ring-offset-2' : 'hover:scale-125'}">
+                  ${centre}
                 </div>
                </div>`,
         iconSize: [40, 40],
@@ -261,7 +269,7 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
         </Marker>
       );
     });
-  }, [locations, isArabic, onSelectLocation, selectedLocation]);
+  }, [locations, isArabic, onSelectLocation, selectedLocation, visited]);
 
   const userIcon = L.divIcon({
     className: 'user-location-marker',

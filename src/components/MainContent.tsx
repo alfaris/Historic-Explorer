@@ -5,6 +5,7 @@ import { RoutePlaceholder } from './RoutePlaceholder';
 import { HistoricPlaceholder } from './HistoricPlaceholder';
 import { PlacePhoto } from './PlacePhoto';
 import { PhotoCredits } from './PhotoCredits';
+import { RouteProgress, VisitedBadge, VisitedToggle } from './Visited';
 import { placePhoto, routePhoto } from '../data/photos';
 import { Search, MapPin, Globe, Navigation, Map, List, ChevronRight, Cake, Coffee, Utensils, Hammer, BookOpen, Users, Landmark, ArrowUp, Share2, Clock, Route as RouteIcon, Star } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -269,6 +270,11 @@ export const MainContent: React.FC = () => {
               ))}
             </div>
 
+            <RouteProgress
+              placeIds={locations.filter(l => l.routeId === selectedRoute).map(l => l.id)}
+              isArabic={isArabic}
+            />
+
             <OfflineManager 
               locations={locations.filter(l => l.routeId === selectedRoute)} 
               routeName={currentRouteData.nameEn} 
@@ -462,6 +468,7 @@ export const MainContent: React.FC = () => {
                                 <Navigation className={`w-3.5 h-3.5 ${isArabic ? 'ml-3' : 'mr-3'}`} />
                                 {t('directions')}
                               </button>
+                              <VisitedToggle placeId={loc.id} isArabic={isArabic} className="py-5 rounded-2xl" />
                               <button 
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -526,9 +533,12 @@ export const MainContent: React.FC = () => {
                         <div className={`flex-1 p-8 md:p-10 flex flex-col justify-center ${!placePhoto(loc.id) ? 'md:w-full' : ''}`}>
                           <div className="flex justify-between items-start mb-4">
                             <div>
-                              <p className="text-[10px] font-bold text-gold mb-3 uppercase tracking-[0.3em]">
-                                {isArabic ? category?.nameAr : category?.nameEn}
-                              </p>
+                              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-3">
+                                <p className="text-[10px] font-bold text-gold uppercase tracking-[0.3em]">
+                                  {isArabic ? category?.nameAr : category?.nameEn}
+                                </p>
+                                <VisitedBadge placeId={loc.id} isArabic={isArabic} />
+                              </div>
                               <h3 className={`text-3xl text-ink leading-tight ${headingFontClass}`}>
                                 {isArabic ? loc.nameAr : loc.nameEn}
                               </h3>
@@ -576,6 +586,7 @@ export const MainContent: React.FC = () => {
                                       <Navigation className={`w-3.5 h-3.5 ${isArabic ? 'ml-3' : 'mr-3'}`} />
                                       {t('directions')}
                                     </button>
+                                    <VisitedToggle placeId={loc.id} isArabic={isArabic} className="py-4" />
                                     <button 
                                       onClick={(e) => {
                                         e.stopPropagation();
