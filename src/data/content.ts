@@ -5,7 +5,7 @@
 // Shared by the browser, the API functions and the tests, so it must not
 // import anything browser- or server-specific.
 
-import { categories, locations, routes, type Category, type Location, type Route } from './locations';
+import { categories, locations, routes, type Category, type Location, type Route } from './locations.js';
 import type { Photo } from './photos';
 
 export type { Category, Location, Route };
