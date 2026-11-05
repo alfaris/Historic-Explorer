@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 import { GoogleGenAI, Modality, ThinkingLevel } from '@google/genai';
 import { BlobNotFoundError, get, head, put } from '@vercel/blob';
-import { locations, type Location } from '../../src/data/locations.js';
+import type { Location } from '../../src/data/locations.js';
+import { getContent } from './content.js';
 import { parseCanonicalQuery, rateLimit } from './guard.js';
 
 // Server-only: the key is read at request time and never shipped to the browser.
@@ -17,12 +18,13 @@ export type Lang = 'en' | 'ar';
 
 // Runs the rate limit and query checks shared by both endpoints. Returns the
 // place and language, or an error response to send back as is.
-const checkRequest = (request: Request): { location: Location; lang: Lang } | Response => {
+const checkRequest = async (request: Request): Promise<{ location: Location; lang: Lang } | Response> => {
   const limited = rateLimit(request);
   if (limited) return limited;
   const query = parseCanonicalQuery(new URL(request.url));
   if (query instanceof Response) return query;
-  const location = locations.find(l => l.id === query.id);
+  // The live content, so places added or edited in the admin dashboard work too.
+  const location = (await getContent()).places.find(l => l.id === query.id);
   if (!location) return json({ error: 'Unknown location' }, 404);
   return { location, lang: query.lang };
 };
@@ -71,7 +73,7 @@ const AUDIO_VERSION = 'v1';
 // Without a connected store (e.g. local dev) audio is generated on every cold request.
 const hasBlobStore = () => Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID);
 
-// Keyed by content, so editing a description in locations.ts produces fresh audio.
+// Keyed by content, so editing a description (in locations.ts or the admin dashboard) produces fresh audio.
 const audioBlobPath = (text: string, lang: Lang) =>
   `audio-guide/${createHash('sha256').update(`${AUDIO_VERSION}|${lang}|${text}`).digest('hex').slice(0, 32)}.wav`;
 
@@ -239,7 +241,7 @@ const generateAudio = async (text: string, lang: Lang) => {
 };
 
 export async function handleAudioGuide(request: Request): Promise<Response> {
-  const checked = checkRequest(request);
+  const checked = await checkRequest(request);
   if (checked instanceof Response) return checked;
   const { location, lang } = checked;
   const text = audioText(location, lang);
@@ -280,7 +282,7 @@ const generateLiveInfo = async (location: Location, lang: Lang): Promise<LiveInf
 };
 
 export async function handleLiveInfo(request: Request): Promise<Response> {
-  const checked = checkRequest(request);
+  const checked = await checkRequest(request);
   if (checked instanceof Response) return checked;
   const { location, lang } = checked;
 

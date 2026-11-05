@@ -8,23 +8,46 @@ import { VitePWA } from 'vite-plugin-pwa';
 // stay server-side locally too.
 const devApi = (): Plugin => ({
   name: 'dev-api',
+  // /admin serves the admin page (Vercel does the same with a rewrite).
+  configurePreviewServer(server) {
+    server.middlewares.use((req, _res, next) => {
+      if (req.url === '/admin' || req.url?.startsWith('/admin?')) req.url = '/admin.html';
+      next();
+    });
+  },
   configureServer(server) {
+    server.middlewares.use((req, _res, next) => {
+      if (req.url === '/admin' || req.url?.startsWith('/admin?')) req.url = '/admin.html';
+      next();
+    });
     server.middlewares.use(async (req, res, next) => {
       const url = new URL(req.url ?? '/', 'http://localhost');
-      const routes: Record<string, string> = {
-        '/api/audio-guide': 'handleAudioGuide',
-        '/api/live-info': 'handleLiveInfo',
+      const routes: Record<string, [string, string]> = {
+        '/api/audio-guide': ['/api/_lib/gemini.ts', 'handleAudioGuide'],
+        '/api/live-info': ['/api/_lib/gemini.ts', 'handleLiveInfo'],
+        '/api/content': ['/api/content.ts', 'default'],
+        '/api/report': ['/api/_lib/reports.ts', 'handleReport'],
+        '/api/admin': ['/api/_lib/admin.ts', 'handleAdmin'],
       };
-      const handlerName = routes[url.pathname];
-      if (!handlerName) return next();
+      const route = routes[url.pathname];
+      if (!route) return next();
       try {
-        const mod = await server.ssrLoadModule('/api/_lib/gemini.ts');
+        const mod = await server.ssrLoadModule(route[0]);
+        const handler = route[1] === 'default' ? (r: Request) => mod.default.fetch(r) : mod[route[1]];
         const headers = new Headers();
         for (const [key, value] of Object.entries(req.headers)) {
           if (typeof value === 'string') headers.set(key, value);
         }
         headers.set('x-real-ip', req.socket.remoteAddress ?? 'local');
-        const response: Response = await mod[handlerName](new Request(url, { headers }));
+        const method = req.method ?? 'GET';
+        let body: Buffer | undefined;
+        if (method !== 'GET' && method !== 'HEAD') {
+          const chunks: Buffer[] = [];
+          for await (const chunk of req) chunks.push(chunk as Buffer);
+          body = Buffer.concat(chunks);
+        }
+        const fullUrl = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
+        const response: Response = await handler(new Request(fullUrl, { method, headers, body }));
         res.statusCode = response.status;
         response.headers.forEach((value, key) => res.setHeader(key, value));
         res.end(Buffer.from(await response.arrayBuffer()));
@@ -67,7 +90,23 @@ export default defineConfig(({mode}) => {
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+          // The admin dashboard isn't part of the visitor app: don't make every
+          // visitor download it, and never answer /admin or /api with the app.
+          globIgnores: ['**/admin.html', '**/assets/admin-*'],
+          navigateFallbackDenylist: [/^\/admin/, /^\/api\//],
           runtimeCaching: [
+            {
+              // Live routes and places: always try the network first (admin
+              // edits show up), and fall back to the last copy offline.
+              urlPattern: ({ url }) => url.origin === self.location.origin && url.pathname === '/api/content',
+              handler: 'NetworkFirst',
+              options: {
+                cacheName: 'content',
+                networkTimeoutSeconds: 4,
+                expiration: { maxEntries: 1 },
+                cacheableResponse: { statuses: [200] },
+              },
+            },
             {
               urlPattern: /^https:\/\/[a-c]\.tile\.openstreetmap\.org\/.*/i,
               handler: 'CacheFirst',
@@ -113,6 +152,11 @@ export default defineConfig(({mode}) => {
     ],
     build: {
       rollupOptions: {
+        // Two pages: the visitor app and the admin dashboard (its own bundle).
+        input: {
+          main: path.resolve(__dirname, 'index.html'),
+          admin: path.resolve(__dirname, 'admin.html'),
+        },
         output: {
           // Libraries that rarely change get their own file, so browsers keep
           // them cached when only the app's code changes between deploys.
