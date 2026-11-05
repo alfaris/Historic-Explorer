@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { CircleCheck, Flag, LocateFixed, X } from 'lucide-react';
 import type { Location } from '../data/locations';
 import { LazyBoundary } from './LazyBoundary';
+import { useDialog } from '../lib/useDialog';
 import type { LatLng } from './LocationPicker';
 
 const LocationPicker = lazy(() => import('./LocationPicker'));
@@ -48,6 +49,7 @@ function ReportDialog({ place, isArabic, onClose }: { place: Location; isArabic:
   const [website, setWebsite] = useState(''); // honeypot
   const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle');
   const [error, setError] = useState<string | null>(null);
+  const { ref: panelRef, guard } = useDialog<HTMLDivElement>(onClose);
   const t = (en: string, ar: string) => (isArabic ? ar : en);
 
   const useMyLocation = () => {
@@ -113,10 +115,11 @@ function ReportDialog({ place, isArabic, onClose }: { place: Location; isArabic:
       aria-label={t('Report a problem', 'الإبلاغ عن خطأ')}
       dir={isArabic ? 'rtl' : 'ltr'}
     >
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
+      <span {...guard('start')} />
+      <div ref={panelRef} className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
         <div className="flex items-start justify-between gap-3 mb-4">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-gold mb-1">{t('Report a problem', 'الإبلاغ عن خطأ')}</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-gold-ink mb-1">{t('Report a problem', 'الإبلاغ عن خطأ')}</p>
             <p className="text-lg text-ink font-serif leading-tight">{isArabic ? place.nameAr : place.nameEn}</p>
           </div>
           <button onClick={onClose} className="p-1 text-stone-400 hover:text-ink" aria-label={t('Close', 'إغلاق')}>
@@ -219,6 +222,7 @@ function ReportDialog({ place, isArabic, onClose }: { place: Location; isArabic:
           </>
         )}
       </div>
+      <span {...guard('end')} />
     </div>
   );
 }

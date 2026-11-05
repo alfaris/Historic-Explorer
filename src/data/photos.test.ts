@@ -28,3 +28,22 @@ describe.runIf(entries.length > 0)('photos', () => {
     expect(photo.sourceUrl).toMatch(/^https:\/\/commons\.wikimedia\.org\//);
   });
 });
+
+describe('small photo copies', () => {
+  it('every built-in photo has its 480px copy for srcset', async () => {
+    const { existsSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const { photos } = await import('./photos');
+    const { smallPhotoSrc } = await import('./photo-resolve');
+    for (const photo of Object.values(photos)) {
+      const small = smallPhotoSrc(photo.src);
+      expect(small, photo.src).not.toBeNull();
+      expect(existsSync(join(__dirname, '../../public', small!)), `${small} is missing: run npx tsx scripts/photo-variants.ts`).toBe(true);
+    }
+  });
+
+  it('uploaded photos have no small copy', async () => {
+    const { smallPhotoSrc } = await import('./photo-resolve');
+    expect(smallPhotoSrc('/api/photo?id=abc')).toBeNull();
+  });
+});

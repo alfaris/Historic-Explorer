@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { Photo } from '../data/photos';
+import { smallPhotoSrc } from '../data/photo-resolve';
 
 interface PlacePhotoProps {
   photo: Photo | undefined;
@@ -9,22 +10,30 @@ interface PlacePhotoProps {
   fallback: React.ReactNode;
   /** Show a small credit line on the photo. */
   showCredit?: boolean;
+  /** How wide the photo is shown, for srcset (defaults to the full width of the screen). */
+  sizes?: string;
+  /** Load straight away (photos visible when the page opens), not lazily. */
+  priority?: boolean;
 }
 
-export function PlacePhoto({ photo, alt, className = '', fallback, showCredit = false }: PlacePhotoProps) {
+export function PlacePhoto({ photo, alt, className = '', fallback, showCredit = false, sizes = '100vw', priority = false }: PlacePhotoProps) {
   // Remember which photo failed, not just that one did: the same component is
   // reused when another place is selected, and that photo should still load.
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   if (!photo || failedSrc === photo.src) return <>{fallback}</>;
+  const small = smallPhotoSrc(photo.src);
 
   return (
     <div className={`relative overflow-hidden bg-sand/30 ${className}`}>
       <img
         src={photo.src}
+        srcSet={small ? `${small} 480w, ${photo.src} ${photo.width}w` : undefined}
+        sizes={small ? sizes : undefined}
         alt={alt}
         width={photo.width}
         height={photo.height}
-        loading="lazy"
+        loading={priority ? 'eager' : 'lazy'}
+        fetchPriority={priority ? 'high' : undefined}
         decoding="async"
         onError={() => setFailedSrc(photo.src)}
         className="absolute inset-0 w-full h-full object-cover"

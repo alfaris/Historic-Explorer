@@ -77,3 +77,13 @@ describe('routePack', () => {
     expect(pack.filter(f => f.kind === 'audio')).toEqual([]);
   });
 });
+
+describe('routePack photos', () => {
+  it('includes the small copy of each built-in photo, for srcset offline', () => {
+    const route = routes.find(r => r.id === 'ahl-al-bayt')!;
+    const photos = routePack(route, locations.filter(l => l.routeId === route.id), 'en').filter(f => f.kind === 'photos').map(f => f.url);
+    const full = photos.filter(u => !u.endsWith('-480.webp'));
+    expect(full.length).toBeGreaterThan(0);
+    for (const u of full) if (u.startsWith('/images/photos/')) expect(photos).toContain(u.replace(/\.webp$/, '-480.webp'));
+  });
+});

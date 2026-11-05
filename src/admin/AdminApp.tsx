@@ -35,7 +35,7 @@ export function AdminApp() {
 }
 
 function Centered({ children }: { children: React.ReactNode }) {
-  return <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">{children}</div>;
+  return <main className="min-h-screen flex flex-col items-center justify-center p-6 text-center">{children}</main>;
 }
 
 function Login({ onSignedIn }: { onSignedIn: () => void }) {
@@ -60,7 +60,7 @@ function Login({ onSignedIn }: { onSignedIn: () => void }) {
           }
         }}
       >
-        <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-gold mb-1">Cairo Walks</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-gold-ink mb-1">Cairo Walks</p>
         <h1 className="text-2xl font-serif mb-6">Admin</h1>
         <label className="block text-xs font-bold text-stone-500 mb-1" htmlFor="password">
           Password
@@ -153,7 +153,7 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
       <header className="bg-white border-b border-sand/50 sticky top-0 z-[2000]">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-4 flex-wrap">
           <div className="me-auto">
-            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-gold">Cairo Walks</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-gold-ink">Cairo Walks</p>
             <h1 className="text-lg font-serif leading-none">Admin</h1>
           </div>
           <nav className="flex gap-1 bg-chalk p-1 rounded-xl order-last md:order-none w-full md:w-auto overflow-x-auto">
