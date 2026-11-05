@@ -28,6 +28,7 @@ const devApi = (): Plugin => ({
         '/api/live-info': ['/api/_lib/gemini.ts', 'handleLiveInfo'],
         '/api/content': ['/api/content.ts', 'default'],
         '/api/report': ['/api/_lib/reports.ts', 'handleReport'],
+        '/api/stats': ['/api/_lib/stats.ts', 'handleStats'],
         '/api/admin': ['/api/_lib/admin.ts', 'handleAdmin'],
         '/api/photo': ['/api/_lib/photos.ts', 'handlePhotoServe'],
       };

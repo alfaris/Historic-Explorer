@@ -18,6 +18,7 @@ import { Logo } from './Logo';
 import { RouteDownload } from './RouteDownload';
 import { NextStop, StopNumber } from './WalkInfo';
 import { walkPlan } from '../lib/walk';
+import { track } from '../lib/track';
 import { LazyBoundary } from './LazyBoundary';
 
 // The map (Leaflet, marker clustering and their CSS) is the largest part of the
@@ -137,6 +138,10 @@ export const MainContent: React.FC = () => {
   const currentRouteData = routes.find(r => r.id === selectedRoute) || routes[0];
   // Memoized so "Near me" only resets its arrival state when the route changes.
   const routePlaces = useMemo(() => locations.filter(l => l.routeId === selectedRoute), [selectedRoute, locations]);
+  // Anonymous count of which routes are opened (once per route per visit).
+  useEffect(() => {
+    if (routes.some(r => r.id === selectedRoute)) track({ t: 'route', id: selectedRoute });
+  }, [selectedRoute, routes]);
   // Stop numbers and the walk to the next stop, in the route's walking order.
   const plan = useMemo(() => walkPlan(locations, selectedRoute), [locations, selectedRoute]);
 

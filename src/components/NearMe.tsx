@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CircleCheck, LocateFixed, Navigation, X } from 'lucide-react';
 import { categories, type Location } from '../data/locations';
+import { track } from '../lib/track';
 import { distanceMeters, formatDistance, MAX_ACCURACY_METERS, updateArrival, type ArrivalState } from '../lib/geo';
 import { useVisited } from '../lib/visited';
 import { AudioGuide } from './AudioGuide';
@@ -48,7 +49,10 @@ export function useNearMe(isArabic: boolean, places: Location[]): NearMeState {
         // Arrival counts for any place, whichever route is selected.
         const result = updateArrival(arrival.current, next, placesRef.current);
         arrival.current = result.state;
-        if (result.arrivedId !== null) setArrivedId(result.arrivedId);
+        if (result.arrivedId !== null) {
+          setArrivedId(result.arrivedId);
+          track({ t: 'arrive', id: result.arrivedId });
+        }
       },
       err => {
         setError(

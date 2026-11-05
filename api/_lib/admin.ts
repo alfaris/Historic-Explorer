@@ -11,6 +11,7 @@
 //   GET  version {pathname} → { content }
 //   POST photo?width=&height= (image body) → { src, width, height }
 //   GET  audio?id=n / POST audio {id, lang, version}  (see admin-audio.ts)
+//   GET  stats?days=7|30|90 → { total, perDay }  (see stats.ts)
 //
 // Everything except session and login requires a signed-in admin.
 
@@ -29,6 +30,7 @@ import { json, readJson } from './http.js';
 import { listReports, updateReport } from './reports.js';
 import { handlePhotoUpload } from './photos.js';
 import { handleAdminAudio } from './admin-audio.js';
+import { readStats } from './stats.js';
 import { normalizeContent, validateContent } from '../../src/data/content.js';
 
 const cookieValue = (request: Request) =>
@@ -103,6 +105,11 @@ export async function handleAdmin(request: Request): Promise<Response> {
 
     if (action === 'photo' && method === 'POST') {
       return await handlePhotoUpload(request);
+    }
+
+    if (action === 'stats' && method === 'GET') {
+      const days = Number(url.searchParams.get('days'));
+      return json(await readStats([7, 30, 90].includes(days) ? days : 30));
     }
 
     if (action === 'audio') {

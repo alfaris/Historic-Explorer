@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { History, Inbox, LogOut, MapPinned, Route as RouteIcon } from 'lucide-react';
+import { BarChart3, History, Inbox, LogOut, MapPinned, Route as RouteIcon } from 'lucide-react';
 import type { Content } from '../data/content';
 import { validateContent, withMaxPlaceId } from '../data/content';
 import { api, ApiError } from './api';
@@ -7,6 +7,7 @@ import { ReportsTab } from './ReportsTab';
 import { PlacesTab } from './PlacesTab';
 import { RoutesTab } from './RoutesTab';
 import { HistoryTab } from './HistoryTab';
+import { StatsTab } from './StatsTab';
 import { Button, ErrorBox } from './ui';
 
 export type SaveFn = (next: Content, note: string) => Promise<boolean>;
@@ -82,7 +83,7 @@ function Login({ onSignedIn }: { onSignedIn: () => void }) {
   );
 }
 
-type Tab = 'reports' | 'places' | 'routes' | 'history';
+type Tab = 'reports' | 'places' | 'routes' | 'stats' | 'history';
 
 function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
   const [tab, setTab] = useState<Tab>('reports');
@@ -143,6 +144,7 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
     { id: 'reports', label: 'Reports', icon: <Inbox className="w-4 h-4" /> },
     { id: 'places', label: 'Places', icon: <MapPinned className="w-4 h-4" /> },
     { id: 'routes', label: 'Routes', icon: <RouteIcon className="w-4 h-4" /> },
+    { id: 'stats', label: 'Stats', icon: <BarChart3 className="w-4 h-4" /> },
     { id: 'history', label: 'History', icon: <History className="w-4 h-4" /> },
   ];
 
@@ -218,6 +220,8 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
           <PlacesTab content={content} save={save} initialPlaceId={editPlaceId} onSelected={() => setEditPlaceId(null)} />
         ) : tab === 'routes' ? (
           <RoutesTab content={content} save={save} />
+        ) : tab === 'stats' ? (
+          <StatsTab content={content} onSignedOut={onSignedOut} />
         ) : (
           <HistoryTab save={save} />
         )}
