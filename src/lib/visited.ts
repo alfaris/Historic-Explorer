@@ -51,10 +51,11 @@ const update = (next: Set<number>) => {
 
 const subscribe = (listener: () => void) => {
   listeners.add(listener);
-  // Another tab changed the list.
+  // Another tab changed the list. Re-read storage rather than trusting
+  // e.newValue, which may be older than a change made since.
   const onStorage = (e: StorageEvent) => {
-    if (e.key === STORAGE_KEY) {
-      visited = parseVisited(e.newValue);
+    if (e.key === STORAGE_KEY || e.key === null) {
+      visited = read();
       listener();
     }
   };
@@ -65,15 +66,28 @@ const subscribe = (listener: () => void) => {
   };
 };
 
+// Changes start from the latest saved list, not this tab's copy, so a mark
+// made in another tab moments earlier isn't overwritten. Without storage,
+// read() is empty, so fall back to the in-memory list.
+const latest = () => (storageWorks() ? read() : current());
+
+const storageWorks = () => {
+  try {
+    return typeof window !== 'undefined' && window.localStorage.getItem(STORAGE_KEY) !== undefined;
+  } catch {
+    return false;
+  }
+};
+
 export function toggleVisited(id: number) {
-  const next = new Set(current());
+  const next = new Set(latest());
   if (next.has(id)) next.delete(id);
   else next.add(id);
   update(next);
 }
 
 export function clearVisited(ids: number[]) {
-  const next = new Set(current());
+  const next = new Set(latest());
   ids.forEach(id => next.delete(id));
   update(next);
 }
