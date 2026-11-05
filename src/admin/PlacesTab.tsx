@@ -6,6 +6,7 @@ import type { SaveFn } from './AdminApp';
 import { Button, Field, inputClass, MapPicker } from './ui';
 import { PhotoField } from './PhotoField';
 import { builtInPhoto } from '../data/photo-resolve';
+import { AudioPanel } from './AudioPanel';
 
 const CAIRO_CENTRE = { lat: 30.0444, lng: 31.2357 };
 
@@ -20,6 +21,8 @@ export function PlacesTab({ content, save, initialPlaceId, onSelected }: {
   const [draft, setDraft] = useState<Location | null>(null);
   const [isNew, setIsNew] = useState(false);
   const [busy, setBusy] = useState(false);
+  // A place added in this session gets its audio made as soon as it's saved.
+  const [justAdded, setJustAdded] = useState<number | null>(null);
 
   // Opened from a report: select that place.
   useEffect(() => {
@@ -68,7 +71,10 @@ export function PlacesTab({ content, save, initialPlaceId, onSelected }: {
       ? { ...content, places: [...content.places, draft] }
       : { ...content, places: content.places.map(p => (p.id === draft.id ? draft : p)) };
     const ok = await save(next, isNew ? `Added "${draft.nameEn}"` : `Edited "${draft.nameEn}"`);
-    if (ok) setIsNew(false);
+    if (ok) {
+      if (isNew) setJustAdded(draft.id);
+      setIsNew(false);
+    }
     setBusy(false);
   };
 
@@ -165,12 +171,21 @@ export function PlacesTab({ content, save, initialPlaceId, onSelected }: {
             </Field>
           </div>
 
-          <Field label="Description (English)" hint="The audio guide narrates this. Changing it regenerates the audio.">
+          <Field label="Description (English)" hint="The audio guide narrates this. New audio is made when you save.">
             <textarea value={draft.descriptionEn} onChange={e => set('descriptionEn', e.target.value)} className={inputClass} rows={4} maxLength={2000} />
           </Field>
           <Field label="Description (Arabic)">
             <textarea value={draft.descriptionAr} onChange={e => set('descriptionAr', e.target.value)} className={inputClass} rows={4} dir="rtl" maxLength={2000} />
           </Field>
+
+          {!isNew && original && (
+            <AudioPanel
+              placeId={draft.id}
+              draftText={{ en: draft.descriptionEn, ar: draft.descriptionAr }}
+              savedText={{ en: original.descriptionEn, ar: original.descriptionAr }}
+              generateOnLoad={justAdded === draft.id}
+            />
+          )}
 
           <PhotoField
             photo={draft.photo}

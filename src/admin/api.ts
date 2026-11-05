@@ -23,6 +23,8 @@ export interface HistoryEntry {
   size: number;
 }
 
+export type AudioState = { status: 'stored' | 'missing' | 'no-text' | 'unavailable'; version: string | null };
+
 export class ApiError extends Error {
   constructor(message: string, public status: number, public problems: string[] = []) {
     super(message);
@@ -64,5 +66,8 @@ export const api = {
     if (!res.ok) throw new ApiError(data.error || `Upload failed (${res.status})`, res.status);
     return data as { src: string; width: number; height: number };
   },
+  audioStatus: (placeId: number) => call<{ en: AudioState; ar: AudioState }>('audio', {}, `&id=${placeId}`),
+  generateAudio: (placeId: number, lang: 'en' | 'ar', version: string) =>
+    call<{ state: 'stored' }>('audio', { method: 'POST', body: JSON.stringify({ id: placeId, lang, version }) }),
   version: (pathname: string) => call<{ content: Content & { note?: string } }>('version', {}, `&pathname=${encodeURIComponent(pathname)}`),
 };

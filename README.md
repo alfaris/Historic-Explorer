@@ -124,7 +124,8 @@ What to download is worked out in `src/lib/offline-pack.ts`, and the download it
 
 - **Reports**: visitor reports, newest first. Apply a suggested map position in one click, delete a place reported as closed, or open it in the editor. Mark reports resolved or dismissed.
 - **Places**: edit, add or delete places, including moving them by dragging a pin, and upload a photo with its credit.
-- **Routes**: edit, add or delete routes and their photos (a route can only be deleted once it has no places).
+  Each place shows whether its **audio guide** is ready in English and Arabic for the saved description. After a save that changes a description, or adds a place, the new audio is generated straight away, so visitors never wait for it. Missing audio can also be generated with one tap. Generation is admin-only, skips audio that already exists, refuses text that hasn't been saved yet, and is capped at 30 per 10 minutes.
+- **Routes**: edit, add or delete routes and their photos (a route can only be deleted once it has no places), and set the stops' **walking order**.
 - **History**: every save is kept, and any earlier version can be restored.
 
 To turn it on, set `ADMIN_PASSWORD` (12+ characters) in the Vercel project's environment variables and connect a Blob store. Saves go live for visitors within about a minute, with no deploy.
