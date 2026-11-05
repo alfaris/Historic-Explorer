@@ -64,7 +64,9 @@ Requires Node.js 20+.
    npm run dev
    ```
 
-Other scripts: `npm run build` (production build in `dist/`), `npm run preview`, `npm run lint` (type check), `npm run pregenerate-audio` (see [Pre-generating the audio guides](#pre-generating-the-audio-guides)).
+Other scripts: `npm run build` (production build in `dist/`), `npm run preview`, `npm run lint` (type check), `npm test` (checks the routes and places in `src/data/locations.ts`), `npm run pregenerate-audio` (see [Pre-generating the audio guides](#pre-generating-the-audio-guides)).
+
+Every pull request runs the type check, the tests and a production build on GitHub Actions (`.github/workflows/ci.yml`).
 
 ## Deploying
 
@@ -90,4 +92,4 @@ Options: `-- --dry-run` lists what's missing without generating anything, `-- --
 
 ## Adding or editing places
 
-Every route, category and place is defined in `src/data/locations.ts`. Each place needs an `id`, a `routeId`, English and Arabic names and descriptions, a `category` and coordinates. The audio guide and live insights work for new places automatically.
+Every route, category and place is defined in `src/data/locations.ts`. Each place needs an `id`, a `routeId`, English and Arabic names and descriptions, a `category` and coordinates. The audio guide and live insights work for new places automatically. Run `npm test` afterwards: it checks that every place has a valid route and category, text in both languages, and coordinates inside Cairo.
