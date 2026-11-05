@@ -15,7 +15,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { LiveLocationInfo } from './LiveLocationInfo';
 import { AudioGuide } from './AudioGuide';
 import { Logo } from './Logo';
-import { OfflineManager } from './OfflineManager';
+import { RouteDownload } from './RouteDownload';
 import { LazyBoundary } from './LazyBoundary';
 
 // The map (Leaflet, marker clustering and their CSS) is the largest part of the
@@ -293,10 +293,7 @@ export const MainContent: React.FC = () => {
 
             <RouteProgress placeIds={routePlaces.map(l => l.id)} isArabic={isArabic} />
 
-            <OfflineManager 
-              locations={routePlaces} 
-              routeName={currentRouteData.nameEn} 
-            />
+            <RouteDownload route={currentRouteData} places={routePlaces} />
           </motion.div>
         </div>
 

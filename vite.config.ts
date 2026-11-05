@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig, loadEnv, type Plugin} from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { OFFLINE_CACHES } from './src/lib/offline-caches';
 
 // Serves the Vercel functions in api/ during `npm run dev`, so Gemini calls
 // stay server-side locally too.
@@ -112,9 +113,11 @@ export default defineConfig(({mode}) => {
               urlPattern: /^https:\/\/[a-c]\.tile\.openstreetmap\.org\/.*/i,
               handler: 'CacheFirst',
               options: {
-                cacheName: 'leaflet-tiles',
+                // Also filled by "Download for offline" (src/lib/offline-store.ts),
+                // so the limits leave room for several saved routes.
+                cacheName: OFFLINE_CACHES.tiles,
                 expiration: {
-                  maxEntries: 1000,
+                  maxEntries: 3000,
                   maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
                 },
                 cacheableResponse: {
@@ -129,9 +132,38 @@ export default defineConfig(({mode}) => {
                 url.origin === self.location.origin && (url.pathname.startsWith('/images/photos/') || url.pathname === '/api/photo'),
               handler: 'CacheFirst',
               options: {
-                cacheName: 'place-photos',
-                expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 365 },
+                cacheName: OFFLINE_CACHES.photos,
+                expiration: { maxEntries: 400, maxAgeSeconds: 60 * 60 * 24 * 365 },
                 cacheableResponse: { statuses: [200] },
+              },
+            },
+            {
+              // Google Fonts: the stylesheet, then the font files it points to,
+              // so headings keep their typeface offline.
+              urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+              handler: 'StaleWhileRevalidate',
+              options: { cacheName: 'google-fonts-css', expiration: { maxEntries: 4 } },
+            },
+            {
+              urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'google-fonts-files',
+                expiration: { maxEntries: 40, maxAgeSeconds: 60 * 60 * 24 * 365 },
+                cacheableResponse: { statuses: [0, 200] },
+              },
+            },
+            {
+              // Audio guides. Only versioned URLs (?v=<hash of the text>) are
+              // cached, and only real recordings, not the text-only fallback.
+              // An edited description gets a new URL, so old copies just age out.
+              urlPattern: ({ url }) =>
+                url.origin === self.location.origin && url.pathname === '/api/audio-guide' && url.searchParams.has('v'),
+              handler: 'CacheFirst',
+              options: {
+                cacheName: OFFLINE_CACHES.audio,
+                expiration: { maxEntries: 400, maxAgeSeconds: 60 * 60 * 24 * 180 },
+                cacheableResponse: { statuses: [200], headers: { 'Content-Type': 'audio/wav' } },
               },
             },
             {

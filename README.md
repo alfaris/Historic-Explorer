@@ -14,7 +14,7 @@ A bilingual (English / Arabic) walking guide to historic Cairo. Pick a route, br
 - **Visited tracking**: mark places as visited and see each route's progress ("6 / 14 visited"). Visited places show a check on their card and on the map. Progress is saved in the browser, so it works offline and needs no account.
 - **Report a problem**: every place has a link to report a wrong location (drag a pin or send your GPS position), wrong text, a closure or a photo problem. Reports go to the admin dashboard and don't include any personal details.
 - **English and Arabic**, with full right-to-left layout.
-- **Works offline**: installable as a PWA. "Download map" saves a route's map tiles to the device for use without a connection.
+- **Works offline**: installable as a PWA. "Download for offline" saves a route's audio guides (in the current language), photos and map to the device, so the whole walk works with no signal. The route then shows "Available offline" with its size, offers an update when places are edited in the admin, and can be removed.
 
 ## Tech stack
 
@@ -32,7 +32,7 @@ api/
   audio-guide.ts     GET /api/audio-guide?id=<locationId>&lang=en|ar  → audio/wav
   live-info.ts       GET /api/live-info?id=<locationId>&lang=en|ar    → JSON
 src/
-  components/        UI: MainContent, MapView, AudioGuide, LiveLocationInfo, OfflineManager…
+  components/        UI: MainContent, MapView, AudioGuide, LiveLocationInfo, RouteDownload…
   data/locations.ts  Routes, categories and places (the content lives here)
   i18n/              English/Arabic strings and RTL handling
 ```
@@ -105,7 +105,17 @@ npm run fetch-photos
 
 Each entry names either an English Wikipedia article (the article's main image is used) or a specific Commons file. The script skips photos that are already downloaded (`-- --force` re-downloads them all; `-- --only=place-1` fetches one), refuses files that aren't freely licensed, and rewrites `src/data/photos.ts`. Commit the new images and that file. `npm test` checks that every photo exists and has an author and an allowed license.
 
-Photos aren't part of the offline install. They're cached the first time they're viewed, or when a route's map is downloaded.
+Photos aren't part of the offline install. They're cached the first time they're viewed, or when a route is downloaded for offline use.
+
+## Offline routes
+
+"Download for offline" (`src/components/RouteDownload.tsx`) saves everything a route needs into the service worker's own caches, so they're served with no connection:
+
+- **Audio guides** for every stop in the current language. The URL carries a hash of the description, so an edit in the admin makes the saved copy out of date and the route offers an update. Updates download only what changed.
+- **Photos** of the route and its stops.
+- **Map tiles**: the route area at zoom 14–16, plus zoom 17 just around each stop, capped at 400 tiles. OpenStreetMap's tile policy forbids bulk downloads of large areas at zoom 17 and above, so don't raise these limits.
+
+What to download is worked out in `src/lib/offline-pack.ts`, and the download itself is in `src/lib/offline-store.ts`. The list of saved routes is kept in localStorage. The cache names are shared with `vite.config.ts` through `src/lib/offline-caches.ts`.
 
 ## Admin dashboard
 
