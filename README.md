@@ -6,10 +6,12 @@ A bilingual (English / Arabic) walking guide to historic Cairo. Pick a route, br
 
 ## Features
 
-- **Four curated walking routes**: Ahl al-Bayt, Al-Muizz Street, Coptic Cairo, and Al-Darb Al-Ahmar & the Citadel, each with distance, duration and highlights.
+- **Five curated walking routes**: Ahl al-Bayt, Al-Muizz Street, Coptic Cairo, Al-Darb Al-Ahmar & the Citadel, and Fustat, Roda & Old Cairo, each with distance, duration and highlights.
 - **List and map views**: filter places by category (monuments, coffee shops, restaurants, workshops, stationery & toys, meeting points) or search by name. The map shows the route line, clustered markers and your current location, with a modern and an antique style.
 - **Immersive audio guide**: Gemini rewrites each place's description as a short narrated story and voices it. If AI audio isn't available, the browser's built-in voice reads it instead.
 - **Live insights**: an on-demand, Google Search–grounded summary of current visitor info and reviews for a place, with source links.
+- **Near me tab**: a third tab beside List and Map that lists places by distance (this route or all routes). Once it's on, location keeps running on every tab, with a small "Near me on · Stop" pill, and arriving within about 30 m of any place offers its audio guide with a Play button (audio never starts by itself).
+- **Visited tracking**: mark places as visited and see each route's progress ("6 / 14 visited"). Visited places show a check on their card and on the map. Progress is saved in the browser, so it works offline and needs no account.
 - **English and Arabic**, with full right-to-left layout.
 - **Works offline**: installable as a PWA. "Download map" saves a route's map tiles to the device for use without a connection.
 

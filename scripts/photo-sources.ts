@@ -17,6 +17,7 @@ export const photoSources: PhotoSource[] = [
   { key: 'route-al-muizz', wikipedia: "Al-Mu'izz Street" },
   { key: 'route-coptic-cairo', wikipedia: 'Coptic Cairo' },
   { key: 'route-darb-al-ahmar', wikipedia: 'Mosque-Madrasa of Sultan Hasan' },
+  { key: 'route-fustat-roda', wikipedia: 'Nilometer' },
 
   // Ahl al-Bayt route
   { key: 'place-1', wikipedia: 'Mosque of Ibn Tulun' },
@@ -52,4 +53,11 @@ export const photoSources: PhotoSource[] = [
   // The article's lead image has no recorded author (CC BY requires one), so
   // use a credited photo of the blue-tiled qibla wall instead.
   { key: 'place-305', file: 'Cairo Aqsunqur 1.jpg' },
+
+  // Fustat, Roda & Old Cairo. No free main image yet for the aqueduct tower (401),
+  // Abu Seifein (406) or NMEC (407, its article uses a non-Commons logo): add a
+  // credited Commons file to give them a photo.
+  { key: 'place-402', wikipedia: 'Manial Palace and Museum' },
+  { key: 'place-403', wikipedia: 'Manasterly Palace' },
+  { key: 'place-404', wikipedia: 'Nilometer' },
 ];
