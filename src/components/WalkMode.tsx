@@ -24,12 +24,14 @@ const minutes = (n: number, ar: boolean) => (ar ? `${n} ${n === 1 ? 'دقيقة'
  * and direction when location is on). Arriving at a stop moves to it, marks
  * it visited and offers its audio guide; audio never plays by itself.
  */
-export function WalkMode({ route, places, nearMe, isArabic, onClose }: {
+export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = onClose }: {
   route: Route;
   places: Location[];
   nearMe: NearMeState;
   isArabic: boolean;
   onClose: () => void;
+  /** "Finish the walk" on the last stop: closes the walk and shows its summary. */
+  onFinish?: () => void;
 }) {
   const ar = isArabic;
   const stops = useMemo(() => walkStops(places, route.id), [places, route.id]);
@@ -186,7 +188,7 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose }: {
             <button
               onClick={() => {
                 markVisited(stop.id);
-                onClose();
+                onFinish();
               }}
               className="flex items-center justify-center gap-2 py-4 rounded-2xl bg-nile text-white font-bold"
             >
