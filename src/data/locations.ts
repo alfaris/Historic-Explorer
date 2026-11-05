@@ -106,8 +106,8 @@ export const locations: Location[] = [
     nameEn: 'Ahmad Ibn Tulun Mosque', 
     nameAr: 'جامع أحمد بن طولون', 
     category: 'monument', 
-    lat: 30.0287, 
-    lng: 31.2495, 
+    lat: 30.02871, 
+    lng: 31.25024, 
     descriptionEn: 'The oldest mosque in Cairo in its original form, and the largest in terms of land area. Famous for its unique spiral minaret, inspired by the Mosque of Samarra.',
     descriptionAr: 'أقدم مساجد القاهرة التي بقيت على حالتها الأصلية، وأكبرها مساحة. يشتهر بمئذنته الملوية الفريدة المستوحاة من ملوية سامراء.'
   },
@@ -125,7 +125,7 @@ export const locations: Location[] = [
   { id: 13, routeId: 'ahl-al-bayt', nameEn: 'Fatima Khatun Mausoleum', nameAr: 'قبة فاطمة خاتون', category: 'monument', lat: 30.0215, lng: 31.2550, descriptionEn: 'An imposing Mamluk mausoleum known for its distinctive ribbed dome.', descriptionAr: 'ضريح مملوكي مهيب يُعرف بقبته المضلعة المميزة.' },
   { id: 14, routeId: 'ahl-al-bayt', nameEn: 'Al-Ashraf Khalil Mausoleum', nameAr: 'قبة الأشرف خليل', category: 'monument', lat: 30.0208, lng: 31.2555, descriptionEn: 'The mausoleum of Sultan Al-Ashraf Khalil, famous for expelling the Crusaders from Acre.', descriptionAr: 'ضريح السلطان الأشرف خليل، الذي اشتهر بطرد الصليبيين من عكا.' },
   { id: 15, routeId: 'ahl-al-bayt', nameEn: 'Sabil Al-Yazji', nameAr: 'سبيل اليازجي', category: 'monument', lat: 30.0200, lng: 31.2560, descriptionEn: 'A historic public water fountain providing free water to wayfarers.', descriptionAr: 'سبيل تاريخي كان يوفر مياه الشرب المجانية للمارة.' },
-  { id: 16, routeId: 'ahl-al-bayt', nameEn: 'Al-Sayyida Nafisa Mosque', nameAr: 'جامع السيدة نفيسة', category: 'monument', lat: 30.0195, lng: 31.2565, descriptionEn: 'A highly venerated shrine dedicated to Sayyida Nafisa, a great-granddaughter of Imam Hasan.', descriptionAr: 'مقام يحظى بتبجيل كبير مخصص للسيدة نفيسة العظيمة.' },
+  { id: 16, routeId: 'ahl-al-bayt', nameEn: 'Al-Sayyida Nafisa Mosque', nameAr: 'جامع السيدة نفيسة', category: 'monument', lat: 30.02233, lng: 31.25242, descriptionEn: 'A highly venerated shrine dedicated to Sayyida Nafisa, a great-granddaughter of Imam Hasan.', descriptionAr: 'مقام يحظى بتبجيل كبير مخصص للسيدة نفيسة العظيمة.' },
   { id: 17, routeId: 'ahl-al-bayt', nameEn: 'Mohamed Beh Al-Marawy Mausoleum', nameAr: 'ضريح محمد بيه المرعوي', category: 'monument', lat: 30.0188, lng: 31.2570, descriptionEn: 'A unique nineteenth-century burial structure standing gracefully near the Sayyida Nafisa square.', descriptionAr: 'هيكل دفن فريد من القرن التاسع عشر يقف برشاقة بالقرب من ميدان السيدة نفيسة.' },
   { id: 18, routeId: 'ahl-al-bayt', nameEn: 'Sabil - Kuttab Mustafa Bak Tabtaby', nameAr: 'سبيل - مكتب مصطفى بك طبطباي', category: 'monument', lat: 30.0180, lng: 31.2575, descriptionEn: 'A combined water dispensary and elementary Quranic school foundation.', descriptionAr: 'مؤسسة خيرية تجمع بين سبيل للمياه وكتاب لتعليم القرآن.' },
   { id: 19, routeId: 'ahl-al-bayt', nameEn: 'Ahmad Kuhya Mosque', nameAr: 'مسجد أحمد كوهيه', category: 'monument', lat: 30.0175, lng: 31.2580, descriptionEn: 'An elegant mosque displaying intricate stonework and peaceful ambiance.', descriptionAr: 'مسجد أنيق يعرض أعمالاً حجرية دقيقة ويتمتع بأجواء هادئة.' },
@@ -149,8 +149,8 @@ export const locations: Location[] = [
   { id: 32, routeId: 'ahl-al-bayt', nameEn: 'Sayyida Sakina Cafe', nameAr: 'قهوة السيدة سكينة', category: 'coffee', lat: 30.0245, lng: 31.2520, descriptionEn: 'A resting spot situated near the shrine for visitors to enjoy strong Turkish coffee.', descriptionAr: 'استراحة تقع بالقرب من الضريح للزوار للاستمتاع بالقهوة التركية القوية.' },
   { id: 33, routeId: 'ahl-al-bayt', nameEn: 'Om Mostafa Cafe', nameAr: 'قهوة أم مصطفى', category: 'coffee', lat: 30.0215, lng: 31.2545, descriptionEn: 'A welcoming traditional street cafe offering a glimpse into everyday Cairo street life.', descriptionAr: 'مقهى شارع تقليدي ترحيبي يقدم لمحة عن الحياة اليومية في شوارع القاهرة.' },
   
-  { id: 34, routeId: 'ahl-al-bayt', nameEn: 'Ibn Tulun Square', nameAr: 'ميدان ابن طولون', category: 'meeting', lat: 30.0287, lng: 31.2495, descriptionEn: 'The expansive gathering space in front of the Ibn Tulun Mosque.', descriptionAr: 'مساحة التجمع الواسعة أمام مسجد ابن طولون.' },
-  { id: 35, routeId: 'ahl-al-bayt', nameEn: 'Sayyida Nafisa Square', nameAr: 'ميدان السيدة نفيسة', category: 'meeting', lat: 30.0195, lng: 31.2565, descriptionEn: 'A bustling square functioning as a nexus for religious pilgrims and local commerce.', descriptionAr: 'ساحة مزدحمة تعمل كحلقة وصل للحجاج الدينيين والتجارة المحلية.' },
+  { id: 34, routeId: 'ahl-al-bayt', nameEn: 'Ibn Tulun Square', nameAr: 'ميدان ابن طولون', category: 'meeting', lat: 30.02984, lng: 31.24995, descriptionEn: 'The expansive gathering space in front of the Ibn Tulun Mosque.', descriptionAr: 'مساحة التجمع الواسعة أمام مسجد ابن طولون.' },
+  { id: 35, routeId: 'ahl-al-bayt', nameEn: 'Sayyida Nafisa Square', nameAr: 'ميدان السيدة نفيسة', category: 'meeting', lat: 30.02247, lng: 31.25144, descriptionEn: 'A bustling square functioning as a nexus for religious pilgrims and local commerce.', descriptionAr: 'ساحة مزدحمة تعمل كحلقة وصل للحجاج الدينيين والتجارة المحلية.' },
 
   // Al-Muizz Street Route
   { 
