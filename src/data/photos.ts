@@ -108,11 +108,11 @@ export const photos: Record<string, Photo> = {
   "place-106": {
     "src": "/images/photos/place-106.webp",
     "width": 960,
-    "height": 1280,
-    "author": "Motazhesham2",
+    "height": 640,
+    "author": "Djehouty",
     "license": "CC BY-SA 4.0",
     "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-    "sourceUrl": "https://commons.wikimedia.org/wiki/File:%D9%85%D8%B3%D8%AC%D8%AF_%D9%88%D9%85%D8%AF%D8%B1%D8%B3%D8%A9_%D9%82%D9%86%D8%B5%D9%88%D9%87_%D8%A7%D9%84%D8%BA%D9%88%D8%B1%D9%8A.jpg"
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Al-Ghuri_2019-11-02b.jpg"
   },
   "place-107": {
     "src": "/images/photos/place-107.webp",
@@ -212,6 +212,15 @@ export const photos: Record<string, Photo> = {
     "license": "CC BY-SA 2.0",
     "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
     "sourceUrl": "https://commons.wikimedia.org/wiki/File:Flickr_-_archer10_(Dennis)_-_Egypt-13A-061_(cropped).jpg"
+  },
+  "place-305": {
+    "src": "/images/photos/place-305.webp",
+    "width": 600,
+    "height": 427,
+    "author": "Baldiri",
+    "license": "CC BY-SA 3.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by-sa/3.0/",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Cairo_Aqsunqur_1.jpg"
   },
   "route-ahl-al-bayt": {
     "src": "/images/photos/route-ahl-al-bayt.webp",

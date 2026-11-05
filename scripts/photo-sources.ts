@@ -32,7 +32,8 @@ export const photoSources: PhotoSource[] = [
   { key: 'place-104', wikipedia: 'Qalawun complex' },
   // The article's lead image is the Barquq complex on Al-Muizz Street.
   { key: 'place-105', file: 'Barqouqy_mosque_-_Moez_street.jpg' },
-  { key: 'place-106', wikipedia: 'Al-Ghuri Complex' },
+  // The article's lead image is the covered street's roof; this shows the façade.
+  { key: 'place-106', file: 'Al-Ghuri 2019-11-02b.jpg' },
   { key: 'place-107', wikipedia: 'Bab Zuweila' },
   { key: 'place-108', wikipedia: 'Khan el-Khalili' },
   { key: 'place-109', wikipedia: 'El Fishawy' },
@@ -48,6 +49,7 @@ export const photoSources: PhotoSource[] = [
   // Al-Darb Al-Ahmar & the Citadel
   { key: 'place-302', wikipedia: 'Mosque of Muhammad Ali' },
   { key: 'place-303', wikipedia: 'Mosque-Madrasa of Sultan Hasan' },
-  // Aqsunqur (Blue) Mosque: the article's image has no recorded author, which
-  // CC BY requires. Add a credited Commons file here to give it a photo.
+  // The article's lead image has no recorded author (CC BY requires one), so
+  // use a credited photo of the blue-tiled qibla wall instead.
+  { key: 'place-305', file: 'Cairo Aqsunqur 1.jpg' },
 ];
