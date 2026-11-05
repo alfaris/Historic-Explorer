@@ -144,6 +144,12 @@ export const MainContent: React.FC = () => {
   // Memoized so "Near me" only resets its arrival state when the route changes.
   const routePlaces = useMemo(() => locations.filter(l => l.routeId === selectedRoute), [selectedRoute, locations]);
   // Anonymous count of which routes are opened (once per route per visit).
+  // Choosing a route drops a shared link that never resolved (e.g. to a place
+  // since deleted), so route opens are counted again from here on.
+  const clearSharedLink = () => {
+    if (new URLSearchParams(window.location.search).has('loc')) window.history.replaceState({}, '', window.location.pathname);
+  };
+
   // A shared link to a place only in the live content resolves once that
   // arrives; until then (?loc= still in the URL) the route shown isn't the
   // visitor's choice, so don't count it.
@@ -247,6 +253,7 @@ export const MainContent: React.FC = () => {
               <div key={route.id} className="flex-none w-[220px] md:w-[260px] snap-start flex flex-col gap-3">
                 <button
                   onClick={() => {
+                    clearSharedLink();
                     setSelectedRoute(route.id);
                     setSelectedLocation(null);
                   }}
