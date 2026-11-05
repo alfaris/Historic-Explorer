@@ -100,17 +100,32 @@ async function readReport(pathname: string): Promise<Report | null> {
   }
 }
 
+/** A report's file, with its ID and creation time taken from the file name. */
+export type ReportRef = { id: string; key: string; pathname: string };
+
+/** A time as it appears in report file names (sortable as text). */
+export const reportTimeKey = (iso: string) => iso.replace(/[:.]/g, '-');
+
 /**
- * Open reports created after `since` (an ISO time), newest first, at most
- * `limit` of them, plus how many there are in all. Used by the daily email.
+ * Open reports created at or after `sinceKey` (see reportTimeKey), newest
+ * first. Reads only the listing, not the reports. Used by the daily email.
  */
-export async function openReportsSince(since: string, limit = 50): Promise<{ reports: Report[]; total: number }> {
-  const after = since.replace(/[:.]/g, '-');
-  // Compare only the timestamp part of the file name (before the _id), so the
-  // report the last email ended on doesn't count as newer than itself.
-  const paths = (await listReportPaths()).filter(p => statusOf(p) === 'open' && fileName(p).split('_')[0] > after);
-  const reports = (await Promise.all(paths.slice(0, limit).map(readReport))).filter((r): r is Report => !!r);
-  return { reports, total: paths.length };
+export async function openReportRefsSince(sinceKey: string): Promise<ReportRef[]> {
+  return (await listReportPaths())
+    .filter(p => statusOf(p) === 'open')
+    .map(pathname => {
+      const name = fileName(pathname).replace(/\.json$/, '');
+      const cut = name.indexOf('_');
+      return { key: name.slice(0, cut), id: name.slice(cut + 1), pathname };
+    })
+    .filter(r => r.key >= sinceKey);
+}
+
+/** Reads a report, throwing (rather than skipping) if it can't be read. */
+export async function readReportOrThrow(pathname: string): Promise<Report> {
+  const report = await readReport(pathname);
+  if (!report) throw new Error(`Couldn’t read ${pathname}`);
+  return report;
 }
 
 /** POST /api/report: a visitor reports a problem with a place. */

@@ -4,14 +4,18 @@
 //   GET /api/digest  (Authorization: Bearer $CRON_SECRET, sent by Vercel Cron)
 //
 // Off unless RESEND_API_KEY and ADMIN_EMAIL are set. Nothing is sent on days
-// with no new reports. The time of the last email is kept in Blob, so a report
-// is never emailed twice, and one that arrives during a failed send is
-// included next time.
+// with no new reports.
+//
+// Which reports were already emailed is tracked by ID, not by time: each run
+// looks back over an overlapping window (two days) and skips IDs it has sent.
+// So a report is never emailed twice, and none is missed because an email
+// failed, a report couldn't be read for a moment, or a report finished saving
+// after a newer one.
 
 import { BlobNotFoundError, get, put } from '@vercel/blob';
 import { timingSafeEqual } from 'node:crypto';
 import type { Report } from './reports.js';
-import { openReportsSince } from './reports.js';
+import { openReportRefsSince, readReportOrThrow, reportTimeKey } from './reports.js';
 import { hasBlobStore, json } from './http.js';
 
 const STATE = 'digest/state.json';
@@ -72,17 +76,32 @@ export function buildDigest(reports: Report[], total: number, adminUrl: string) 
   return { subject, text, html };
 }
 
-async function readLastSent(): Promise<string | null> {
+/** What the email job remembers between runs. */
+interface DigestState {
+  /** Reports created before this (a report time key) are never looked at. */
+  since: string;
+  /** Reports already emailed that are still inside the window. */
+  sent: { id: string; key: string }[];
+}
+
+const WINDOW_MS = 2 * 86_400_000;
+const MAX_PER_EMAIL = 50;
+
+async function readState(): Promise<DigestState | null> {
   try {
     const result = await get(STATE, { access: 'private', useCache: false });
     if (!result?.stream) return null;
-    const { lastSentAt } = JSON.parse(await new Response(result.stream).text());
-    return typeof lastSentAt === 'string' ? lastSentAt : null;
+    const data = JSON.parse(await new Response(result.stream).text());
+    if (typeof data?.since !== 'string' || !Array.isArray(data?.sent)) return null;
+    return { since: data.since, sent: data.sent.filter((s: { id?: unknown; key?: unknown }) => typeof s?.id === 'string' && typeof s?.key === 'string') };
   } catch (err) {
     if (err instanceof BlobNotFoundError) return null;
     throw err;
   }
 }
+
+const writeState = (state: DigestState) =>
+  put(STATE, JSON.stringify(state), { access: 'private', contentType: 'application/json', allowOverwrite: true });
 
 const authorized = (request: Request) => {
   const secret = process.env.CRON_SECRET;
@@ -93,19 +112,38 @@ const authorized = (request: Request) => {
 };
 
 /** Sends the digest if there's anything new. Returns what happened. */
-export async function runDigest(siteUrl: string, now = new Date()): Promise<{ sent: number } | { skipped: string }> {
+export async function runDigest(siteUrl: string, now = new Date()): Promise<{ sent: number; remaining: number } | { skipped: string }> {
   if (!digestConfigured()) return { skipped: 'RESEND_API_KEY and ADMIN_EMAIL are not set' };
   if (!hasBlobStore()) return { skipped: 'No Blob store is connected' };
-  // The first time, look back one day rather than emailing every old report.
-  const since = (await readLastSent()) ?? new Date(now.getTime() - 86_400_000).toISOString();
-  const { reports, total } = await openReportsSince(since);
-  if (total === 0) return { skipped: 'No new reports' };
-  await sendEmail(buildDigest(reports, total, `${siteUrl}/admin`));
-  // Remember the newest report emailed, not the current time: a report that
-  // arrives while this runs is then picked up next time, not skipped.
-  const newest = reports[0]?.createdAt ?? now.toISOString();
-  await put(STATE, JSON.stringify({ lastSentAt: newest }), { access: 'private', contentType: 'application/json', allowOverwrite: true });
-  return { sent: total };
+
+  let state = await readState();
+  if (!state) {
+    // The first time, look back one day rather than emailing every old
+    // report. Saved now, so a failed first email doesn't move it.
+    state = { since: reportTimeKey(new Date(now.getTime() - 86_400_000).toISOString()), sent: [] };
+    await writeState(state);
+  }
+
+  const sentIds = new Set(state.sent.map(s => s.id));
+  const unsent = (await openReportRefsSince(state.since)).filter(r => !sentIds.has(r.id));
+  if (unsent.length === 0) return { skipped: 'No new reports' };
+
+  // Newest first; any beyond the limit go in the next email. If one can't be
+  // read, nothing is sent or marked, and the whole batch is tried again.
+  const batch = unsent.slice(0, MAX_PER_EMAIL);
+  const reports = await Promise.all(batch.map(r => readReportOrThrow(r.pathname)));
+  await sendEmail(buildDigest(reports, unsent.length, `${siteUrl}/admin`));
+
+  // Keep looking back over the window (a report saved late, with an earlier
+  // time, is still found), but never past a report that hasn't been emailed.
+  const leftover = unsent.slice(MAX_PER_EMAIL);
+  const windowStart = reportTimeKey(new Date(now.getTime() - WINDOW_MS).toISOString());
+  const oldestLeftover = leftover.length ? leftover[leftover.length - 1].key : windowStart;
+  const candidates = [windowStart, oldestLeftover].sort();
+  const since = [state.since, candidates[0]].sort()[1]; // max(previous, min(window, leftover))
+  const sent = [...state.sent, ...batch.map(r => ({ id: r.id, key: r.key }))].filter(s => s.key >= since);
+  await writeState({ since, sent });
+  return { sent: batch.length, remaining: leftover.length };
 }
 
 export async function handleDigest(request: Request): Promise<Response> {

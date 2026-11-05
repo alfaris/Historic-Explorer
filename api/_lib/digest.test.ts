@@ -3,6 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const store = new Map<string, string>();
+const unreadable = new Set<string>(); // paths whose read fails, as if Blob hiccuped
 vi.mock('@vercel/blob', () => {
   class BlobNotFoundError extends Error {}
   class BlobPreconditionFailedError extends Error {}
@@ -14,6 +15,7 @@ vi.mock('@vercel/blob', () => {
       return { pathname, etag: 'e' };
     },
     async get(pathname: string) {
+      if (unreadable.has(pathname)) throw new Error('Blob unavailable');
       const b = store.get(pathname);
       return b === undefined ? null : { statusCode: 200, stream: new Response(b).body, blob: { etag: 'e', pathname } };
     },
@@ -37,14 +39,17 @@ let resendStatus: number;
 // Writes a report file the way the report endpoint stores them.
 const addReport = (createdAt: string, extra: Record<string, unknown> = {}, status = 'open') => {
   const id = Math.random().toString(36).slice(2);
+  const path = `reports/${status}/${createdAt.replace(/[:.]/g, '-')}_${id}.json`;
   store.set(
-    `reports/${status}/${createdAt.replace(/[:.]/g, '-')}_${id}.json`,
+    path,
     JSON.stringify({ id, createdAt, status, type: 'text', placeId: 1, placeName: 'Ahmad Ibn Tulun Mosque', message: 'Opening hours changed', lang: 'en', ...extra }),
   );
+  return path;
 };
 
 beforeEach(() => {
   store.clear();
+  unreadable.clear();
   emails = [];
   resendStatus = 200;
   process.env.BLOB_READ_WRITE_TOKEN = 'test';
@@ -74,7 +79,7 @@ describe('runDigest', () => {
     addReport('2026-11-05T12:00:00.000Z', { type: 'location', suggested: { lat: 30.03, lng: 31.25, source: 'gps' }, message: '' });
     addReport('2026-11-01T10:00:00.000Z'); // older than a day
     addReport('2026-11-05T11:00:00.000Z', {}, 'resolved'); // not open
-    expect(await runDigest('https://cairo.example', NOW)).toEqual({ sent: 2 });
+    expect(await runDigest('https://cairo.example', NOW)).toEqual({ sent: 2, remaining: 0 });
     expect(emails).toHaveLength(1);
     expect(emails[0].to).toEqual(['admin@example.com']);
     expect(emails[0].subject).toBe('Cairo Walks: 2 new visitor reports');
@@ -88,7 +93,7 @@ describe('runDigest', () => {
     await runDigest('https://cairo.example', NOW);
     expect(await runDigest('https://cairo.example', new Date('2026-11-07T06:00:00Z'))).toEqual({ skipped: 'No new reports' });
     addReport('2026-11-06T09:00:00.000Z');
-    expect(await runDigest('https://cairo.example', new Date('2026-11-07T06:00:00Z'))).toEqual({ sent: 1 });
+    expect(await runDigest('https://cairo.example', new Date('2026-11-07T06:00:00Z'))).toEqual({ sent: 1, remaining: 0 });
     expect(emails).toHaveLength(2);
   });
 
@@ -108,7 +113,43 @@ describe('runDigest', () => {
     resendStatus = 401;
     await expect(runDigest('https://cairo.example', NOW)).rejects.toThrow(/Invalid API key/);
     resendStatus = 200;
-    expect(await runDigest('https://cairo.example', NOW)).toEqual({ sent: 1 });
+    expect(await runDigest('https://cairo.example', NOW)).toEqual({ sent: 1, remaining: 0 });
+  });
+
+  it('keeps the first day’s reports if the very first email fails (Codex review)', async () => {
+    addReport('2026-11-05T10:00:00.000Z');
+    resendStatus = 500;
+    await expect(runDigest('https://cairo.example', NOW)).rejects.toThrow();
+    resendStatus = 200;
+    // The next day's run must still include it, though it's now over a day old.
+    expect(await runDigest('https://cairo.example', new Date('2026-11-07T06:00:00Z'))).toEqual({ sent: 1, remaining: 0 });
+  });
+
+  it('sends nothing and marks nothing when a report can’t be read, then retries it', async () => {
+    const path = addReport('2026-11-05T10:00:00.000Z');
+    addReport('2026-11-05T12:00:00.000Z');
+    unreadable.add(path);
+    await expect(runDigest('https://cairo.example', NOW)).rejects.toThrow(/Couldn’t read/);
+    expect(emails).toEqual([]);
+    unreadable.clear();
+    expect(await runDigest('https://cairo.example', new Date('2026-11-07T06:00:00Z'))).toEqual({ sent: 2, remaining: 0 });
+  });
+
+  it('still emails a report that finished saving after a newer one was emailed', async () => {
+    addReport('2026-11-06T05:59:59.900Z');
+    await runDigest('https://cairo.example', NOW);
+    // Timestamped just before the one already emailed, but written afterwards.
+    addReport('2026-11-06T05:59:59.800Z');
+    expect(await runDigest('https://cairo.example', new Date('2026-11-07T06:00:00Z'))).toEqual({ sent: 1, remaining: 0 });
+    expect(emails).toHaveLength(2);
+  });
+
+  it('sends at most 50 per email and the rest next time', async () => {
+    for (let i = 0; i < 53; i++) addReport(`2026-11-05T10:${String(i).padStart(2, '0')}:00.000Z`);
+    expect(await runDigest('https://cairo.example', NOW)).toEqual({ sent: 50, remaining: 3 });
+    expect(emails[0].text).toContain('…and 3 more.');
+    expect(await runDigest('https://cairo.example', new Date('2026-11-09T06:00:00Z'))).toEqual({ sent: 3, remaining: 0 });
+    expect(await runDigest('https://cairo.example', new Date('2026-11-10T06:00:00Z'))).toEqual({ skipped: 'No new reports' });
   });
 
   it('sends to several addresses', async () => {
