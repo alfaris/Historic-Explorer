@@ -1,4 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
+// No built dist/index.html in tests (even if one exists locally): the fetch
+// fallback is what runs.
+vi.mock('node:fs/promises', () => ({ readFile: async () => { throw new Error('ENOENT'); } }));
 import { routes } from '../../src/data/locations';
 import { handleShare, withRoutePreview } from './share';
 
@@ -36,6 +40,13 @@ describe('handleShare', () => {
     const res = await handleShare(new Request('https://cairo.example/?route=al-muizz'));
     expect(res.headers.get('content-type')).toMatch(/text\/html/);
     expect(await res.text()).toContain('og:title" content="Al-Muizz Street Route');
+  });
+
+  it('never wraps a login or error page; sends the visitor to the app instead', async () => {
+    vi.stubGlobal('fetch', async () => new Response('<html><body>Log in to Vercel</body></html>'));
+    const res = await handleShare(new Request('https://cairo.example/r/al-muizz?route=al-muizz'));
+    expect(res.status).toBe(302);
+    expect(res.headers.get('location')).toBe('https://cairo.example/?route=al-muizz');
   });
 
   it('serves the plain app for an unknown route', async () => {
