@@ -16,9 +16,13 @@ export function routeFromLocation(loc: { pathname: string; search: string }, rou
 export const isRouteLink = (loc: { pathname: string; search: string }) =>
   /^\/r\//.test(loc.pathname) || new URLSearchParams(loc.search).has('route');
 
-/** A link to a place. `lang` (other than English) asks for the preview, and the app, in that language. */
+/**
+ * A link to a place. `lang` asks for the preview, and the app, in that
+ * language. English is included too: without it, a recipient whose browser is
+ * in Arabic or French would get an English preview but the app in their language.
+ */
 export const placeShareUrl = (origin: string, placeId: number, lang?: string) =>
-  `${origin}/p/${placeId}${lang && lang !== 'en' ? `?lang=${encodeURIComponent(lang)}` : ''}`;
+  `${origin}/p/${placeId}${lang ? `?lang=${encodeURIComponent(lang)}` : ''}`;
 
 /** The place ID a `/p/<id>` or `?loc=<id>` link points to (whether or not it exists). */
 export function placeFromLocation(loc: { pathname: string; search: string }): number | null {

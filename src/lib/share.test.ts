@@ -30,9 +30,9 @@ describe('route links', () => {
 });
 
 describe('place links', () => {
-  it('builds /p/<id> links, with the language when it isn’t English', () => {
+  it('builds /p/<id> links, with the language, English included', () => {
     expect(placeShareUrl('https://x', 12)).toBe('https://x/p/12');
-    expect(placeShareUrl('https://x', 12, 'en')).toBe('https://x/p/12');
+    expect(placeShareUrl('https://x', 12, 'en')).toBe('https://x/p/12?lang=en');
     expect(placeShareUrl('https://x', 12, 'fr')).toBe('https://x/p/12?lang=fr');
   });
   it('reads /p/<id> and ?loc=<id>', () => {
