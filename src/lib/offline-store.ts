@@ -4,7 +4,7 @@
 // localStorage and shared by every component through useOfflineRoutes().
 
 import { useSyncExternalStore } from 'react';
-import { OFFLINE_CACHES } from './offline-caches';
+import { CONTENT_CACHE, CONTENT_URL, OFFLINE_CACHES } from './offline-caches';
 import type { PackFile } from './offline-pack';
 
 const STORAGE_KEY = 'cairo-walks:offline-routes';
@@ -180,8 +180,12 @@ async function fetchFiles(needed: PackFile[], { onProgress, signal, concurrency 
   let done = 0;
   let next = 0;
   onProgress?.({ done, total: needed.length });
+  // If one worker fails (say the device is out of space), the others stop
+  // taking new files, and the error is only passed on once they've all
+  // finished, so no progress update can arrive after the caller has given up.
+  let stopped = false;
   const worker = async () => {
-    while (next < needed.length) {
+    while (next < needed.length && !stopped) {
       if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
       const file = needed[next++];
       const size = await fetchInto(caches_[file.kind], file, signal);
@@ -193,7 +197,16 @@ async function fetchFiles(needed: PackFile[], { onProgress, signal, concurrency 
       onProgress?.({ done: ++done, total: needed.length });
     }
   };
-  await Promise.all(Array.from({ length: Math.min(concurrency, needed.length) }, worker));
+  const results = await Promise.allSettled(
+    Array.from({ length: Math.min(concurrency, needed.length) }, () =>
+      worker().catch(err => {
+        stopped = true;
+        throw err;
+      }),
+    ),
+  );
+  const failure = results.find((r): r is PromiseRejectedResult => r.status === 'rejected');
+  if (failure) throw failure.reason;
   return { files, failed, bytes };
 }
 
@@ -207,6 +220,12 @@ export async function saveRoute(key: string, needed: PackFile[], opts: DownloadO
   if (!offlineSupported()) throw new Error('Offline storage is not available in this browser');
   // Ask the browser not to clear these files when space runs low.
   navigator.storage?.persist?.().catch(() => {});
+
+  // Save the live routes and places too. The page may have loaded them before
+  // the service worker took control, and without them the app would fall
+  // back to the built-in content offline: routes added in the admin would be
+  // missing, and edited descriptions wouldn't match the saved audio.
+  await saveContent(opts.signal);
 
   const before = read()[key];
   const neededUrls = new Set(needed.map(f => f.url));
@@ -227,6 +246,16 @@ export async function saveRoute(key: string, needed: PackFile[], opts: DownloadO
   update(all);
   await deleteUnused(dropped, all);
   return route;
+}
+
+async function saveContent(signal?: AbortSignal) {
+  try {
+    const res = await fetch(CONTENT_URL, { signal });
+    if (res.ok) await (await caches.open(CONTENT_CACHE)).put(CONTENT_URL, res);
+  } catch (err) {
+    if ((err as Error).name === 'AbortError') throw err;
+    // Offline or unavailable: the copy the service worker has (if any) stays.
+  }
 }
 
 // Deletes files no saved route uses any more.

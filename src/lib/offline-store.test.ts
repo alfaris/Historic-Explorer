@@ -43,7 +43,8 @@ beforeEach(() => {
     setItem: (k: string, v: string) => storage.set(k, v),
   });
   vi.stubGlobal('fetch', async (url: string) => {
-    fetched.push(url);
+    // The live content is fetched on every save; tracked apart from route files.
+    if (url !== '/api/content') fetched.push(url);
     const make = responses[url];
     return make ? make() : new Response('nope', { status: 404 });
   });
@@ -127,6 +128,58 @@ describe('saveRoute', () => {
     controller.abort();
     await expect(saveRoute('r:en', files, { signal: controller.signal })).rejects.toThrow(/Abort/);
     expect(storage.has('cairo-walks:offline-routes')).toBe(false);
+  });
+});
+
+describe('saveRoute: live content and failures', () => {
+  it('saves the live routes and places with the download', async () => {
+    responses = { '/api/content': () => new Response('{"routes":[],"places":[]}'), [files[0].url]: audio() };
+    await saveRoute('r:en', [files[0]]);
+    const cached = await stores.get('content')!.match('/api/content');
+    expect(await cached!.text()).toBe('{"routes":[],"places":[]}');
+  });
+
+  it('keeps the existing content copy when the content request fails', async () => {
+    stores.set('content', new FakeCache());
+    await stores.get('content')!.put('/api/content', new Response('old'));
+    responses = { [files[0].url]: audio() };
+    await saveRoute('r:en', [files[0]]);
+    expect(await (await stores.get('content')!.match('/api/content'))!.text()).toBe('old');
+  });
+
+  it('when a cache write fails, stops and reports it only after every request has finished', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>(r => (release = r));
+    const many: PackFile[] = Array.from({ length: 6 }, (_, i) => ({ url: `https://a.tile.openstreetmap.org/16/1/${i}.png`, kind: 'tiles' }));
+    for (const f of many) responses[f.url] = image();
+    // The first tile's write fails (out of space); the second is slow.
+    const realOpen = (globalThis as any).caches.open;
+    vi.stubGlobal('caches', {
+      open: async (name: string) => {
+        const cache = await realOpen(name);
+        if (name !== 'leaflet-tiles') return cache;
+        return {
+          match: (u: string) => cache.match(u),
+          delete: (u: string) => cache.delete(u),
+          put: async (u: string, r: Response) => {
+            if (u === many[0].url) throw new DOMException('Quota exceeded', 'QuotaExceededError');
+            if (u === many[1].url) await gate;
+            return cache.put(u, r);
+          },
+        };
+      },
+    });
+    const progress: number[] = [];
+    let settled = false;
+    const run = saveRoute('r:en', many, { onProgress: p => progress.push(p.done), concurrency: 3 }).finally(() => (settled = true));
+    await new Promise(r => setTimeout(r, 20));
+    expect(settled).toBe(false); // still waiting for the slow request
+    release();
+    await expect(run).rejects.toThrow(/Quota/);
+    const calls = progress.length;
+    await new Promise(r => setTimeout(r, 20));
+    expect(progress.length).toBe(calls); // nothing reported after the error
+    expect(fetched.length).toBeLessThan(many.length); // stopped taking new files
   });
 });
 
