@@ -9,4 +9,11 @@ export const OFFLINE_CACHES = {
   audio: 'audio-guides',
 } as const;
 
+/**
+ * The live routes and places (/api/content). Not part of OFFLINE_CACHES: it
+ * isn't per route, is refreshed on every download, and is never deleted.
+ */
+export const CONTENT_CACHE = 'content';
+export const CONTENT_URL = '/api/content';
+
 export type OfflineCacheKind = keyof typeof OFFLINE_CACHES;

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { STOP_CATEGORIES } from '../lib/walk';
 import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap, Polyline, ScaleControl } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import 'leaflet/dist/leaflet.css';
@@ -159,11 +160,11 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
     }
   }, []);
 
-  // Filter locations to draw the main route line (monuments only)
+  // The route line joins the stops in walking order (list order, which the
+  // admin can change), not by ID: newer places have higher IDs wherever they sit.
   const routePoints = React.useMemo(() => {
     return locations
-      .filter(l => l.category === 'monument')
-      .sort((a, b) => a.id - b.id)
+      .filter(l => STOP_CATEGORIES.has(l.category))
       .map(l => [l.lat, l.lng] as [number, number]);
   }, [locations]);
 

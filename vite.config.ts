@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig, loadEnv, type Plugin} from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
-import { OFFLINE_CACHES } from './src/lib/offline-caches';
+import { CONTENT_CACHE, CONTENT_URL, OFFLINE_CACHES } from './src/lib/offline-caches';
 
 // Serves the Vercel functions in api/ during `npm run dev`, so Gemini calls
 // stay server-side locally too.
@@ -100,10 +100,10 @@ export default defineConfig(({mode}) => {
             {
               // Live routes and places: always try the network first (admin
               // edits show up), and fall back to the last copy offline.
-              urlPattern: ({ url }) => url.origin === self.location.origin && url.pathname === '/api/content',
+              urlPattern: ({ url }) => url.origin === self.location.origin && url.pathname === CONTENT_URL,
               handler: 'NetworkFirst',
               options: {
-                cacheName: 'content',
+                cacheName: CONTENT_CACHE,
                 networkTimeoutSeconds: 4,
                 expiration: { maxEntries: 1 },
                 cacheableResponse: { statuses: [200] },
