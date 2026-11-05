@@ -20,6 +20,20 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
+// Leaflet 1.9.4 bug: an animated zoom (flyTo, fitBounds, zoom buttons) ends
+// via setTimeout(_onZoomTransitionEnd, 250), which map.remove() doesn't cancel.
+// If the map is removed mid-zoom (switching back to the list), the callback
+// runs on a removed map and throws "Cannot read properties of undefined
+// (reading '_leaflet_pos')". Skip it once the map's panes are gone.
+const MapPrototype = L.Map.prototype as unknown as {
+  _onZoomTransitionEnd: (this: { _mapPane?: HTMLElement }) => void;
+};
+const onZoomTransitionEnd = MapPrototype._onZoomTransitionEnd;
+MapPrototype._onZoomTransitionEnd = function () {
+  if (!this._mapPane) return;
+  onZoomTransitionEnd.call(this);
+};
+
 interface MapViewProps {
   locations: Location[];
   selectedLocation: number | null;
@@ -32,8 +46,11 @@ const MapUpdater: React.FC<{ locations: Location[]; selectedLocation: number | n
   const hasCenteredOnUser = useRef(false);
 
   useEffect(() => {
-    // Force map to acknowledge container size on mount
-    setTimeout(() => {
+    // Force map to acknowledge container size on mount. The timer must be
+    // cancelled on cleanup: if the map is removed first (switching back to the
+    // list quickly), invalidateSize reads a pane that no longer exists and
+    // throws "Cannot read properties of undefined (reading '_leaflet_pos')".
+    const resizeTimer = setTimeout(() => {
       map.invalidateSize();
     }, 100);
 
@@ -50,6 +67,8 @@ const MapUpdater: React.FC<{ locations: Location[]; selectedLocation: number | n
       const bounds = L.latLngBounds(locations.map(l => [l.lat, l.lng]));
       map.fitBounds(bounds, { padding: [80, 80] });
     }
+
+    return () => clearTimeout(resizeTimer);
   }, [selectedLocation, locations, map, userLocation]);
 
   return null;
