@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { photos } from '../data/photos';
-import { locations, routes } from '../data/locations';
+import { useContent } from '../data/ContentContext';
 
 // The photos come from Wikimedia Commons under licenses that require credit,
 // so every one is listed here with its author, license and source.
 export function PhotoCredits({ isArabic }: { isArabic: boolean }) {
   const [open, setOpen] = useState(false);
+  const { places: locations, routes } = useContent();
   const entries = Object.entries(photos);
   if (entries.length === 0) return null;
 

@@ -6,11 +6,14 @@
 import React from 'react';
 import { LanguageProvider } from './i18n/LanguageContext';
 import { MainContent } from './components/MainContent';
+import { ContentProvider } from './data/ContentContext';
 
 export default function App() {
   return (
     <LanguageProvider>
-      <MainContent />
+      <ContentProvider>
+        <MainContent />
+      </ContentProvider>
     </LanguageProvider>
   );
 }

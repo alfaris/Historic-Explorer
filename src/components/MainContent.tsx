@@ -1,12 +1,14 @@
 import React, { useState, useMemo, useEffect, lazy } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
-import { locations, categories, Category, Location, routes } from '../data/locations';
+import { categories, Category } from '../data/locations';
+import { useContent } from '../data/ContentContext';
 import { RoutePlaceholder } from './RoutePlaceholder';
 import { HistoricPlaceholder } from './HistoricPlaceholder';
 import { PlacePhoto } from './PlacePhoto';
 import { PhotoCredits } from './PhotoCredits';
 import { RouteProgress, VisitedBadge, VisitedToggle } from './Visited';
 import { NearMeOverlay, NearMeView, useNearMe } from './NearMe';
+import { ReportProblem } from './ReportProblem';
 import { placePhoto, routePhoto } from '../data/photos';
 import { Search, MapPin, Globe, Navigation, Map, List, ChevronRight, Cake, Coffee, Utensils, Hammer, BookOpen, Users, Landmark, ArrowUp, Share2, Clock, Route as RouteIcon, Star, LocateFixed } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -37,25 +39,9 @@ const iconMap: Record<string, React.ElementType> = {
   Users
 };
 
-const getNearbyLocations = (loc: Location) => {
-  const complementary: Record<Category, Category[]> = {
-    monument: ['coffee', 'restaurant', 'workshop'],
-    coffee: ['monument', 'stationary', 'meeting'],
-    restaurant: ['monument', 'meeting'],
-    workshop: ['coffee', 'monument'],
-    stationary: ['coffee', 'monument'],
-    meeting: ['restaurant', 'coffee', 'monument']
-  };
-  
-  const targetCategories = complementary[loc.category] || ['monument'];
-  
-  return locations
-    .filter(l => l.id !== loc.id && l.routeId === loc.routeId && targetCategories.includes(l.category))
-    .sort((a, b) => Math.abs(a.id - loc.id) - Math.abs(b.id - loc.id))
-    .slice(0, 3);
-};
-
 export const MainContent: React.FC = () => {
+  // Live routes and places (admin edits), falling back to the bundled copy.
+  const { places: locations, routes } = useContent();
   const { t, language, setLanguage, dir } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<Category | 'all'>('all');
@@ -76,7 +62,8 @@ export const MainContent: React.FC = () => {
   const [showScrollTop, setShowScrollTop] = useState(false);
 
   useEffect(() => {
-    // Check URL for shared location
+    // Check URL for shared location. Re-checked when the live content
+    // arrives, so links to places added in the admin dashboard work too.
     const params = new URLSearchParams(window.location.search);
     const locIdParam = params.get('loc');
     if (locIdParam) {
@@ -98,7 +85,12 @@ export const MainContent: React.FC = () => {
         }, 500);
       }
     }
-  }, []);
+  }, [locations]);
+
+  // If the selected route was deleted in the admin dashboard, fall back to the first one.
+  useEffect(() => {
+    if (!routes.some(r => r.id === selectedRoute)) setSelectedRoute(routes[0].id);
+  }, [routes, selectedRoute]);
 
   React.useEffect(() => {
     const handleScroll = () => {
@@ -121,7 +113,7 @@ export const MainContent: React.FC = () => {
       const matchesCategory = selectedCategory === 'all' || loc.category === selectedCategory;
       return matchesRoute && matchesSearch && matchesCategory;
     });
-  }, [searchQuery, selectedCategory, selectedRoute]);
+  }, [searchQuery, selectedCategory, selectedRoute, locations]);
 
   const toggleLanguage = () => {
     setLanguage(language === 'en' ? 'ar' : 'en');
@@ -132,10 +124,10 @@ export const MainContent: React.FC = () => {
   const headingFontClass = isArabic ? 'font-arabic font-bold' : 'font-serif';
   const currentRouteData = routes.find(r => r.id === selectedRoute) || routes[0];
   // Memoized so "Near me" only resets its arrival state when the route changes.
-  const routePlaces = useMemo(() => locations.filter(l => l.routeId === selectedRoute), [selectedRoute]);
+  const routePlaces = useMemo(() => locations.filter(l => l.routeId === selectedRoute), [selectedRoute, locations]);
 
   // Near me keeps watching location across all three tabs until stopped.
-  const nearMe = useNearMe(isArabic);
+  const nearMe = useNearMe(isArabic, locations);
 
   // Open a place from "Near me" (possibly on another route): show it expanded
   // in the list and scroll to it.
@@ -391,6 +383,7 @@ export const MainContent: React.FC = () => {
           <NearMeView
             nearMe={nearMe}
             routePlaces={routePlaces}
+            allPlaces={locations}
             routeName={isArabic ? currentRouteData.nameAr : currentRouteData.nameEn}
             isArabic={isArabic}
             onOpenPlace={openPlace}
@@ -518,6 +511,9 @@ export const MainContent: React.FC = () => {
                                 <Share2 className="w-5 h-5" />
                               </button>
                             </div>
+                            <div className="mt-4 text-center">
+                              <ReportProblem place={loc} isArabic={isArabic} />
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -635,6 +631,9 @@ export const MainContent: React.FC = () => {
                                     >
                                       <Share2 className="w-4 h-4" />
                                     </button>
+                                  </div>
+                                  <div className="mt-4 text-center">
+                                    <ReportProblem place={loc} isArabic={isArabic} />
                                   </div>
                                 </div>
                               </motion.div>

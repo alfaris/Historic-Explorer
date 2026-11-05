@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CircleCheck, LocateFixed, Navigation, X } from 'lucide-react';
-import { categories, locations, type Location } from '../data/locations';
+import { categories, type Location } from '../data/locations';
 import { distanceMeters, formatDistance, MAX_ACCURACY_METERS, updateArrival, type ArrivalState } from '../lib/geo';
 import { useVisited } from '../lib/visited';
 import { AudioGuide } from './AudioGuide';
@@ -24,12 +24,14 @@ export interface NearMeState {
  * keeps running when the visitor switches between the List, Map and Near me
  * tabs; only stop() ends it.
  */
-export function useNearMe(isArabic: boolean): NearMeState {
+export function useNearMe(isArabic: boolean, places: Location[]): NearMeState {
   const [on, setOn] = useState(false);
   const [fix, setFix] = useState<Fix | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [arrivedId, setArrivedId] = useState<number | null>(null);
   const arrival = useRef<ArrivalState>({ atId: null });
+  const placesRef = useRef(places);
+  placesRef.current = places;
 
   useEffect(() => {
     if (!on) return;
@@ -44,7 +46,7 @@ export function useNearMe(isArabic: boolean): NearMeState {
         setFix(next);
         setError(null);
         // Arrival counts for any place, whichever route is selected.
-        const result = updateArrival(arrival.current, next, locations);
+        const result = updateArrival(arrival.current, next, placesRef.current);
         arrival.current = result.state;
         if (result.arrivedId !== null) setArrivedId(result.arrivedId);
       },
@@ -74,7 +76,7 @@ export function useNearMe(isArabic: boolean): NearMeState {
   }, []);
   const dismissArrival = useCallback(() => setArrivedId(null), []);
 
-  const arrivedPlace = arrivedId !== null ? locations.find(l => l.id === arrivedId) ?? null : null;
+  const arrivedPlace = arrivedId !== null ? places.find(l => l.id === arrivedId) ?? null : null;
   return { on, fix, error, arrivedPlace, start, stop, dismissArrival };
 }
 
@@ -158,9 +160,10 @@ export function NearMeOverlay({ nearMe, isArabic, onOpenPlace, onShowTab }: {
 }
 
 /** The Near me tab: places sorted by distance, with the arrival card on top. */
-export function NearMeView({ nearMe, routePlaces, routeName, isArabic, onOpenPlace }: {
+export function NearMeView({ nearMe, routePlaces, allPlaces, routeName, isArabic, onOpenPlace }: {
   nearMe: NearMeState;
   routePlaces: Location[];
+  allPlaces: Location[];
   routeName: string;
   isArabic: boolean;
   onOpenPlace: (id: number) => void;
@@ -176,12 +179,12 @@ export function NearMeView({ nearMe, routePlaces, routeName, isArabic, onOpenPla
 
   const sorted = useMemo(() => {
     if (!fix) return [];
-    const pool = scope === 'route' ? routePlaces : locations;
+    const pool = scope === 'route' ? routePlaces : allPlaces;
     return pool
       .map(place => ({ place, meters: distanceMeters(fix, place) }))
       .sort((a, b) => a.meters - b.meters)
       .slice(0, scope === 'route' ? undefined : 20);
-  }, [fix, scope, routePlaces]);
+  }, [fix, scope, routePlaces, allPlaces]);
 
   return (
     <div className="mb-8 space-y-6" dir={isArabic ? 'rtl' : 'ltr'}>
