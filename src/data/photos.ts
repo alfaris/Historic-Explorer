@@ -222,6 +222,33 @@ export const photos: Record<string, Photo> = {
     "licenseUrl": "http://creativecommons.org/licenses/by-sa/3.0/",
     "sourceUrl": "https://commons.wikimedia.org/wiki/File:Cairo_Aqsunqur_1.jpg"
   },
+  "place-402": {
+    "src": "/images/photos/place-402.webp",
+    "width": 960,
+    "height": 638,
+    "author": "Kareemhany146",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:A_Room_in_Mohamed_ali_Palace.jpg"
+  },
+  "place-403": {
+    "src": "/images/photos/place-403.webp",
+    "width": 960,
+    "height": 644,
+    "author": "Hoda el eraky",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:%D9%82%D8%B5%D8%B1_%D8%A7%D9%84%D9%85%D8%A7%D9%86%D8%B3%D8%AA%D8%B1%D9%84%D9%8A_%D8%A8%D9%85%D9%86%D9%8A%D9%84_%D8%A7%D9%84%D8%B1%D9%88%D8%B6%D8%A9.jpg"
+  },
+  "place-404": {
+    "src": "/images/photos/place-404.webp",
+    "width": 600,
+    "height": 399,
+    "author": "Baldiri",
+    "license": "CC BY-SA 3.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by-sa/3.0/",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Cairo_Nilometer_2.jpg"
+  },
   "route-ahl-al-bayt": {
     "src": "/images/photos/route-ahl-al-bayt.webp",
     "width": 960,
@@ -257,6 +284,15 @@ export const photos: Record<string, Photo> = {
     "license": "CC BY-SA 2.0",
     "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
     "sourceUrl": "https://commons.wikimedia.org/wiki/File:Flickr_-_archer10_(Dennis)_-_Egypt-13A-061_(cropped).jpg"
+  },
+  "route-fustat-roda": {
+    "src": "/images/photos/route-fustat-roda.webp",
+    "width": 600,
+    "height": 399,
+    "author": "Baldiri",
+    "license": "CC BY-SA 3.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by-sa/3.0/",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Cairo_Nilometer_2.jpg"
   }
 };
 

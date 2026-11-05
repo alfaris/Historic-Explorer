@@ -55,11 +55,11 @@ export const routes: Route[] = [
     id: 'coptic-cairo',
     nameEn: 'Coptic Cairo (Religious Complex)',
     nameAr: 'مجمع الأديان (مصر القديمة)',
-    descriptionEn: 'A unique area where Islamic, Christian, and Jewish monuments stand side by side',
-    descriptionAr: 'منطقة فريدة تتعانق فيها الآثار الإسلامية والمسيحية واليهودية',
+    descriptionEn: 'A compact walled quarter where ancient churches and the Ben Ezra Synagogue stand side by side',
+    descriptionAr: 'حي صغير مسوّر تتجاور فيه الكنائس العريقة ومعبد بن عزرا',
     image: '',
-    highlightsEn: ['The Hanging Church', 'Oldest Mosque in Africa', 'Roman Fortress Ruins'],
-    highlightsAr: ['الكنيسة المعلقة', 'أقدم مسجد في أفريقيا', 'أنقاض الحصن الروماني'],
+    highlightsEn: ['The Hanging Church', 'Ben Ezra Synagogue', 'Roman Fortress Ruins'],
+    highlightsAr: ['الكنيسة المعلقة', 'معبد بن عزرا', 'أنقاض الحصن الروماني'],
     distance: '1.0 km',
     duration: '1.5-2 hours'
   },
@@ -74,6 +74,18 @@ export const routes: Route[] = [
     highlightsAr: ['قلعة صلاح الدين', 'مسجد الألبستر', 'إطلالات حديقة الأزهر'],
     distance: '2.2 km',
     duration: '3-4 hours'
+  },
+  {
+    id: 'fustat-roda',
+    nameEn: 'Fustat, Roda & Old Cairo',
+    nameAr: 'الفسطاط والروضة ومصر القديمة',
+    descriptionEn: "From the Nile palaces and Abbasid Nilometer of Roda Island to Fustat, Egypt's first Islamic capital",
+    descriptionAr: 'من قصور جزيرة الروضة ومقياس النيل العباسي إلى الفسطاط، أول عاصمة إسلامية لمصر',
+    image: '',
+    highlightsEn: ['Abbasid Nilometer (861 AD)', 'Royal Mummies at NMEC', 'Oldest Mosque in Africa'],
+    highlightsAr: ['مقياس النيل العباسي (٨٦١م)', 'المومياوات الملكية بمتحف الحضارة', 'أقدم مسجد في أفريقيا'],
+    distance: '7 km',
+    duration: '3.5-4.5 hours'
   }
 ];
 
@@ -178,12 +190,9 @@ export const locations: Location[] = [
     descriptionEn: 'One of the oldest churches in Egypt, named for its location above a gatehouse of Babylon Fortress.',
     descriptionAr: 'واحدة من أقدم الكنائس في مصر، وسميت "المعلقة" لأنها بنيت فوق برجين من أبراج حصن بابليون الروماني.'
   },
-  { id: 202, routeId: 'coptic-cairo', nameEn: 'Amr Ibn Al-Aas Mosque', nameAr: 'جامع عمرو بن العاص', category: 'monument', lat: 30.0086, lng: 31.2327, descriptionEn: 'The first mosque built in Egypt and Africa (641 AD), standing as a symbol of early Islamic architecture and history.', descriptionAr: 'أول مسجد بني في مصر وأفريقيا (641م)، ويقف كرمز للعمارة والتاريخ الإسلامي المبكر.' },
   { id: 203, routeId: 'coptic-cairo', nameEn: 'Ben Ezra Synagogue', nameAr: 'معبد بن عزرا', category: 'monument', lat: 30.0060, lng: 31.2305, descriptionEn: 'Located on the site where baby Moses was allegedly found, it is the oldest Jewish temple in Cairo, famous for the Cairo Geniza documents.', descriptionAr: 'يقع في الموقع الذي يقال إنه عثر فيه على النبي موسى رضيعاً، وهو أقدم معبد يهودي في القاهرة، مشهور بوثائق جنيزة القاهرة.' },
   { id: 204, routeId: 'coptic-cairo', nameEn: 'Coptic Museum', nameAr: 'المتحف القبطي', category: 'monument', lat: 30.0058, lng: 31.2300, descriptionEn: 'Houses the worlds largest collection of Coptic Christian artwork and artifacts, bridging ancient Egyptian and Islamic art.', descriptionAr: 'يضم أكبر مجموعة في العالم من الفنون والقطع الأثرية المسيحية القبطية، ويشكل جسراً بين الفن المصري القديم والإسلامي.' },
   { id: 205, routeId: 'coptic-cairo', nameEn: 'Church of St. George', nameAr: 'كنيسة مارجرجس', category: 'monument', lat: 30.0055, lng: 31.2301, descriptionEn: 'A unique Greek Orthodox rotunda church built atop an ancient Roman tower of the Babylon Fortress.', descriptionAr: 'كنيسة أرثوذكسية يونانية فريدة من نوعها مبنية على طراز هندسي دائري فوق أحد أبراج حصن بابليون الروماني القديم.' },
-  { id: 206, routeId: 'coptic-cairo', nameEn: 'Fustat Pottery Village', nameAr: 'قرية الفخار بالفسطاط', category: 'workshop', lat: 30.0090, lng: 31.2350, descriptionEn: 'A bustling area dedicated to the age-old craft of pottery making, producing various clay wares.', descriptionAr: 'منطقة تعج بحركة صناعة الفخار القديمة، وتنتج مختلف الأواني الخزفية.' },
-  { id: 207, routeId: 'coptic-cairo', nameEn: 'Fustat Park', nameAr: 'حديقة الفسطاط', category: 'meeting', lat: 30.0120, lng: 31.2380, descriptionEn: 'A vast green park built on the ruins of Fustat, the first capital of Egypt under Islamic rule.', descriptionAr: 'حديقة خضراء شاسعة مبنية على أنقاض الفسطاط، أول عاصمة لمصر تحت الحكم الإسلامي.' },
 
   // Al-Darb Al-Ahmar & Citadel Route
   { 
@@ -205,4 +214,16 @@ export const locations: Location[] = [
   { id: 307, routeId: 'darb-al-ahmar', nameEn: 'Al Darb Al Ahmar Arts School', nameAr: 'مدرسة الدرب الأحمر للفنون', category: 'workshop', lat: 30.0415, lng: 31.2620, descriptionEn: 'A vibrant community arts school teaching circus arts, music, and performing arts to local youths.', descriptionAr: 'مدرسة فنون مجتمعية نابضة بالحياة، تُعلّم فنون السيرك والموسيقى والفنون المسرحية لشباب المنطقة.' },
   { id: 308, routeId: 'darb-al-ahmar', nameEn: 'Al-Azhar Park Restaurants', nameAr: 'مطاعم حديقة الأزهر', category: 'restaurant', lat: 30.0410, lng: 31.2640, descriptionEn: 'High-end dining venues located inside the park offering lakeside views and traditional Egyptian cuisine.', descriptionAr: 'أماكن لتناول الطعام الفاخر تقع داخل الحديقة وتقدم إطلالات على البحيرة والمأكولات المصرية التقليدية.' },
   { id: 309, routeId: 'darb-al-ahmar', nameEn: 'Bab al-Wazir Street', nameAr: 'شارع باب الوزير', category: 'monument', lat: 30.0375, lng: 31.2595, descriptionEn: 'A historic street lined with Mamluk monuments, linking the Citadel approach to the heart of Darb Al-Ahmar.', descriptionAr: 'شارع تاريخي يعج بالآثار المملوكية، يربط الطريق المؤدي للقلعة بقلب منطقة الدرب الأحمر.' },
+
+  // Fustat, Roda & Old Cairo Route
+  { id: 401, routeId: 'fustat-roda', nameEn: 'Fumm al-Khalig Aqueduct Tower', nameAr: 'برج مأخذ مياه فم الخليج', category: 'monument', lat: 30.02212, lng: 31.23031, descriptionEn: "The great hexagonal intake tower of Cairo's medieval aqueduct, built under Sultan al-Ghuri in the early 16th century. Ox-driven waterwheels on its roof lifted Nile water into the aqueduct that carried it east to the Citadel.", descriptionAr: 'برج المأخذ السداسي الضخم لسور مجرى العيون، شُيّد في عهد السلطان الغوري في مطلع القرن السادس عشر. كانت السواقي التي تديرها الثيران فوق سطحه ترفع مياه النيل إلى المجرى الذي يحملها شرقاً حتى القلعة.' },
+  { id: 402, routeId: 'fustat-roda', nameEn: 'Manial Palace', nameAr: 'قصر الأمير محمد علي بالمنيل', category: 'monument', lat: 30.02742, lng: 31.22905, descriptionEn: 'Built between 1899 and 1929 for Prince Mohamed Ali Tewfik, uncle of King Farouk. Its halls blend Ottoman, Moorish, Persian and European styles, set in gardens of rare trees the prince collected himself.', descriptionAr: 'شُيّد بين عامي ١٨٩٩ و١٩٢٩ للأمير محمد علي توفيق، عم الملك فاروق. تمزج قاعاته بين الطرز العثمانية والأندلسية والفارسية والأوروبية، وتحيط به حدائق من الأشجار النادرة التي جمعها الأمير بنفسه.' },
+  { id: 403, routeId: 'fustat-roda', nameEn: 'Manasterly Palace & Umm Kulthum Museum', nameAr: 'قصر المانسترلي ومتحف أم كلثوم', category: 'monument', lat: 30.00762, lng: 31.22488, descriptionEn: "A mid-19th-century palace at the southern tip of Roda Island, built for Hassan Fouad al-Manasterly, a governor of Cairo. Its grounds hold a museum to Umm Kulthum, the 'Star of the East', with her famous sunglasses, scarves and recordings.", descriptionAr: 'قصر من منتصف القرن التاسع عشر عند الطرف الجنوبي لجزيرة الروضة، بُني لحسن فؤاد المانسترلي أحد حكام القاهرة. وفي حديقته متحف لأم كلثوم «كوكب الشرق» يضم نظاراتها ومناديلها الشهيرة وتسجيلاتها.' },
+  { id: 404, routeId: 'fustat-roda', nameEn: 'Nilometer of Roda', nameAr: 'مقياس النيل بالروضة', category: 'monument', lat: 30.00693, lng: 31.22500, descriptionEn: "Built in 861 AD under the Abbasid caliph al-Mutawakkil, one of the oldest Islamic monuments in Cairo. A marked marble column in a deep stone well measured the Nile's annual flood, which decided the year's harvest and taxes.", descriptionAr: 'بُني عام ٨٦١م في عهد الخليفة العباسي المتوكل، وهو من أقدم الآثار الإسلامية في القاهرة. كان عمود رخامي مدرّج داخل بئر حجرية عميقة يقيس فيضان النيل السنوي الذي يحدد محصول العام وضرائبه.' },
+  { id: 405, routeId: 'fustat-roda', nameEn: 'Manasterly Bridge', nameAr: 'كوبري المانسترلي', category: 'meeting', lat: 30.00957, lng: 31.22600, descriptionEn: 'The footbridge linking the southern tip of Roda Island to Old Cairo: an easy place to meet between the Nilometer and the churches and mosques of Fustat.', descriptionAr: 'كوبري المشاة الذي يربط الطرف الجنوبي لجزيرة الروضة بمصر القديمة، ومكان مناسب للقاء بين مقياس النيل وكنائس الفسطاط ومساجدها.' },
+  { id: 406, routeId: 'fustat-roda', nameEn: 'Monastery of Saint Mercurius (Abu Seifein)', nameAr: 'دير أبي سيفين (القديس مرقوريوس)', category: 'monument', lat: 30.01251, lng: 31.23084, descriptionEn: "A walled monastery whose main church honours Saint Mercurius, called Abu Seifein, 'the one with two swords'. Rebuilt in the 12th century after a great fire, it was for a time the seat of the Coptic patriarchs.", descriptionAr: 'دير مسوّر تحمل كنيسته الكبرى اسم القديس مرقوريوس الملقب بأبي سيفين. أُعيد بناؤها في القرن الثاني عشر بعد حريق كبير، وكانت لفترة مقراً لبطاركة الأقباط.' },
+  { id: 202, routeId: 'fustat-roda', nameEn: 'Amr Ibn Al-Aas Mosque', nameAr: 'جامع عمرو بن العاص', category: 'monument', lat: 30.0086, lng: 31.2327, descriptionEn: 'The first mosque built in Egypt and Africa (641 AD), standing as a symbol of early Islamic architecture and history.', descriptionAr: 'أول مسجد بني في مصر وأفريقيا (641م)، ويقف كرمز للعمارة والتاريخ الإسلامي المبكر.' },
+  { id: 206, routeId: 'fustat-roda', nameEn: 'Fustat Pottery Village', nameAr: 'قرية الفخار بالفسطاط', category: 'workshop', lat: 30.0090, lng: 31.2350, descriptionEn: 'A bustling area dedicated to the age-old craft of pottery making, producing various clay wares.', descriptionAr: 'منطقة تعج بحركة صناعة الفخار القديمة، وتنتج مختلف الأواني الخزفية.' },
+  { id: 207, routeId: 'fustat-roda', nameEn: 'Fustat Park', nameAr: 'حديقة الفسطاط', category: 'meeting', lat: 30.0120, lng: 31.2380, descriptionEn: 'A vast green park built on the ruins of Fustat, the first capital of Egypt under Islamic rule.', descriptionAr: 'حديقة خضراء شاسعة مبنية على أنقاض الفسطاط، أول عاصمة لمصر تحت الحكم الإسلامي.' },
+  { id: 407, routeId: 'fustat-roda', nameEn: 'National Museum of Egyptian Civilization', nameAr: 'المتحف القومي للحضارة المصرية', category: 'monument', lat: 30.00760, lng: 31.24836, descriptionEn: "Opened on the site of ancient Fustat, overlooking Ain al-Sira lake. Since 2021 it has housed the Royal Mummies, moved from Tahrir in the Pharaohs' Golden Parade, alongside galleries spanning Egypt from prehistory to today.", descriptionAr: 'أُقيم على أرض الفسطاط القديمة مطلاً على بحيرة عين الصيرة. ومنذ عام ٢٠٢١ يضم المومياوات الملكية التي نُقلت من التحرير في موكب المومياوات الذهبي، إلى جانب قاعات تروي تاريخ مصر من عصور ما قبل التاريخ حتى اليوم.' },
 ];
