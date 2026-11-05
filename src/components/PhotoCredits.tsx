@@ -1,25 +1,24 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
-import { photos } from '../data/photos';
 import { useContent } from '../data/ContentContext';
+import { photoForPlace, photoForRoute } from '../data/photo-resolve';
+import type { Photo } from '../data/photos';
 
-// The photos come from Wikimedia Commons under licenses that require credit,
-// so every one is listed here with its author, license and source.
+// Every photo shown in the app, built-in (Wikimedia Commons) or uploaded in the
+// admin dashboard, listed with the credit its license requires.
 export function PhotoCredits({ isArabic }: { isArabic: boolean }) {
   const [open, setOpen] = useState(false);
   const { places: locations, routes } = useContent();
-  const entries = Object.entries(photos);
+  const entries: [string, string, Photo][] = [];
+  for (const r of routes) {
+    const photo = photoForRoute(r);
+    if (photo) entries.push([`route-${r.id}`, isArabic ? r.nameAr : r.nameEn, photo]);
+  }
+  for (const l of locations) {
+    const photo = photoForPlace(l);
+    if (photo) entries.push([`place-${l.id}`, isArabic ? l.nameAr : l.nameEn, photo]);
+  }
   if (entries.length === 0) return null;
-
-  const nameFor = (key: string) => {
-    const [kind, id] = [key.slice(0, key.indexOf('-')), key.slice(key.indexOf('-') + 1)];
-    if (kind === 'route') {
-      const route = routes.find(r => r.id === id);
-      return route ? (isArabic ? route.nameAr : route.nameEn) : id;
-    }
-    const place = locations.find(l => l.id === Number(id));
-    return place ? (isArabic ? place.nameAr : place.nameEn) : id;
-  };
 
   return (
     <>
@@ -58,17 +57,21 @@ export function PhotoCredits({ isArabic }: { isArabic: boolean }) {
             </div>
             <p className="px-6 pt-4 text-xs text-stone-500">
               {isArabic
-                ? 'الصور من ويكيميديا كومنز، ومستخدمة وفق التراخيص المذكورة. تم تصغيرها.'
-                : 'Photos from Wikimedia Commons, used under the licenses listed. Resized for the app.'}
+                ? 'الصور من ويكيميديا كومنز ومساهمين آخرين، ومستخدمة وفق التراخيص المذكورة.'
+                : 'Photos from Wikimedia Commons and other contributors, used under the licenses listed.'}
             </p>
             <ul className="overflow-y-auto px-6 py-4 space-y-3 text-xs">
-              {entries.map(([key, photo]) => (
+              {entries.map(([key, name, photo]) => (
                 <li key={key} className="border-b border-sand/20 pb-3 last:border-0">
-                  <p className="font-bold text-ink">{nameFor(key)}</p>
+                  <p className="font-bold text-ink">{name}</p>
                   <p className="text-stone-500" dir="ltr">
-                    <a href={photo.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-nile">
-                      {photo.author}
-                    </a>
+                    {photo.sourceUrl ? (
+                      <a href={photo.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-nile">
+                        {photo.author}
+                      </a>
+                    ) : (
+                      photo.author
+                    )}
                     {' · '}
                     {photo.licenseUrl ? (
                       <a href={photo.licenseUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-nile">

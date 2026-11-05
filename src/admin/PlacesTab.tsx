@@ -4,6 +4,8 @@ import { categories } from '../data/locations';
 import { nextPlaceId, type Content, type Location } from '../data/content';
 import type { SaveFn } from './AdminApp';
 import { Button, Field, inputClass, MapPicker } from './ui';
+import { PhotoField } from './PhotoField';
+import { builtInPhoto } from '../data/photo-resolve';
 
 const CAIRO_CENTRE = { lat: 30.0444, lng: 31.2357 };
 
@@ -170,6 +172,16 @@ export function PlacesTab({ content, save, initialPlaceId, onSelected }: {
             <textarea value={draft.descriptionAr} onChange={e => set('descriptionAr', e.target.value)} className={inputClass} rows={4} dir="rtl" maxLength={2000} />
           </Field>
 
+          <PhotoField
+            photo={draft.photo}
+            builtIn={builtInPhoto(`place-${draft.id}`)}
+            onChange={photo => setDraft(d => {
+              if (!d) return d;
+              const { photo: _old, ...rest } = d;
+              return photo ? { ...rest, photo } : rest;
+            })}
+          />
+
           <div>
             <p className="text-xs font-bold text-stone-500 mb-1">Location</p>
             <p className="text-[11px] text-stone-400 mb-2">Drag the pin or tap the map. {original && 'The grey pin is the saved position.'}</p>
@@ -201,7 +213,6 @@ export function PlacesTab({ content, save, initialPlaceId, onSelected }: {
               {isNew ? 'Cancel' : 'Delete place'}
             </Button>
           </div>
-          {isNew && <p className="text-[11px] text-stone-400">New places show the illustrated placeholder until a photo is added.</p>}
         </form>
       )}
     </section>

@@ -9,7 +9,7 @@ import { PhotoCredits } from './PhotoCredits';
 import { RouteProgress, VisitedBadge, VisitedToggle } from './Visited';
 import { NearMeOverlay, NearMeView, useNearMe } from './NearMe';
 import { ReportProblem } from './ReportProblem';
-import { placePhoto, routePhoto } from '../data/photos';
+import { photoForPlace, photoForRoute } from '../data/photo-resolve';
 import { Search, MapPin, Globe, Navigation, Map, List, ChevronRight, Cake, Coffee, Utensils, Hammer, BookOpen, Users, Landmark, ArrowUp, Share2, Clock, Route as RouteIcon, Star, LocateFixed } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { LiveLocationInfo } from './LiveLocationInfo';
@@ -221,7 +221,7 @@ export const MainContent: React.FC = () => {
                   }`}
                 >
                   <PlacePhoto
-                    photo={routePhoto(route.id)}
+                    photo={photoForRoute(route)}
                     alt={isArabic ? route.nameAr : route.nameEn}
                     className="absolute inset-0 w-full h-full"
                     fallback={
@@ -438,7 +438,7 @@ export const MainContent: React.FC = () => {
                         <div className="grid md:grid-cols-2 gap-10">
                         <div className="md:col-span-1">
                           <PlacePhoto
-                            photo={placePhoto(loc.id)}
+                            photo={photoForPlace(loc)}
                             alt={isArabic ? loc.nameAr : loc.nameEn}
                             className="w-full h-80 rounded-3xl shadow-xl"
                             showCredit
@@ -548,7 +548,7 @@ export const MainContent: React.FC = () => {
                       <div className="flex flex-col md:flex-row h-full">
                         <div className="md:w-1/3 h-56 md:h-auto overflow-hidden">
                           <PlacePhoto
-                            photo={placePhoto(loc.id)}
+                            photo={photoForPlace(loc)}
                             alt={isArabic ? loc.nameAr : loc.nameEn}
                             className="w-full h-full min-h-56"
                             showCredit={isSelected}
@@ -561,7 +561,7 @@ export const MainContent: React.FC = () => {
                             }
                           />
                         </div>
-                        <div className={`flex-1 p-8 md:p-10 flex flex-col justify-center ${!placePhoto(loc.id) ? 'md:w-full' : ''}`}>
+                        <div className={`flex-1 p-8 md:p-10 flex flex-col justify-center ${!photoForPlace(loc) ? 'md:w-full' : ''}`}>
                           <div className="flex justify-between items-start mb-4">
                             <div>
                               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-3">

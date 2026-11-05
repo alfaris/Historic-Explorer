@@ -112,13 +112,15 @@ Photos aren't part of the offline install. They're cached the first time they're
 `/admin` is a password-protected dashboard for managing the content without a code change:
 
 - **Reports**: visitor reports, newest first. Apply a suggested map position in one click, delete a place reported as closed, or open it in the editor. Mark reports resolved or dismissed.
-- **Places**: edit, add or delete places, including moving them by dragging a pin.
-- **Routes**: edit, add or delete routes (a route can only be deleted once it has no places).
+- **Places**: edit, add or delete places, including moving them by dragging a pin, and upload a photo with its credit.
+- **Routes**: edit, add or delete routes and their photos (a route can only be deleted once it has no places).
 - **History**: every save is kept, and any earlier version can be restored.
 
 To turn it on, set `ADMIN_PASSWORD` (12+ characters) in the Vercel project's environment variables and connect a Blob store. Saves go live for visitors within about a minute, with no deploy.
 
 How it works: the routes and places are stored as one JSON document in Blob (`content/current.json`). The app starts from the copy bundled in `src/data/locations.ts`, so it renders instantly and offline, then loads `/api/content`. The audio guide, live insights and `npm run pregenerate-audio` all read the live copy, so places added in the dashboard get audio too. Every save is validated on the server with the same rules as the tests (`src/data/content.ts`), and saves use the Blob ETag so two admins can't overwrite each other's changes. The dashboard is a separate bundle (`admin.html`), so none of its code is sent to visitors.
+
+Uploaded photos are resized in the browser (960px wide, WebP) before upload, which also strips their metadata, including any GPS position a phone saved in them. They're stored in Blob and served from `/api/photo?id=<hash>` with year-long caching. An uploaded photo replaces the built-in one for that place or route, and removing it brings the built-in one back. Each needs a credit (who took it, and a license such as "Own photo" or "CC BY-SA 4.0"), shown on the photo and in **Photo credits**.
 
 ## Adding or editing places
 

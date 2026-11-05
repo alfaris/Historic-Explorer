@@ -50,3 +50,29 @@ describe('nextPlaceId', () => {
     expect(nextPlaceId(bundledContent)).toBe(Math.max(...bundledContent.places.map(p => p.id)) + 1);
   });
 });
+
+describe('photos on places and routes', () => {
+  const upload = { src: `/api/photo?id=${'a'.repeat(64)}`, width: 960, height: 640, author: 'Ahmed', license: 'Own photo', licenseUrl: null, sourceUrl: '' };
+
+  it('accepts an uploaded photo with a credit, and keeps it through normalizing', () => {
+    const c = clone();
+    c.places[0].photo = upload;
+    c.routes[0].photo = { ...upload, license: 'CC BY-SA 4.0', licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0/' };
+    const n = normalizeContent(c);
+    expect(n.places[0].photo).toEqual(upload);
+    expect(validateContent(n)).toEqual([]);
+  });
+
+  it.each<[string, Partial<typeof upload>, RegExp]>([
+    ['an outside address', { src: 'https://evil.example/x.jpg' }, /isn't one of the app's photos/],
+    ['a script address', { src: 'javascript:alert(1)' }, /isn't one of the app's photos/],
+    ['no author', { author: '' }, /author\) is required/],
+    ['no license', { license: '' }, /license is required/],
+    ['a bad size', { width: 0 }, /size is invalid/],
+    ['a non-https link', { sourceUrl: 'http://example.com' }, /https:\/\//],
+  ])('rejects %s', (_, change, message) => {
+    const c = clone();
+    c.places[0].photo = { ...upload, ...change };
+    expect(validateContent(normalizeContent(c)).join('\n')).toMatch(message);
+  });
+});

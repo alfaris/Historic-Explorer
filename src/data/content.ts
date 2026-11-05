@@ -6,6 +6,7 @@
 // import anything browser- or server-specific.
 
 import { categories, locations, routes, type Category, type Location, type Route } from './locations';
+import type { Photo } from './photos';
 
 export type { Category, Location, Route };
 
@@ -25,6 +26,35 @@ const LIMITS = { name: 120, description: 2000, short: 60, highlights: 8 };
 
 const hasArabic = (value: string) => /[؀-ۿ]/.test(value);
 const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+
+/** Photo addresses content may use: uploads served by /api/photo, or built-in files. */
+export const PHOTO_SRC = /^(\/api\/photo\?id=[0-9a-f]{64}|\/images\/photos\/[a-z0-9-]+\.webp)$/;
+
+const normalizePhoto = (p: any): Photo | undefined => {
+  if (!p || typeof p !== 'object' || !str(p.src)) return undefined;
+  return {
+    src: str(p.src),
+    width: Number(p.width),
+    height: Number(p.height),
+    author: str(p.author),
+    license: str(p.license),
+    licenseUrl: str(p.licenseUrl) || null,
+    sourceUrl: str(p.sourceUrl),
+  };
+};
+
+const httpsUrl = (v: string | null) => !v || (/^https:\/\/[^\s]+$/.test(v) && v.length <= 500);
+
+function photoProblems(label: string, photo: Photo | undefined): string[] {
+  if (!photo) return [];
+  const problems: string[] = [];
+  if (!PHOTO_SRC.test(photo.src)) problems.push(`${label}: photo address isn't one of the app's photos.`);
+  if (![photo.width, photo.height].every(d => Number.isInteger(d) && d >= 1 && d <= 4000)) problems.push(`${label}: photo size is invalid.`);
+  if (!photo.author || photo.author.length > 120) problems.push(`${label}: photo credit (author) is required.`);
+  if (!photo.license || photo.license.length > 80) problems.push(`${label}: photo license is required (e.g. "Own photo" or "CC BY-SA 4.0").`);
+  if (!httpsUrl(photo.licenseUrl) || !httpsUrl(photo.sourceUrl)) problems.push(`${label}: photo links must be https:// addresses.`);
+  return problems;
+}
 
 /**
  * Copies only the known fields, trimmed and typed, so whatever a client sends
@@ -46,6 +76,7 @@ export function normalizeContent(input: unknown): Content {
       highlightsAr: Array.isArray(r?.highlightsAr) ? r.highlightsAr.map(str).filter(Boolean) : [],
       distance: str(r?.distance),
       duration: str(r?.duration),
+      ...(normalizePhoto(r?.photo) ? { photo: normalizePhoto(r?.photo) } : {}),
     })),
     places: placesIn.map((p: any): Location => ({
       id: Number(p?.id),
@@ -57,6 +88,7 @@ export function normalizeContent(input: unknown): Content {
       descriptionAr: str(p?.descriptionAr),
       lat: Number(p?.lat),
       lng: Number(p?.lng),
+      ...(normalizePhoto(p?.photo) ? { photo: normalizePhoto(p?.photo) } : {}),
     })),
   };
 }
@@ -87,6 +119,7 @@ export function validateContent(content: Content): string[] {
     for (const [field, max] of [['nameEn', LIMITS.name], ['nameAr', LIMITS.name], ['descriptionEn', LIMITS.description], ['descriptionAr', LIMITS.description], ['distance', LIMITS.short], ['duration', LIMITS.short]] as const) {
       if (r[field].length > max) problems.push(`${label}: ${field} is longer than ${max} characters.`);
     }
+    problems.push(...photoProblems(label, r.photo));
   }
 
   const placeIds = new Set<number>();
@@ -106,6 +139,7 @@ export function validateContent(content: Content): string[] {
     for (const [field, max] of [['nameEn', LIMITS.name], ['nameAr', LIMITS.name], ['descriptionEn', LIMITS.description], ['descriptionAr', LIMITS.description]] as const) {
       if ((p[field] ?? '').length > max) problems.push(`${label}: ${field} is longer than ${max} characters.`);
     }
+    problems.push(...photoProblems(label, p.photo));
     const b = CAIRO_BOUNDS;
     if (!(p.lat >= b.minLat && p.lat <= b.maxLat && p.lng >= b.minLng && p.lng <= b.maxLng)) {
       problems.push(`${label}: coordinates are outside Cairo (check latitude and longitude aren't swapped).`);

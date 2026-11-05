@@ -28,6 +28,7 @@ const devApi = (): Plugin => ({
         '/api/content': ['/api/content.ts', 'default'],
         '/api/report': ['/api/_lib/reports.ts', 'handleReport'],
         '/api/admin': ['/api/_lib/admin.ts', 'handleAdmin'],
+        '/api/photo': ['/api/_lib/photos.ts', 'handlePhotoServe'],
       };
       const route = routes[url.pathname];
       if (!route) return next();
@@ -122,9 +123,10 @@ export default defineConfig(({mode}) => {
               }
             },
             {
-              // Place photos: cached the first time they're seen (or when a
-              // route is downloaded), not precached, so installing stays small.
-              urlPattern: ({ url }) => url.origin === self.location.origin && url.pathname.startsWith('/images/photos/'),
+              // Place photos (built-in and uploaded): cached the first time
+              // they're seen (or when a route is downloaded), not precached.
+              urlPattern: ({ url }) =>
+                url.origin === self.location.origin && (url.pathname.startsWith('/images/photos/') || url.pathname === '/api/photo'),
               handler: 'CacheFirst',
               options: {
                 cacheName: 'place-photos',

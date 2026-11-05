@@ -3,6 +3,8 @@ import { Plus } from 'lucide-react';
 import type { Content, Route } from '../data/content';
 import type { SaveFn } from './AdminApp';
 import { Button, Field, inputClass } from './ui';
+import { PhotoField } from './PhotoField';
+import { builtInPhoto } from '../data/photo-resolve';
 
 const blankRoute = (): Route => ({
   id: '',
@@ -118,6 +120,15 @@ export function RoutesTab({ content, save }: { content: Content; save: SaveFn })
               <input value={draft.duration} onChange={e => set('duration', e.target.value)} className={inputClass} />
             </Field>
           </div>
+          <PhotoField
+            photo={draft.photo}
+            builtIn={draft.id ? builtInPhoto(`route-${draft.id}`) : undefined}
+            onChange={photo => setDraft(d => {
+              if (!d) return d;
+              const { photo: _old, ...rest } = d;
+              return photo ? { ...rest, photo } : rest;
+            })}
+          />
           <div className="flex flex-wrap gap-2 pt-2">
             <Button type="submit" disabled={busy || !changed}>
               {busy ? 'Saving…' : isNew ? 'Add route' : 'Save changes'}

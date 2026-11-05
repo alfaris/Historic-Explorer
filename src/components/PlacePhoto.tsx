@@ -29,18 +29,23 @@ export function PlacePhoto({ photo, alt, className = '', fallback, showCredit = 
         onError={() => setFailedSrc(photo.src)}
         className="absolute inset-0 w-full h-full object-cover"
       />
-      {showCredit && (
-        <a
-          href={photo.sourceUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={e => e.stopPropagation()}
-          className="absolute bottom-0 inset-x-0 px-3 py-1.5 bg-gradient-to-t from-ink/70 to-transparent text-[9px] text-white/85 truncate hover:text-white"
-          dir="ltr"
-        >
-          {photo.author} · {photo.license}
-        </a>
-      )}
+      {showCredit &&
+        (photo.sourceUrl ? (
+          <a
+            href={photo.sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={e => e.stopPropagation()}
+            className="absolute bottom-0 inset-x-0 px-3 py-1.5 bg-gradient-to-t from-ink/70 to-transparent text-[9px] text-white/85 truncate hover:text-white"
+            dir="ltr"
+          >
+            {photo.author} · {photo.license}
+          </a>
+        ) : (
+          <span className="absolute bottom-0 inset-x-0 px-3 py-1.5 bg-gradient-to-t from-ink/70 to-transparent text-[9px] text-white/85 truncate" dir="ltr">
+            {photo.author} · {photo.license}
+          </span>
+        ))}
     </div>
   );
 }

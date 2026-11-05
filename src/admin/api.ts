@@ -51,5 +51,17 @@ export const api = {
   updateReport: (id: string, changes: { status?: Report['status']; adminNote?: string }) =>
     call<{ report: Report }>('report', { method: 'PATCH', body: JSON.stringify({ id, ...changes }) }),
   history: () => call<{ history: HistoryEntry[] }>('history'),
+  /** Uploads an already resized image; returns where it's served. */
+  uploadPhoto: async (image: Blob, width: number, height: number) => {
+    const res = await fetch(`/api/admin?action=photo&width=${width}&height=${height}`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': image.type, 'x-cairo-walks-admin': '1' },
+      body: image,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new ApiError(data.error || `Upload failed (${res.status})`, res.status);
+    return data as { src: string; width: number; height: number };
+  },
   version: (pathname: string) => call<{ content: Content & { note?: string } }>('version', {}, `&pathname=${encodeURIComponent(pathname)}`),
 };
