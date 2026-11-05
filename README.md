@@ -36,6 +36,17 @@ src/
 
 The browser never receives the Gemini API key. It requests audio and insights by location ID, and the server builds the prompts from `src/data/locations.ts`. Generated audio is stored in Vercel Blob (keyed by the description text), so each place is generated once and survives deploys. Editing a description regenerates its audio automatically, and bumping `AUDIO_VERSION` in `api/_lib/gemini.ts` regenerates everything, for example after changing the voice or prompt.
 
+### Keeping Gemini costs bounded
+
+The API is public, so it limits how often Gemini can be called:
+
+- **Strict queries.** The endpoints accept only `?id=<number>&lang=en|ar`. Any other parameter gets a `400`, so made-up URLs can't get around the CDN cache. Unknown places get a `404`. Neither ever calls Gemini.
+- **Cached results.** Audio is generated once per place and language and kept in Blob, as described above. Live insights are kept in Blob for 24 hours (`LIVE_INFO_TTL_MS`), so each place and language costs at most one search-grounded Gemini call per day. Requests that arrive at the same time share a single call.
+- **Failure cooldown.** If a Gemini call fails, repeat requests for that place get the same error for 60 seconds instead of retrying immediately.
+- **Rate limit.** Each IP gets 40 API requests per minute per function instance, after which it receives a `429` with `Retry-After`. Responses served from the CDN cache don't count toward the limit. For a hard limit across all instances, also add a Vercel Firewall rate-limit rule on `/api/*`.
+
+Because there are only a fixed number of places, there is a ceiling on Gemini usage. With a Blob store connected, it is roughly two calls per place and language for audio (whenever a description or `AUDIO_VERSION` changes) plus one live-insights call per place and language per day.
+
 ## Running locally
 
 Requires Node.js 20+.

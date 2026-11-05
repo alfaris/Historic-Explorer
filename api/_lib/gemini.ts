@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 import { GoogleGenAI, Modality, ThinkingLevel } from '@google/genai';
 import { get, put } from '@vercel/blob';
-import { locations } from '../../src/data/locations.js';
+import { locations, type Location } from '../../src/data/locations.js';
+import { parseCanonicalQuery, rateLimit } from './guard.js';
 
 // Server-only: the key is read at request time and never shipped to the browser.
 let client: GoogleGenAI | null = null;
@@ -14,11 +15,16 @@ const getClient = () => {
 
 type Lang = 'en' | 'ar';
 
-const parseParams = (url: URL) => {
-  const id = Number(url.searchParams.get('id'));
-  const lang: Lang = url.searchParams.get('lang') === 'ar' ? 'ar' : 'en';
-  const location = locations.find(l => l.id === id);
-  return { location, lang };
+// Runs the rate limit and query checks shared by both endpoints. Returns the
+// place and language, or an error response to send back as is.
+const checkRequest = (request: Request): { location: Location; lang: Lang } | Response => {
+  const limited = rateLimit(request);
+  if (limited) return limited;
+  const query = parseCanonicalQuery(new URL(request.url));
+  if (query instanceof Response) return query;
+  const location = locations.find(l => l.id === query.id);
+  if (!location) return json({ error: 'Unknown location' }, 404);
+  return { location, lang: query.lang };
 };
 
 const json = (body: unknown, status = 200, cacheControl = 'no-store') =>
@@ -31,8 +37,32 @@ const json = (body: unknown, status = 200, cacheControl = 'no-store') =>
 const AUDIO_CACHE = 'public, max-age=86400, s-maxage=31536000, stale-while-revalidate=86400';
 const LIVE_INFO_CACHE = 'public, max-age=3600, s-maxage=21600, stale-while-revalidate=86400';
 
-// Warm instances reuse these, so repeat requests skip Gemini entirely.
-const audioCache = new Map<string, Promise<Uint8Array>>();
+// After a failed generation, callers get the same failure for this long instead
+// of triggering another Gemini call straight away.
+const FAILURE_COOLDOWN_MS = 60_000;
+
+type CacheEntry<T> = { promise: Promise<T>; expiresAt: number };
+
+// In-memory cache shared by concurrent and repeat requests on a warm instance.
+// Concurrent callers share one in-flight call; failures are kept for the cooldown.
+const memoize = <T>(
+  cache: Map<string, CacheEntry<T>>,
+  key: string,
+  load: () => Promise<T>,
+  expiresAt: (value: T) => number,
+): Promise<T> => {
+  const hit = cache.get(key);
+  if (hit && hit.expiresAt > Date.now()) return hit.promise;
+  const entry: CacheEntry<T> = { promise: load(), expiresAt: Infinity };
+  cache.set(key, entry);
+  entry.promise.then(
+    value => { entry.expiresAt = expiresAt(value); },
+    () => { entry.expiresAt = Date.now() + FAILURE_COOLDOWN_MS; },
+  );
+  return entry.promise;
+};
+
+const audioCache = new Map<string, CacheEntry<Uint8Array>>();
 
 // Bump when the narration prompt, models or voices change, so stored audio is regenerated.
 const AUDIO_VERSION = 'v1';
@@ -45,37 +75,69 @@ const hasBlobStore = () => Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.
 const audioBlobPath = (text: string, lang: Lang) =>
   `audio-guide/${createHash('sha256').update(`${AUDIO_VERSION}|${lang}|${text}`).digest('hex').slice(0, 32)}.wav`;
 
-const readStoredAudio = async (pathname: string) => {
+const readStoredBlob = async (pathname: string, useCache = true) => {
   if (!hasBlobStore()) return null;
   try {
-    const result = await get(pathname, { access: 'private' });
+    const result = await get(pathname, { access: 'private', useCache });
     if (!result?.stream) return null;
     return new Uint8Array(await new Response(result.stream).arrayBuffer());
   } catch (err) {
-    console.warn('Reading stored audio failed:', err);
+    console.warn(`Reading ${pathname} from Blob failed:`, err);
     return null;
   }
 };
 
-const storeAudio = async (pathname: string, wav: Uint8Array) => {
+const storeBlob = async (pathname: string, body: Uint8Array | string, contentType: string) => {
   if (!hasBlobStore()) return;
   try {
-    await put(pathname, Buffer.from(wav), {
+    await put(pathname, typeof body === 'string' ? body : Buffer.from(body), {
       access: 'private',
-      contentType: 'audio/wav',
+      contentType,
       allowOverwrite: true,
     });
   } catch (err) {
-    console.warn('Storing audio failed:', err);
+    console.warn(`Storing ${pathname} in Blob failed:`, err);
   }
 };
 
 const loadOrGenerateAudio = async (text: string, lang: Lang, pathname: string) => {
-  const stored = await readStoredAudio(pathname);
+  const stored = await readStoredBlob(pathname);
   if (stored) return stored;
   const wav = await generateAudio(text, lang);
-  await storeAudio(pathname, wav);
+  await storeBlob(pathname, wav, 'audio/wav');
   return wav;
+};
+
+// Live info is regenerated at most once a day per place and language, however
+// many people ask for it. Bump the version when the prompt or model changes.
+const LIVE_INFO_VERSION = 'v1';
+const LIVE_INFO_TTL_MS = 24 * 60 * 60 * 1000;
+
+type LiveInfo = { text: string | null; links: { uri: string; title?: string }[]; generatedAt: number };
+
+const liveInfoCache = new Map<string, CacheEntry<LiveInfo>>();
+
+const liveInfoBlobPath = (location: Location, lang: Lang) =>
+  `live-info/${createHash('sha256')
+    .update(`${LIVE_INFO_VERSION}|${lang}|${location.id}|${location.nameEn}|${location.nameAr}`)
+    .digest('hex')
+    .slice(0, 32)}.json`;
+
+const loadOrGenerateLiveInfo = async (location: Location, lang: Lang, pathname: string) => {
+  // Skip Blob's CDN cache, which could hand back an older copy that looks expired
+  // and cause a fresh Gemini call on every request.
+  const stored = await readStoredBlob(pathname, false);
+  if (stored) {
+    try {
+      const info: LiveInfo = JSON.parse(new TextDecoder().decode(stored));
+      if (Date.now() - info.generatedAt < LIVE_INFO_TTL_MS) return info;
+    } catch (err) {
+      console.warn('Stored live info is unreadable, regenerating:', err);
+    }
+  }
+  const info = await generateLiveInfo(location, lang);
+  await storeBlob(pathname, JSON.stringify(info), 'application/json');
+  return info;
 };
 
 const pcmToWav = (pcm: Uint8Array, sampleRate = 24000) => {
@@ -139,21 +201,16 @@ const generateAudio = async (text: string, lang: Lang) => {
   }
 };
 
-export async function handleAudioGuide(url: URL): Promise<Response> {
-  const { location, lang } = parseParams(url);
-  const text = lang === 'ar' ? location?.descriptionAr : location?.descriptionEn;
-  if (!location || !text) return json({ error: 'Unknown location' }, 404);
+export async function handleAudioGuide(request: Request): Promise<Response> {
+  const checked = checkRequest(request);
+  if (checked instanceof Response) return checked;
+  const { location, lang } = checked;
+  const text = lang === 'ar' ? location.descriptionAr : location.descriptionEn;
+  if (!text) return json({ error: 'Unknown location' }, 404);
 
   const key = audioBlobPath(text, lang);
-  let pending = audioCache.get(key);
-  if (!pending) {
-    pending = loadOrGenerateAudio(text, lang, key);
-    audioCache.set(key, pending);
-    pending.catch(() => audioCache.delete(key));
-  }
-
   try {
-    const wav = await pending;
+    const wav = await memoize(audioCache, key, () => loadOrGenerateAudio(text, lang, key), () => Infinity);
     return new Response(wav, {
       headers: { 'Content-Type': 'audio/wav', 'Cache-Control': AUDIO_CACHE },
     });
@@ -165,28 +222,40 @@ export async function handleAudioGuide(url: URL): Promise<Response> {
   }
 }
 
-export async function handleLiveInfo(url: URL): Promise<Response> {
-  const { location, lang } = parseParams(url);
-  if (!location) return json({ error: 'Unknown location' }, 404);
-
+const generateLiveInfo = async (location: Location, lang: Lang): Promise<LiveInfo> => {
   const prompt = lang === 'ar'
     ? `أعطني معلومات سياحية حية ومراجعات وتفاصيل تاريخية محدثة عن "${location.nameAr}" في القاهرة، مصر. استخدم بحث جوجل للحصول على أحدث المصادر.`
     : `Provide live tourist information, reviews, and updated historical details about "${location.nameEn}" in Cairo, Egypt. Use Google Search to find the latest sources.`;
 
+  const response = await getClient().models.generateContent({
+    model: 'gemini-3.1-flash-lite-preview',
+    contents: prompt,
+    config: { tools: [{ googleSearch: {} }] },
+  });
+
+  const links = new Map<string, { uri: string; title?: string }>();
+  for (const chunk of response.candidates?.[0]?.groundingMetadata?.groundingChunks ?? []) {
+    if (chunk.web?.uri) links.set(chunk.web.uri, { uri: chunk.web.uri, title: chunk.web.title });
+    if (chunk.maps?.uri) links.set(chunk.maps.uri, { uri: chunk.maps.uri, title: chunk.maps.title });
+  }
+
+  return { text: response.text ?? null, links: [...links.values()], generatedAt: Date.now() };
+};
+
+export async function handleLiveInfo(request: Request): Promise<Response> {
+  const checked = checkRequest(request);
+  if (checked instanceof Response) return checked;
+  const { location, lang } = checked;
+
+  const key = liveInfoBlobPath(location, lang);
   try {
-    const response = await getClient().models.generateContent({
-      model: 'gemini-3.1-flash-lite-preview',
-      contents: prompt,
-      config: { tools: [{ googleSearch: {} }] },
-    });
-
-    const links = new Map<string, { uri: string; title?: string }>();
-    for (const chunk of response.candidates?.[0]?.groundingMetadata?.groundingChunks ?? []) {
-      if (chunk.web?.uri) links.set(chunk.web.uri, { uri: chunk.web.uri, title: chunk.web.title });
-      if (chunk.maps?.uri) links.set(chunk.maps.uri, { uri: chunk.maps.uri, title: chunk.maps.title });
-    }
-
-    return json({ text: response.text ?? null, links: [...links.values()] }, 200, LIVE_INFO_CACHE);
+    const info = await memoize(
+      liveInfoCache,
+      key,
+      () => loadOrGenerateLiveInfo(location, lang, key),
+      value => value.generatedAt + LIVE_INFO_TTL_MS,
+    );
+    return json({ text: info.text, links: info.links }, 200, LIVE_INFO_CACHE);
   } catch (err) {
     console.error('Live info failed:', err);
     return json({ error: 'Live info request failed' }, 502);
