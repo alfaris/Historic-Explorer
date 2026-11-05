@@ -3,6 +3,9 @@ import { useLanguage } from '../i18n/LanguageContext';
 import { locations, categories, Category, Location, routes } from '../data/locations';
 import { RoutePlaceholder } from './RoutePlaceholder';
 import { HistoricPlaceholder } from './HistoricPlaceholder';
+import { PlacePhoto } from './PlacePhoto';
+import { PhotoCredits } from './PhotoCredits';
+import { placePhoto, routePhoto } from '../data/photos';
 import { Search, MapPin, Globe, Navigation, Map, List, ChevronRight, Cake, Coffee, Utensils, Hammer, BookOpen, Users, Landmark, ArrowUp, Share2, Clock, Route as RouteIcon, Star } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { LiveLocationInfo } from './LiveLocationInfo';
@@ -205,10 +208,17 @@ export const MainContent: React.FC = () => {
                       : 'hover:shadow-xl hover:-translate-y-1'
                   }`}
                 >
-                  <RoutePlaceholder 
-                    routeId={route.id} 
-                    name={isArabic ? route.nameAr : route.nameEn}
+                  <PlacePhoto
+                    photo={routePhoto(route.id)}
+                    alt={isArabic ? route.nameAr : route.nameEn}
                     className="absolute inset-0 w-full h-full"
+                    fallback={
+                      <RoutePlaceholder 
+                        routeId={route.id} 
+                        name={isArabic ? route.nameAr : route.nameEn}
+                        className="absolute inset-0 w-full h-full"
+                      />
+                    }
                   />
                   <div className={`absolute inset-0 bg-ink/20 transition-opacity duration-500 ${selectedRoute === route.id ? 'opacity-40' : 'opacity-20 group-hover:opacity-30'}`}></div>
                 </button>
@@ -393,10 +403,18 @@ export const MainContent: React.FC = () => {
                       <div className="bg-white rounded-[2.5rem] p-10 shadow-2xl border border-sand/50">
                         <div className="grid md:grid-cols-2 gap-10">
                         <div className="md:col-span-1">
-                          <HistoricPlaceholder 
-                            category={loc.category} 
-                            name={loc.nameEn}
+                          <PlacePhoto
+                            photo={placePhoto(loc.id)}
+                            alt={isArabic ? loc.nameAr : loc.nameEn}
                             className="w-full h-80 rounded-3xl shadow-xl"
+                            showCredit
+                            fallback={
+                              <HistoricPlaceholder 
+                                category={loc.category} 
+                                name={loc.nameEn}
+                                className="w-full h-80 rounded-3xl shadow-xl"
+                              />
+                            }
                           />
                         </div>
                           <div>
@@ -491,13 +509,21 @@ export const MainContent: React.FC = () => {
                     >
                       <div className="flex flex-col md:flex-row h-full">
                         <div className="md:w-1/3 h-56 md:h-auto overflow-hidden">
-                          <HistoricPlaceholder 
-                            category={loc.category} 
-                            name={loc.nameEn}
-                            className="w-full h-full"
+                          <PlacePhoto
+                            photo={placePhoto(loc.id)}
+                            alt={isArabic ? loc.nameAr : loc.nameEn}
+                            className="w-full h-full min-h-56"
+                            showCredit={isSelected}
+                            fallback={
+                              <HistoricPlaceholder 
+                                category={loc.category} 
+                                name={loc.nameEn}
+                                className="w-full h-full"
+                              />
+                            }
                           />
                         </div>
-                        <div className={`flex-1 p-8 md:p-10 flex flex-col justify-center ${!loc.image ? 'md:w-full' : ''}`}>
+                        <div className={`flex-1 p-8 md:p-10 flex flex-col justify-center ${!placePhoto(loc.id) ? 'md:w-full' : ''}`}>
                           <div className="flex justify-between items-start mb-4">
                             <div>
                               <p className="text-[10px] font-bold text-gold mb-3 uppercase tracking-[0.3em]">
@@ -586,6 +612,8 @@ export const MainContent: React.FC = () => {
             )}
           </div>
         )}
+
+        <PhotoCredits isArabic={isArabic} />
       </main>
 
       {/* Floating Scroll Top */}

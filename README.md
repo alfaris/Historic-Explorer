@@ -64,7 +64,7 @@ Requires Node.js 20+.
    npm run dev
    ```
 
-Other scripts: `npm run build` (production build in `dist/`), `npm run preview`, `npm run lint` (type check), `npm test` (checks the routes and places in `src/data/locations.ts`), `npm run pregenerate-audio` (see [Pre-generating the audio guides](#pre-generating-the-audio-guides)).
+Other scripts: `npm run build` (production build in `dist/`), `npm run preview`, `npm run lint` (type check), `npm test` (checks the routes and places in `src/data/locations.ts`), `npm run pregenerate-audio` (see [Pre-generating the audio guides](#pre-generating-the-audio-guides)), `npm run fetch-photos` (see [Photos](#photos)).
 
 Every pull request runs the type check, the tests and a production build on GitHub Actions (`.github/workflows/ci.yml`).
 
@@ -89,6 +89,20 @@ npm run pregenerate-audio
 The first command copies `GEMINI_API_KEY` and `BLOB_READ_WRITE_TOKEN` from the Vercel project into `.env.local`. The script skips audio that's already stored for the current description and `AUDIO_VERSION`, so it's safe to run again at any time: after adding or editing places, after bumping `AUDIO_VERSION`, or to retry places that failed. It waits 2 seconds between Gemini calls to stay under rate limits.
 
 Options: `-- --dry-run` lists what's missing without generating anything, `-- --lang=en` (or `ar`) does one language, and `-- --delay=5000` changes the wait in milliseconds.
+
+## Photos
+
+Photos of the monuments and routes come from [Wikimedia Commons](https://commons.wikimedia.org) under CC BY, CC BY-SA, CC0 or public-domain licenses. They're stored as resized WebP files in `public/images/photos/`, and each one's author, license and source are in `src/data/photos.ts`. The app credits each photo on the photo itself and in the **Photo credits** dialog at the bottom of the page. Places without a photo, mostly cafés, shops and workshops, keep the illustrated placeholder.
+
+To add or change a photo, edit `scripts/photo-sources.ts`, then run:
+
+```bash
+npm run fetch-photos
+```
+
+Each entry names either an English Wikipedia article (the article's main image is used) or a specific Commons file. The script skips photos that are already downloaded (`-- --force` re-downloads them all; `-- --only=place-1` fetches one), refuses files that aren't freely licensed, and rewrites `src/data/photos.ts`. Commit the new images and that file. `npm test` checks that every photo exists and has an author and an allowed license.
+
+Photos aren't part of the offline install. They're cached the first time they're viewed, or when a route's map is downloaded.
 
 ## Adding or editing places
 

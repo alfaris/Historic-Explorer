@@ -9,6 +9,8 @@ import { MapPin, ZoomIn, ZoomOut, Layers, Compass } from 'lucide-react';
 import { Location, categories } from '../data/locations';
 import { useLanguage } from '../i18n/LanguageContext';
 import { HistoricPlaceholder } from './HistoricPlaceholder';
+import { PlacePhoto } from './PlacePhoto';
+import { placePhoto } from '../data/photos';
 
 // Fix for default marker icons in React Leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -186,10 +188,17 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
         >
           <Tooltip direction="top" offset={[0, -20]} opacity={1} className="custom-tooltip">
             <div className="flex flex-col items-center gap-3 p-3 bg-white rounded-2xl shadow-2xl border border-sand/50 max-w-[160px]">
-              <HistoricPlaceholder 
-                category={loc.category} 
-                name={loc.nameEn}
+              <PlacePhoto
+                photo={placePhoto(loc.id)}
+                alt={isArabic ? loc.nameAr : loc.nameEn}
                 className="w-full h-12 rounded-xl shadow-md"
+                fallback={
+                  <HistoricPlaceholder 
+                    category={loc.category} 
+                    name={loc.nameEn}
+                    className="w-full h-12 rounded-xl shadow-md"
+                  />
+                }
               />
               <div className="text-center px-1">
                 <p className="font-bold text-nile text-[10px] leading-tight text-balance uppercase tracking-wider">
@@ -200,10 +209,18 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
           </Tooltip>
           <Popup className="custom-popup">
             <div className="p-4 bg-[#fdfcf8] min-w-[240px]">
-              <HistoricPlaceholder 
-                category={loc.category} 
-                name={loc.nameEn}
+              <PlacePhoto
+                photo={placePhoto(loc.id)}
+                alt={isArabic ? loc.nameAr : loc.nameEn}
                 className="w-full h-40 rounded-xl mb-4 shadow-sm border border-sand/30"
+                showCredit
+                fallback={
+                  <HistoricPlaceholder 
+                    category={loc.category} 
+                    name={loc.nameEn}
+                    className="w-full h-40 rounded-xl mb-4 shadow-sm border border-sand/30"
+                  />
+                }
               />
               <div className="px-1">
                 <p className="text-[10px] font-bold text-gold mb-2 uppercase tracking-[0.2em]">

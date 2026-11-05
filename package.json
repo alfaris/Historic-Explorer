@@ -10,6 +10,7 @@
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
     "pregenerate-audio": "tsx scripts/pregenerate-audio.ts",
+    "fetch-photos": "tsx scripts/fetch-photos.ts",
     "test": "vitest run"
   },
   "dependencies": {
@@ -32,6 +33,7 @@
     "@types/leaflet.markercluster": "^1.5.6",
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.4",
+    "sharp": "^0.34.5",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
