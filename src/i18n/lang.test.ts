@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { descriptionOf, fallbackLang, highlightsOf, initialLang, L, nameOf, setCurrentLang } from './lang';
+import { descriptionOf, fallbackLang, highlightsOf, optionalText, initialLang, L, nameOf, setCurrentLang } from './lang';
 import { FR } from './fr';
 
 afterEach(() => setCurrentLang('en'));
@@ -52,5 +52,14 @@ describe('fallbackLang', () => {
     setCurrentLang('ar');
     expect(fallbackLang(undefined)).toBeUndefined();
     setCurrentLang('en');
+  });
+});
+
+describe('optionalText', () => {
+  it('uses the language’s own text, else English marked as English', () => {
+    expect(optionalText('EGP 60', '60 جنيهًا', undefined, 'ar')).toEqual({ text: '60 جنيهًا', lang: undefined });
+    expect(optionalText('EGP 60', undefined, undefined, 'fr')).toEqual({ text: 'EGP 60', lang: 'en' });
+    expect(optionalText('EGP 60', undefined, undefined, 'en')).toEqual({ text: 'EGP 60', lang: undefined });
+    expect(optionalText(undefined, undefined, undefined, 'fr')).toEqual({ text: '', lang: undefined });
   });
 });

@@ -15,6 +15,7 @@ import { PlacePhoto } from './PlacePhoto';
 import type { NearMeState } from './NearMe';
 
 import { L, nameOf, descriptionOf, currentLang } from '../i18n/lang';
+import { ArrivalWarning, HoursBadge } from './PlaceHours';
 const minutes = (n: number, ar: boolean) => (ar ? `${n} ${n === 1 ? 'دقيقة' : n === 2 ? 'دقيقتان' : n <= 10 ? 'دقائق' : 'دقيقة'} سيرًا` : currentLang() === 'fr' ? `${n} min à pied` : `${n} min walk`);
 
 /**
@@ -80,6 +81,7 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose }: {
             {formatDistance(meters, ar)} · {minutes(live ? walkMinutes(live.meters) : info.leg!.minutes, ar)}
             {live && <span className="text-stone-500"> · {heading === null ? compassPoint(live.bearing, currentLang()) : L('follow the arrow', 'اتبع السهم')}</span>}
           </p>
+          <ArrivalWarning place={next} minutes={live ? walkMinutes(live.meters) : info.leg!.minutes} className="mt-1" />
         </div>
       </div>
     );
@@ -128,6 +130,7 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose }: {
             />
             <div className="p-5">
               <h2 className={`text-2xl text-ink leading-tight mb-2 ${ar ? 'font-arabic font-bold' : 'font-serif'}`}>{name(stop)}</h2>
+              <HoursBadge place={stop} className="mb-3" />
               <p className="text-stone-600 leading-relaxed mb-4">{descriptionOf(stop)}</p>
               <div className="flex flex-wrap items-center gap-3">
                 <AudioGuide locationId={stop.id} text={(descriptionOf(stop)) || ''} langCode={currentLang()} />

@@ -18,7 +18,7 @@ type Filter = Report['status'] | 'all';
 export function ReportsTab({ content, save, onEditPlace, onSignedOut }: {
   content: Content;
   save: SaveFn;
-  onEditPlace: (placeId: number) => void;
+  onEditPlace: (placeId: number, section?: 'hours') => void;
   onSignedOut: () => void;
 }) {
   const [reports, setReports] = useState<Report[] | null>(null);
@@ -117,7 +117,7 @@ function ReportCard({ report, content, save, setStatus, onEditPlace }: {
   content: Content;
   save: SaveFn;
   setStatus: (r: Report, s: Report['status']) => Promise<void>;
-  onEditPlace: (id: number) => void;
+  onEditPlace: (id: number, section?: 'hours') => void;
 }) {
   const place = content.places.find(p => p.id === report.placeId);
   const [busy, setBusy] = useState(false);
@@ -194,6 +194,11 @@ function ReportCard({ report, content, save, setStatus, onEditPlace }: {
         {report.status === 'open' && report.type === 'closed' && place && (
           <Button variant="danger" onClick={deletePlace} disabled={busy}>
             Delete place
+          </Button>
+        )}
+        {report.type === 'closed' && place && (
+          <Button variant="secondary" onClick={() => onEditPlace(place.id, 'hours')} disabled={busy}>
+            Edit opening hours
           </Button>
         )}
         {place && (

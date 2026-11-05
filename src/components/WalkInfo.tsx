@@ -3,6 +3,7 @@ import { Footprints, Flag } from 'lucide-react';
 import type { Location } from '../data/locations';
 import { formatDistance } from '../lib/geo';
 import type { StopInfo } from '../lib/walk';
+import { ArrivalWarning } from './PlaceHours';
 
 import { L, currentLang, nameOf } from '../i18n/lang';
 const minutesLabel = (n: number, ar: boolean) => (ar ? `${n} ${n === 1 ? 'دقيقة' : n === 2 ? 'دقيقتان' : n <= 10 ? 'دقائق' : 'دقيقة'} سيرًا` : currentLang() === 'fr' ? `${n} min à pied` : `${n} min walk`);
@@ -45,6 +46,7 @@ export function NextStop({ info, isArabic, onOpen }: {
           {L('Next stop', 'المحطة التالية')}
         </span>
         <span className="block truncate text-sm text-ink group-hover/next:text-nile">{nameOf(next)}</span>
+        <ArrivalWarning place={next} minutes={minutes} className="mt-1" />
       </span>
       <span className="shrink-0 text-end text-xs text-stone-500">
         <span className="block font-bold">{minutesLabel(minutes, isArabic)}</span>

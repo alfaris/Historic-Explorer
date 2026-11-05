@@ -111,4 +111,10 @@ export const FR: Record<string, string> = {
   'No description available for this location at the moment.': 'Aucune description n’est disponible pour ce lieu pour le moment.',
   'We’ll check it and fix the information.': 'Nous allons vérifier et corriger l’information.',
   'Reports don’t include your name or contact details.': 'Les signalements ne contiennent ni votre nom ni vos coordonnées.',
+  'Show': 'Afficher',
+  'Hide': 'Masquer',
+  'Opening hours': 'Horaires d’ouverture',
+  'Cairo time. Hours can change on holidays and during Ramadan.': 'Heure du Caire. Les horaires peuvent changer les jours fériés et pendant le ramadan.',
+  'Entry': 'Entrée',
+  'Likely closed when you get there': 'Sans doute fermé à votre arrivée',
 };

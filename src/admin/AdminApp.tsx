@@ -93,6 +93,8 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
   const [saveError, setSaveError] = useState<{ message: string; problems: string[]; conflict: boolean } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [editPlaceId, setEditPlaceId] = useState<number | null>(null);
+  // Which part of the place editor to scroll to (a "closed" report opens the hours).
+  const [editSection, setEditSection] = useState<'hours' | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -211,14 +213,15 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
           <ReportsTab
             content={content}
             save={save}
-            onEditPlace={id => {
+            onEditPlace={(id, section) => {
               setEditPlaceId(id);
+              setEditSection(section ?? null);
               setTab('places');
             }}
             onSignedOut={onSignedOut}
           />
         ) : tab === 'places' ? (
-          <PlacesTab content={content} save={save} initialPlaceId={editPlaceId} onSelected={() => setEditPlaceId(null)} />
+          <PlacesTab content={content} save={save} initialPlaceId={editPlaceId} initialSection={editSection} onSelected={() => { setEditPlaceId(null); setEditSection(null); }} />
         ) : tab === 'routes' ? (
           <RoutesTab content={content} save={save} />
         ) : tab === 'stats' ? (

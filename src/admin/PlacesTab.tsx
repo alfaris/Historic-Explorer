@@ -9,14 +9,17 @@ import { builtInPhoto } from '../data/photo-resolve';
 import { descriptionOf } from '../i18n/lang';
 import { api } from './api';
 import { AudioPanel } from './AudioPanel';
+import { HoursEditor } from './HoursEditor';
 import { FillFrenchButton, missingPlaceFrench, withOptional } from './french';
 
 const CAIRO_CENTRE = { lat: 30.0444, lng: 31.2357 };
 
-export function PlacesTab({ content, save, initialPlaceId, onSelected }: {
+export function PlacesTab({ content, save, initialPlaceId, initialSection = null, onSelected }: {
   content: Content;
   save: SaveFn;
   initialPlaceId: number | null;
+  /** Scroll to this part of the editor once the place is open. */
+  initialSection?: 'hours' | null;
   onSelected: () => void;
 }) {
   const [routeFilter, setRouteFilter] = useState<string>('all');
@@ -36,9 +39,10 @@ export function PlacesTab({ content, save, initialPlaceId, onSelected }: {
       setDraft({ ...place });
       setIsNew(false);
       setRouteFilter(place.routeId);
+      if (initialSection) setTimeout(() => document.getElementById(initialSection)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
     }
     onSelected();
-  }, [initialPlaceId, content.places, onSelected]);
+  }, [initialPlaceId, initialSection, content.places, onSelected]);
 
   const list = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -92,6 +96,7 @@ export function PlacesTab({ content, save, initialPlaceId, onSelected }: {
 
   const set = <K extends keyof Location>(key: K, value: Location[K]) => setDraft(d => (d ? { ...d, [key]: value } : d));
   const setFrench = (key: 'nameFr' | 'descriptionFr', value: string) => setDraft(d => (d ? withOptional(d, key, value) : d));
+  const setOptional = (key: 'feeEn' | 'feeAr' | 'feeFr', value: string) => setDraft(d => (d ? withOptional(d, key, value) : d));
 
   // Places still missing French (the app shows their English meanwhile).
   const missingFrench = content.places.filter(p => Object.keys(missingPlaceFrench(p)).length > 0);
@@ -232,6 +237,24 @@ export function PlacesTab({ content, save, initialPlaceId, onSelected }: {
           <Field label="Description (Arabic)">
             <textarea value={draft.descriptionAr} onChange={e => set('descriptionAr', e.target.value)} className={inputClass} rows={4} dir="rtl" maxLength={2000} />
           </Field>
+
+          <HoursEditor hours={draft.hours} onChange={hours => setDraft(d => (d ? withOptional(d, 'hours', hours) : d))} />
+
+          <div className="rounded-xl border border-sand/60 p-4 space-y-3">
+            <p className="text-xs font-bold text-stone-600">Entry fee (optional)</p>
+            <p className="text-[11px] text-stone-400">As visitors should read it, e.g. "EGP 60 · students EGP 30" or "Free". Arabic and French show the English when empty.</p>
+            <div className="grid sm:grid-cols-3 gap-3">
+              <Field label="Fee (English)">
+                <input value={draft.feeEn ?? ''} onChange={e => setOptional('feeEn', e.target.value)} className={inputClass} maxLength={120} />
+              </Field>
+              <Field label="Fee (Arabic)">
+                <input value={draft.feeAr ?? ''} onChange={e => setOptional('feeAr', e.target.value)} className={inputClass} dir="rtl" maxLength={120} />
+              </Field>
+              <Field label="Fee (French)">
+                <input value={draft.feeFr ?? ''} onChange={e => setOptional('feeFr', e.target.value)} className={inputClass} lang="fr" maxLength={120} />
+              </Field>
+            </div>
+          </div>
 
           <div className="rounded-xl border border-sand/60 p-4 space-y-4">
             <div>
