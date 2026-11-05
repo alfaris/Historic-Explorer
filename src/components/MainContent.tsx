@@ -91,10 +91,8 @@ export const MainContent: React.FC = () => {
       if (loc) {
         setSelectedRoute(loc.routeId);
         setSelectedLocation(loc.id);
-        
-        // Remove param without reloading
-        const newUrl = window.location.pathname;
-        window.history.replaceState({}, '', newUrl);
+        // The link is removed from the address once its route is showing
+        // (see the route-open count below).
         
         setTimeout(() => {
           const el = document.getElementById(`location-${loc.id}`);
@@ -108,13 +106,12 @@ export const MainContent: React.FC = () => {
 
   // A shared route link (/r/<id> or ?route=<id>). Re-checked when the live
   // content arrives, so links to routes added in the admin work too. The
-  // address then goes back to the home page, so it doesn't stick.
+  // address goes back to the home page once the route is showing.
   useEffect(() => {
     const id = routeFromLocation(window.location, routes.map(r => r.id));
     if (!id) return;
     setSelectedRoute(id);
     setSelectedLocation(null);
-    window.history.replaceState({}, '', '/');
   }, [routes]);
 
   // If the selected route was deleted in the admin dashboard, fall back to the first one.
@@ -174,19 +171,28 @@ export const MainContent: React.FC = () => {
   // Anonymous count of which routes are opened (once per route per visit).
   // Choosing a route drops a shared link that never resolved (e.g. to a place
   // since deleted), so route opens are counted again from here on.
-  const pendingSharedLink = () => {
+  // The route a shared link in the address asks for: undefined if there's no
+  // link, null if it can't be resolved (yet, or ever).
+  const sharedLinkTarget = (): string | null | undefined => {
     const params = new URLSearchParams(window.location.search);
-    return params.has('loc') || isRouteLink(window.location);
+    if (params.has('loc')) return locations.find(l => l.id === Number(params.get('loc')))?.routeId ?? null;
+    if (isRouteLink(window.location)) return routeFromLocation(window.location, routes.map(r => r.id));
+    return undefined;
   };
   const clearSharedLink = () => {
-    if (pendingSharedLink()) window.history.replaceState({}, '', '/');
+    if (sharedLinkTarget() !== undefined) window.history.replaceState({}, '', '/');
   };
 
-  // A shared link to a place only in the live content resolves once that
-  // arrives; until then (?loc= or ?route= still in the URL) the route shown
-  // isn't the visitor's choice, so don't count it.
+  // A shared link (?loc=, /r/, ?route=) may only resolve once the live content
+  // arrives, and its route is selected a render later. Until the route it asks
+  // for is the one showing, the route shown isn't the visitor's choice, so it
+  // isn't counted; then the link leaves the address and that route is counted.
   useEffect(() => {
-    if (pendingSharedLink()) return;
+    const target = sharedLinkTarget();
+    if (target !== undefined) {
+      if (target !== selectedRoute) return;
+      window.history.replaceState({}, '', '/');
+    }
     if (routes.some(r => r.id === selectedRoute)) track({ t: 'route', id: selectedRoute });
   }, [selectedRoute, routes, locations]);
   // Stop numbers and the walk to the next stop, in the route's walking order.
