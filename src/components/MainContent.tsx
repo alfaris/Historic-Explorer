@@ -7,6 +7,9 @@ import { HistoricPlaceholder } from './HistoricPlaceholder';
 import { PlacePhoto } from './PlacePhoto';
 import { PhotoCredits } from './PhotoCredits';
 import { RouteProgress, VisitedBadge, VisitedToggle } from './Visited';
+import { WalkFinish } from './WalkFinish';
+import { useVisited } from '../lib/visited';
+import { justCompleted, walkSummary } from '../lib/walk-summary';
 import { NearMeOverlay, NearMeView, useNearMe } from './NearMe';
 import { ReportProblem } from './ReportProblem';
 import { photoForPlace, photoForRoute } from '../data/photo-resolve';
@@ -217,6 +220,25 @@ export const MainContent: React.FC = () => {
     if (walkStartedLocation.current) nearMe.stop();
     walkStartedLocation.current = false;
   };
+
+  // The finish screen: shown when the last stop of a route gets marked visited
+  // (from a card, Near me or the walk), or from "Finish the walk".
+  const [finishedRoute, setFinishedRoute] = useState<string | null>(null);
+  const visited = useVisited();
+  const visitedBefore = React.useRef<{ places: unknown; counts: globalThis.Map<string, number> } | null>(null);
+  useEffect(() => {
+    // New content (e.g. the live copy arriving) only sets a new baseline, so a
+    // route finished on an earlier visit never pops up on its own.
+    const fresh = visitedBefore.current?.places !== locations;
+    const counts = new globalThis.Map<string, number>(); // (Map is the map icon here)
+    for (const r of routes) {
+      const summary = walkSummary(locations, r.id, visited);
+      counts.set(r.id, summary.visited);
+      if (!fresh && justCompleted(visitedBefore.current!.counts.get(r.id) ?? null, summary)) setFinishedRoute(r.id);
+    }
+    visitedBefore.current = { places: locations, counts };
+  }, [visited, locations, routes]);
+  const finishedRouteData = finishedRoute ? routes.find(r => r.id === finishedRoute) : undefined;
 
   // Open a place from "Near me" (possibly on another route): show it expanded
   // in the list and scroll to it.
@@ -781,6 +803,7 @@ export const MainContent: React.FC = () => {
       {viewMode !== 'near' && !walking && (
         <NearMeOverlay nearMe={nearMe} isArabic={isArabic} onOpenPlace={openPlace} onShowTab={() => setViewMode('near')} />
       )}
+      {finishedRouteData && <WalkFinish route={finishedRouteData} places={locations} onClose={() => setFinishedRoute(null)} />}
       {walking && (
         <LazyBoundary
           key={walkAttempt}
@@ -803,7 +826,17 @@ export const MainContent: React.FC = () => {
             </div>
           }
         >
-          <WalkMode route={currentRouteData} places={locations} nearMe={nearMe} isArabic={isArabic} onClose={endWalk} />
+          <WalkMode
+            route={currentRouteData}
+            places={locations}
+            nearMe={nearMe}
+            isArabic={isArabic}
+            onClose={endWalk}
+            onFinish={() => {
+              endWalk();
+              setFinishedRoute(currentRouteData.id);
+            }}
+          />
         </LazyBoundary>
       )}
 
