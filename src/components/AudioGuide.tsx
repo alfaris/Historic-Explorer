@@ -3,6 +3,7 @@ import { Volume2, Square, Loader2, Sparkles } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { textHash } from '../lib/text-hash';
 import { audioGuideUrl } from '../lib/offline-pack';
+import { track } from '../lib/track';
 
 interface AudioGuideProps {
   locationId: number;
@@ -102,6 +103,7 @@ export function AudioGuide({ locationId, text, langCode }: AudioGuideProps) {
     if (isLoading) return;
     
     setIsLoading(true);
+    track({ t: 'play', id: locationId });
 
     // Initialize AudioContext synchronously to satisfy iOS Safari gesture requirements
     if (!audioCtxRef.current) {

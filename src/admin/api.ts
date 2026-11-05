@@ -2,6 +2,7 @@
 // server requires (see api/_lib/admin-auth.ts).
 
 import type { Content } from '../data/content';
+import type { DayStats } from '../lib/stats';
 
 export interface Report {
   id: string;
@@ -24,6 +25,8 @@ export interface HistoryEntry {
 }
 
 export type AudioState = { status: 'stored' | 'missing' | 'no-text' | 'unavailable'; version: string | null };
+
+export type StatsResponse = { total: DayStats; perDay: { date: string; plays: number; routes: number; arrivals: number }[] };
 
 export class ApiError extends Error {
   constructor(message: string, public status: number, public problems: string[] = []) {
@@ -66,6 +69,7 @@ export const api = {
     if (!res.ok) throw new ApiError(data.error || `Upload failed (${res.status})`, res.status);
     return data as { src: string; width: number; height: number };
   },
+  stats: (days: 7 | 30 | 90) => call<StatsResponse>('stats', {}, `&days=${days}`),
   audioStatus: (placeId: number) => call<{ en: AudioState; ar: AudioState }>('audio', {}, `&id=${placeId}`),
   generateAudio: (placeId: number, lang: 'en' | 'ar', version: string) =>
     call<{ state: 'stored' }>('audio', { method: 'POST', body: JSON.stringify({ id: placeId, lang, version }) }),
