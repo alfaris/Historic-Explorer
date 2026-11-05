@@ -100,6 +100,19 @@ export default defineConfig(({mode}) => {
         }
       })
     ],
+    build: {
+      rollupOptions: {
+        output: {
+          // Libraries that rarely change get their own file, so browsers keep
+          // them cached when only the app's code changes between deploys.
+          manualChunks(id) {
+            if (/node_modules\/(react|react-dom|scheduler|motion|motion-dom|motion-utils|framer-motion)\//.test(id)) {
+              return 'vendor';
+            }
+          },
+        },
+      },
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

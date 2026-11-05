@@ -1,7 +1,11 @@
-import React, { useState } from 'react';
-import Markdown from 'react-markdown';
+import React, { useState, lazy, Suspense } from 'react';
 import { Sparkles, Map, ExternalLink } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
+
+// The Markdown renderer is only needed once insights arrive. Loading starts when
+// they're requested, alongside the API call, so it's normally ready in time.
+const loadMarkdown = () => import('react-markdown');
+const Markdown = lazy(loadMarkdown);
 
 interface LiveLocationInfoProps {
   locationId: number;
@@ -21,6 +25,7 @@ export const LiveLocationInfo: React.FC<LiveLocationInfoProps> = ({ locationId }
     setInfo(null);
     setLinks([]);
 
+    loadMarkdown().catch(() => {});
     try {
       const res = await fetch(`/api/live-info?id=${locationId}&lang=${isArabic ? 'ar' : 'en'}`);
       const data: { text?: string | null; links?: { uri: string; title?: string }[]; error?: string } = await res.json();
@@ -97,7 +102,9 @@ export const LiveLocationInfo: React.FC<LiveLocationInfoProps> = ({ locationId }
       {info && (
         <div className="bg-chalk/50 rounded-[2rem] p-8 border border-sand/30 shadow-inner">
           <div className="prose prose-stone prose-sm max-w-none text-stone-600 font-serif leading-relaxed italic">
-            <Markdown>{info}</Markdown>
+            <Suspense fallback={<p className="whitespace-pre-line">{info}</p>}>
+              <Markdown>{info}</Markdown>
+            </Suspense>
           </div>
           
           {links.length > 0 && (
