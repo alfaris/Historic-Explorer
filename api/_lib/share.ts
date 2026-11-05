@@ -38,11 +38,16 @@ const short = (text: string, max = 200) => {
   return `${cut.slice(0, Math.max(cut.lastIndexOf(' '), max * 0.6))}…`;
 };
 
-/** Adds the preview tags for a place, in the given language, to the app's HTML. */
-export function withPlacePreview(html: string, place: Location, route: Route | undefined, origin: string, lang: Lang): string {
+/**
+ * Adds the preview tags for a place, in the given language, to the app's HTML.
+ * `linkLang` is the language the link itself asked for, kept in the canonical
+ * URL (null for a link without one, which shows English).
+ */
+export function withPlacePreview(html: string, place: Location, route: Route | undefined, origin: string, linkLang: Lang | null): string {
+  const lang = linkLang ?? 'en';
   const tagline = lang === 'ar' ? 'جولة بدليل صوتي في القاهرة التاريخية' : lang === 'fr' ? 'Visite audioguidée du Caire historique' : 'Audio-guided walk in historic Cairo';
   return withPreview(html, origin, {
-    url: `${origin}/p/${place.id}${lang === 'en' ? '' : `?lang=${lang}`}`,
+    url: `${origin}/p/${place.id}${linkLang ? `?lang=${linkLang}` : ''}`,
     title: `${nameOf(place, lang)}${route ? ` · ${nameOf(route, lang)}` : ''} | Cairo Historic Explorer`,
     description: short(descriptionOf(place, lang)) || tagline,
     photo: photoForPlace(place),
@@ -91,7 +96,7 @@ async function appHtml(origin: string): Promise<string | null> {
   }
 }
 
-const asLang = (v: string | null): Lang => (v === 'ar' || v === 'fr' ? v : 'en');
+const asLang = (v: string | null): Lang | null => (v === 'en' || v === 'ar' || v === 'fr' ? v : null);
 
 export async function handleShare(request: Request): Promise<Response> {
   const url = new URL(request.url);
@@ -113,7 +118,7 @@ async function handlePlace(url: URL, idParam: string): Promise<Response> {
   if (!place) return Response.redirect(new URL('/', url.origin), 302);
   const lang = asLang(url.searchParams.get('lang'));
   const html = await appHtml(url.origin);
-  if (html === null) return Response.redirect(new URL(`/?loc=${place.id}${lang === 'en' ? '' : `&lang=${lang}`}`, url.origin), 302);
+  if (html === null) return Response.redirect(new URL(`/?loc=${place.id}${lang ? `&lang=${lang}` : ''}`, url.origin), 302);
   const route = content.routes.find(r => r.id === place.routeId);
   return htmlResponse(withPlacePreview(html, place, route, url.origin, lang));
 }

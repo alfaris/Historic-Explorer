@@ -63,7 +63,9 @@ describe('withPlacePreview', () => {
   it('names the page after the place and its route, with its photo', () => {
     const html = withPlacePreview(HTML, place, route, 'https://cairo.example', 'en');
     expect(html).toContain(`<title>${place.nameEn} · ${route!.nameEn} | Cairo Historic Explorer</title>`);
-    expect(html).toContain(`<meta property="og:url" content="https://cairo.example/p/${place.id}" />`);
+    expect(html).toContain(`<meta property="og:url" content="https://cairo.example/p/${place.id}?lang=en" />`);
+    // A link without a language shows English and keeps no language in its URL.
+    expect(withPlacePreview(HTML, place, route, 'https://cairo.example', null)).toContain(`og:url" content="https://cairo.example/p/${place.id}" />`);
     expect(html).toContain('<meta property="og:locale" content="en_GB" />');
     expect(html).toContain(`content="https://cairo.example/images/photos/place-${place.id}.webp"`);
     expect(html).toMatch(/<meta name="description" content="The oldest mosque in Cairo/);
@@ -107,9 +109,13 @@ describe('handleShare for places', () => {
     }
   });
 
-  it('opens the app on the place when the page can’t be wrapped', async () => {
+  it('opens the app on the place when the page can’t be wrapped, keeping the link’s language', async () => {
     vi.stubGlobal('fetch', async () => new Response('<html><body>Log in to Vercel</body></html>'));
     const res = await handleShare(new Request(`https://cairo.example/api/share?place=${locations[0].id}&lang=fr`));
     expect(res.headers.get('location')).toBe(`https://cairo.example/?loc=${locations[0].id}&lang=fr`);
+    const en = await handleShare(new Request(`https://cairo.example/api/share?place=${locations[0].id}&lang=en`));
+    expect(en.headers.get('location')).toBe(`https://cairo.example/?loc=${locations[0].id}&lang=en`);
+    const none = await handleShare(new Request(`https://cairo.example/api/share?place=${locations[0].id}`));
+    expect(none.headers.get('location')).toBe(`https://cairo.example/?loc=${locations[0].id}`);
   });
 });
