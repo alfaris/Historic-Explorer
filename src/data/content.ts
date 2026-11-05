@@ -7,6 +7,7 @@
 
 import { categories, locations, routes, type Category, type Location, type Route } from './locations.js';
 import type { Photo } from './photos';
+import { parseDistanceKm, parseHours, routeText } from '../lib/route-format.js';
 
 export type { Category, Location, Route };
 
@@ -24,7 +25,7 @@ export const CATEGORY_IDS = categories.map(c => c.id) as Category[];
 // Roughly Greater Cairo. Generous, but catches swapped lat/lng and typos.
 export const CAIRO_BOUNDS = { minLat: 29.9, maxLat: 30.15, minLng: 31.1, maxLng: 31.4 };
 
-const LIMITS = { name: 120, description: 2000, short: 60, highlights: 8 };
+const LIMITS = { name: 120, description: 2000, highlights: 8 };
 
 const hasArabic = (value: string) => /[؀-ۿ]/.test(value);
 const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
@@ -58,6 +59,23 @@ function photoProblems(label: string, photo: Photo | undefined): string[] {
   return problems;
 }
 
+const finite = (v: unknown) => (v === null || v === '' || v === undefined ? NaN : Number(v));
+
+/**
+ * A route's distance and walking time as numbers, read from the number fields
+ * or, for older content, from the text ("2.5 km", "2-3 hours"), plus the
+ * English text made from them.
+ */
+function routeNumbers(r: any) {
+  let distanceKm = finite(r?.distanceKm);
+  if (!Number.isFinite(distanceKm)) distanceKm = parseDistanceKm(str(r?.distance));
+  let hoursMin = finite(r?.hoursMin);
+  let hoursMax = finite(r?.hoursMax);
+  if (!Number.isFinite(hoursMin) || !Number.isFinite(hoursMax)) [hoursMin, hoursMax] = parseHours(str(r?.duration)) ?? [NaN, NaN];
+  const numbers = { distanceKm, hoursMin, hoursMax };
+  return { ...numbers, ...routeText(numbers) };
+}
+
 /**
  * Copies only the known fields, trimmed and typed, so whatever a client sends
  * can't add unexpected properties to the stored content.
@@ -84,8 +102,7 @@ export function normalizeContent(input: unknown): Content {
       ...(Array.isArray(r?.highlightsFr) && r.highlightsFr.map(str).filter(Boolean).length
         ? { highlightsFr: r.highlightsFr.map(str).filter(Boolean) }
         : {}),
-      distance: str(r?.distance),
-      duration: str(r?.duration),
+      ...routeNumbers(r),
       ...(normalizePhoto(r?.photo) ? { photo: normalizePhoto(r?.photo) } : {}),
     })),
     places: placesIn.map((p: any): Location => ({
@@ -125,14 +142,15 @@ export function validateContent(content: Content): string[] {
     if (!hasArabic(r.nameAr)) problems.push(`${label}: Arabic name is missing.`);
     if (!r.descriptionEn) problems.push(`${label}: English description is empty.`);
     if (!hasArabic(r.descriptionAr)) problems.push(`${label}: Arabic description is missing.`);
-    if (!r.distance || !r.duration) problems.push(`${label}: distance and duration are required.`);
+    if (!(r.distanceKm > 0 && r.distanceKm <= 50)) problems.push(`${label}: distance must be a number of kilometres, above 0 and at most 50.`);
+    if (!(r.hoursMin > 0 && r.hoursMax <= 24 && r.hoursMin <= r.hoursMax)) problems.push(`${label}: walking time must be in hours, above 0, at most 24, with "from" no more than "to".`);
     if (r.highlightsEn.length !== r.highlightsAr.length) problems.push(`${label}: English and Arabic highlights must have the same number of lines.`);
     if (r.highlightsEn.length > LIMITS.highlights) problems.push(`${label}: at most ${LIMITS.highlights} highlights.`);
     if (r.highlightsFr && r.highlightsFr.length > LIMITS.highlights) problems.push(`${label}: at most ${LIMITS.highlights} French highlights.`);
     for (const [field, max] of [['nameFr', LIMITS.name], ['descriptionFr', LIMITS.description]] as const) {
       if ((r[field] ?? '').length > max) problems.push(`${label}: ${field} is longer than ${max} characters.`);
     }
-    for (const [field, max] of [['nameEn', LIMITS.name], ['nameAr', LIMITS.name], ['descriptionEn', LIMITS.description], ['descriptionAr', LIMITS.description], ['distance', LIMITS.short], ['duration', LIMITS.short]] as const) {
+    for (const [field, max] of [['nameEn', LIMITS.name], ['nameAr', LIMITS.name], ['descriptionEn', LIMITS.description], ['descriptionAr', LIMITS.description]] as const) {
       if (r[field].length > max) problems.push(`${label}: ${field} is longer than ${max} characters.`);
     }
     problems.push(...photoProblems(label, r.photo));
