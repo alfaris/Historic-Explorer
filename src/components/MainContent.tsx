@@ -16,6 +16,8 @@ import { LiveLocationInfo } from './LiveLocationInfo';
 import { AudioGuide } from './AudioGuide';
 import { Logo } from './Logo';
 import { RouteDownload } from './RouteDownload';
+import { NextStop, StopNumber } from './WalkInfo';
+import { walkPlan } from '../lib/walk';
 import { LazyBoundary } from './LazyBoundary';
 
 // The map (Leaflet, marker clustering and their CSS) is the largest part of the
@@ -135,6 +137,8 @@ export const MainContent: React.FC = () => {
   const currentRouteData = routes.find(r => r.id === selectedRoute) || routes[0];
   // Memoized so "Near me" only resets its arrival state when the route changes.
   const routePlaces = useMemo(() => locations.filter(l => l.routeId === selectedRoute), [selectedRoute, locations]);
+  // Stop numbers and the walk to the next stop, in the route's walking order.
+  const plan = useMemo(() => walkPlan(locations, selectedRoute), [locations, selectedRoute]);
 
   // Near me keeps watching location across all three tabs until stopped.
   const nearMe = useNearMe(isArabic, locations);
@@ -467,6 +471,7 @@ export const MainContent: React.FC = () => {
                                 <p className="text-[10px] font-bold text-nile mt-3 uppercase tracking-[0.3em]">
                                   {isArabic ? category?.nameAr : category?.nameEn}
                                 </p>
+                                {plan.get(loc.id) && <div className="mt-2"><StopNumber info={plan.get(loc.id)!} isArabic={isArabic} /></div>}
                               </div>
                               <button 
                                 onClick={() => setSelectedLocation(null)}
@@ -475,6 +480,11 @@ export const MainContent: React.FC = () => {
                                 <Search className="w-4 h-4 rotate-45" /> 
                               </button>
                             </div>
+                            {plan.get(loc.id) && (
+                              <div className="mb-6">
+                                <NextStop info={plan.get(loc.id)!} isArabic={isArabic} onOpen={setSelectedLocation} />
+                              </div>
+                            )}
                             
                             <div className="mb-8">
                               <p className="text-stone-600 text-lg leading-relaxed mb-4 font-serif italic">
@@ -580,11 +590,17 @@ export const MainContent: React.FC = () => {
                               <h3 className={`text-3xl text-ink leading-tight ${headingFontClass}`}>
                                 {isArabic ? loc.nameAr : loc.nameEn}
                               </h3>
+                              {plan.get(loc.id) && <div className="mt-2"><StopNumber info={plan.get(loc.id)!} isArabic={isArabic} /></div>}
                             </div>
-                            <div className="text-3xl font-serif text-sand/50 italic opacity-50">
-                              {String(index + 1).padStart(2, '0')}
-                            </div>
+                            {plan.get(loc.id) && (
+                              <div className="text-3xl font-serif text-sand/50 italic opacity-50" aria-hidden="true">
+                                {String(plan.get(loc.id)!.number).padStart(2, '0')}
+                              </div>
+                            )}
                           </div>
+                          {plan.get(loc.id) && (
+                            <NextStop info={plan.get(loc.id)!} isArabic={isArabic} onOpen={openPlace} />
+                          )}
 
                               <AnimatePresence>
                             {isSelected && (

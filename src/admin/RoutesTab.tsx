@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { ArrowDown, ArrowUp, Plus } from 'lucide-react';
 import type { Content, Route } from '../data/content';
 import type { SaveFn } from './AdminApp';
 import { Button, Field, inputClass } from './ui';
 import { PhotoField } from './PhotoField';
 import { builtInPhoto } from '../data/photo-resolve';
+import { applyStopOrder, walkPlan, walkStops } from '../lib/walk';
 
 const blankRoute = (): Route => ({
   id: '',
@@ -26,17 +27,31 @@ export function RoutesTab({ content, save }: { content: Content; save: SaveFn })
   // Highlights are edited as raw text (one per line) and split only when saving,
   // so spaces and new lines aren't trimmed away while typing.
   const [highlights, setHighlights] = useState({ en: '', ar: '' });
+  // The stops' walking order, as place IDs. Applied to the places when saving.
+  const [order, setOrder] = useState<number[]>([]);
 
   const lines = (text: string) => text.split('\n').map(s => s.trim()).filter(Boolean);
   const open = (route: Route, asNew: boolean) => {
     setDraft({ ...route, highlightsEn: [...route.highlightsEn], highlightsAr: [...route.highlightsAr] });
     setHighlights({ en: route.highlightsEn.join('\n'), ar: route.highlightsAr.join('\n') });
+    setOrder(asNew ? [] : walkStops(content.places, route.id).map(p => p.id));
     setIsNew(asNew);
   };
   const finalDraft = draft && { ...draft, highlightsEn: lines(highlights.en), highlightsAr: lines(highlights.ar) };
 
   const original = draft && !isNew ? content.routes.find(r => r.id === draft.id) : undefined;
-  const changed = finalDraft && (isNew || JSON.stringify(original) !== JSON.stringify(finalDraft));
+  const savedOrder = draft && !isNew ? walkStops(content.places, draft.id).map(p => p.id) : [];
+  const orderChanged = order.join() !== savedOrder.join();
+  const changed = finalDraft && (isNew || orderChanged || JSON.stringify(original) !== JSON.stringify(finalDraft));
+  // Walking times for the order being edited, so the effect of a move shows straight away.
+  const orderedPlaces = draft && !isNew ? applyStopOrder(content.places, draft.id, order) : [];
+  const plan = draft && !isNew ? walkPlan(orderedPlaces, draft.id) : new Map();
+  const move = (index: number, by: -1 | 1) =>
+    setOrder(o => {
+      const next = [...o];
+      [next[index], next[index + by]] = [next[index + by], next[index]];
+      return next;
+    });
   const placeCount = (id: string) => content.places.filter(p => p.routeId === id).length;
 
   const set = <K extends keyof Route>(key: K, value: Route[K]) => setDraft(d => (d ? { ...d, [key]: value } : d));
@@ -46,8 +61,18 @@ export function RoutesTab({ content, save }: { content: Content; save: SaveFn })
     setBusy(true);
     const next: Content = isNew
       ? { ...content, routes: [...content.routes, finalDraft] }
-      : { ...content, routes: content.routes.map(r => (r.id === finalDraft.id ? finalDraft : r)) };
-    if (await save(next, isNew ? `Added route "${finalDraft.nameEn}"` : `Edited route "${finalDraft.nameEn}"`)) setIsNew(false);
+      : {
+          ...content,
+          routes: content.routes.map(r => (r.id === finalDraft.id ? finalDraft : r)),
+          places: applyStopOrder(content.places, finalDraft.id, order),
+        };
+    const detailsChanged = isNew || JSON.stringify(original) !== JSON.stringify(finalDraft);
+    const message = isNew
+      ? `Added route "${finalDraft.nameEn}"`
+      : !detailsChanged
+        ? `Reordered the stops of "${finalDraft.nameEn}"`
+        : `Edited route "${finalDraft.nameEn}"${orderChanged ? ' and its stop order' : ''}`;
+    if (await save(next, message)) setIsNew(false);
     setBusy(false);
   };
 
@@ -133,6 +158,36 @@ export function RoutesTab({ content, save }: { content: Content; save: SaveFn })
               return photo ? { ...rest, photo } : rest;
             })}
           />
+          {!isNew && order.length > 0 && (
+            <div>
+              <p className="text-xs font-bold text-stone-600 mb-1">Walking order</p>
+              <p className="text-[11px] text-stone-400 mb-2">
+                The route's monuments, in the order visitors walk them. The app shows "Next stop" and the walking time from this order, and draws the route line on the map in it.
+              </p>
+              <ol className="rounded-xl border border-sand/60 divide-y divide-sand/40">
+                {order.map((id, i) => {
+                  const place = content.places.find(p => p.id === id);
+                  const leg = plan.get(id)?.leg;
+                  return (
+                    <li key={id} className="flex items-center gap-3 px-3 py-2 text-sm">
+                      <span className="w-6 text-end text-stone-400 tabular-nums">{i + 1}</span>
+                      <span className="flex-1 min-w-0">
+                        <span className="block truncate">{place?.nameEn}</span>
+                        {leg && <span className="block text-[11px] text-stone-400">then about {leg.minutes} min walk to the next stop</span>}
+                      </span>
+                      <button type="button" onClick={() => move(i, -1)} disabled={i === 0} className="p-1.5 rounded-lg text-stone-500 hover:bg-chalk disabled:opacity-30" aria-label={`Move ${place?.nameEn} up`}>
+                        <ArrowUp className="w-4 h-4" />
+                      </button>
+                      <button type="button" onClick={() => move(i, 1)} disabled={i === order.length - 1} className="p-1.5 rounded-lg text-stone-500 hover:bg-chalk disabled:opacity-30" aria-label={`Move ${place?.nameEn} down`}>
+                        <ArrowDown className="w-4 h-4" />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ol>
+              <p className="text-[11px] text-stone-400 mt-1">Cafés, shops and meeting points aren't stops; they're shown as nearby extras.</p>
+            </div>
+          )}
           <div className="flex flex-wrap gap-2 pt-2">
             <Button type="submit" disabled={busy || !changed}>
               {busy ? 'Saving…' : isNew ? 'Add route' : 'Save changes'}

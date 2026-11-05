@@ -14,6 +14,7 @@ A bilingual (English / Arabic) walking guide to historic Cairo. Pick a route, br
 - **Visited tracking**: mark places as visited and see each route's progress ("6 / 14 visited"). Visited places show a check on their card and on the map. Progress is saved in the browser, so it works offline and needs no account.
 - **Report a problem**: every place has a link to report a wrong location (drag a pin or send your GPS position), wrong text, a closure or a photo problem. Reports go to the admin dashboard and don't include any personal details.
 - **English and Arabic**, with full right-to-left layout.
+- **Walking directions**: each stop shows "Stop 3 of 7" and the next stop with an estimated walking time ("Next stop: Manial Palace · 10 min walk · 780 m"). Tapping it opens that stop. The stops are the route's monuments, in the order set in the admin's route editor (**Walking order**). Times come from the straight-line distance × 1.3 for winding streets at 4.5 km/h, so they work offline. See `src/lib/walk.ts`.
 - **Works offline**: installable as a PWA. "Download for offline" saves a route's audio guides (in the current language), photos and map to the device, so the whole walk works with no signal. The route then shows "Available offline" with its size, offers an update when places are edited in the admin, and can be removed.
 
 ## Tech stack
