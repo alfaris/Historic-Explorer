@@ -1,15 +1,27 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, lazy } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { locations, categories, Category, Location, routes } from '../data/locations';
 import { RoutePlaceholder } from './RoutePlaceholder';
 import { HistoricPlaceholder } from './HistoricPlaceholder';
 import { Search, MapPin, Globe, Navigation, Map, List, ChevronRight, Cake, Coffee, Utensils, Hammer, BookOpen, Users, Landmark, ArrowUp, Share2, Clock, Route as RouteIcon, Star } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { MapView } from './MapView';
 import { LiveLocationInfo } from './LiveLocationInfo';
 import { AudioGuide } from './AudioGuide';
 import { Logo } from './Logo';
 import { OfflineManager } from './OfflineManager';
+import { LazyBoundary } from './LazyBoundary';
+
+// The map (Leaflet, marker clustering and their CSS) is the largest part of the
+// app, so it's loaded only when needed: in the background once the page is idle,
+// or straight away if the map is opened first.
+const loadMapView = () => import('./MapView');
+const MapView = lazy(() => loadMapView().then(m => ({ default: m.MapView })));
+
+const MapFallback = () => (
+  <div className="w-full h-full bg-chalk animate-pulse flex items-center justify-center">
+    <Map className="w-10 h-10 text-stone-300" />
+  </div>
+);
 
 const iconMap: Record<string, React.ElementType> = {
   Landmark,
@@ -45,6 +57,17 @@ export const MainContent: React.FC = () => {
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
   const [selectedRoute, setSelectedRoute] = useState<string>(routes[0].id);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+
+  // Fetch the map code in the background so switching to the map is instant.
+  useEffect(() => {
+    const preload = () => { loadMapView().catch(() => {}); };
+    if ('requestIdleCallback' in window) {
+      const id = window.requestIdleCallback(preload, { timeout: 5000 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const timer = setTimeout(preload, 3000);
+    return () => clearTimeout(timer);
+  }, []);
   const [showScrollTop, setShowScrollTop] = useState(false);
 
   useEffect(() => {
@@ -324,11 +347,33 @@ export const MainContent: React.FC = () => {
         {viewMode === 'map' ? (
           <div className="mb-8">
             <div className="rounded-3xl overflow-hidden shadow-2xl border border-sand h-[600px] md:h-[75vh] min-h-[600px]">
-              <MapView 
-                locations={filteredLocations} 
-                selectedLocation={selectedLocation} 
-                onSelectLocation={setSelectedLocation} 
-              />
+              <LazyBoundary
+                loading={<MapFallback />}
+                failed={
+                  <div className="w-full h-full bg-chalk flex flex-col items-center justify-center gap-4 p-8 text-center">
+                    <Map className="w-10 h-10 text-stone-300" />
+                    <p className="text-sm text-stone-500 max-w-xs">
+                      {isArabic
+                        ? 'تعذّر تحميل الخريطة. تحقق من اتصالك بالإنترنت.'
+                        : "The map couldn't load. Check your connection."}
+                    </p>
+                    <button
+                      // Browsers remember a failed module download, so retrying
+                      // needs a reload (as Vite recommends for failed chunks).
+                      onClick={() => window.location.reload()}
+                      className="text-[10px] font-bold bg-nile text-white px-5 py-2 rounded-xl hover:bg-nile-light transition-all duration-300 uppercase tracking-wider"
+                    >
+                      {isArabic ? 'حاول مرة أخرى' : 'Try again'}
+                    </button>
+                  </div>
+                }
+              >
+                <MapView 
+                  locations={filteredLocations} 
+                  selectedLocation={selectedLocation} 
+                  onSelectLocation={setSelectedLocation} 
+                />
+              </LazyBoundary>
             </div>
             
             <AnimatePresence>
