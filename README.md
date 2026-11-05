@@ -12,6 +12,7 @@ A bilingual (English / Arabic) walking guide to historic Cairo. Pick a route, br
 - **Live insights**: an on-demand, Google Search–grounded summary of current visitor info and reviews for a place, with source links.
 - **Near me tab**: a third tab beside List and Map that lists places by distance (this route or all routes). Once it's on, location keeps running on every tab, with a small "Near me on · Stop" pill, and arriving within about 30 m of any place offers its audio guide with a Play button (audio never starts by itself).
 - **Visited tracking**: mark places as visited and see each route's progress ("6 / 14 visited"). Visited places show a check on their card and on the map. Progress is saved in the browser, so it works offline and needs no account.
+- **Report a problem**: every place has a link to report a wrong location (drag a pin or send your GPS position), wrong text, a closure or a photo problem. Reports go to the admin dashboard and don't include any personal details.
 - **English and Arabic**, with full right-to-left layout.
 - **Works offline**: installable as a PWA. "Download map" saves a route's map tiles to the device for use without a connection.
 
@@ -106,6 +107,21 @@ Each entry names either an English Wikipedia article (the article's main image i
 
 Photos aren't part of the offline install. They're cached the first time they're viewed, or when a route's map is downloaded.
 
+## Admin dashboard
+
+`/admin` is a password-protected dashboard for managing the content without a code change:
+
+- **Reports**: visitor reports, newest first. Apply a suggested map position in one click, delete a place reported as closed, or open it in the editor. Mark reports resolved or dismissed.
+- **Places**: edit, add or delete places, including moving them by dragging a pin, and upload a photo with its credit.
+- **Routes**: edit, add or delete routes and their photos (a route can only be deleted once it has no places).
+- **History**: every save is kept, and any earlier version can be restored.
+
+To turn it on, set `ADMIN_PASSWORD` (12+ characters) in the Vercel project's environment variables and connect a Blob store. Saves go live for visitors within about a minute, with no deploy.
+
+How it works: the routes and places are stored as one JSON document in Blob (`content/current.json`). The app starts from the copy bundled in `src/data/locations.ts`, so it renders instantly and offline, then loads `/api/content`. The audio guide, live insights and `npm run pregenerate-audio` all read the live copy, so places added in the dashboard get audio too. Every save is validated on the server with the same rules as the tests (`src/data/content.ts`), and saves use the Blob ETag so two admins can't overwrite each other's changes. The dashboard is a separate bundle (`admin.html`), so none of its code is sent to visitors.
+
+Uploaded photos are resized in the browser (960px wide, WebP) before upload, which also strips their metadata, including any GPS position a phone saved in them. They're stored in Blob and served from `/api/photo?id=<hash>` with year-long caching. An uploaded photo replaces the built-in one for that place or route, and removing it brings the built-in one back. Each needs a credit (who took it, and a license such as "Own photo" or "CC BY-SA 4.0"), shown on the photo and in **Photo credits**.
+
 ## Adding or editing places
 
-Every route, category and place is defined in `src/data/locations.ts`. Each place needs an `id`, a `routeId`, English and Arabic names and descriptions, a `category` and coordinates. The audio guide and live insights work for new places automatically. Run `npm test` afterwards: it checks that every place has a valid route and category, text in both languages, and coordinates inside Cairo.
+Once the admin dashboard has saved, the live content is the copy in Blob, and edits should go through the dashboard. `src/data/locations.ts` is the starting content and the fallback. Every route, category and place is defined there. Each place needs an `id`, a `routeId`, English and Arabic names and descriptions, a `category` and coordinates. The audio guide and live insights work for new places automatically. Run `npm test` afterwards: it checks that every place has a valid route and category, text in both languages, and coordinates inside Cairo.

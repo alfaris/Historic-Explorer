@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Download, CheckCircle, WifiOff } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { Location } from '../data/locations';
-import { placePhoto } from '../data/photos';
+import { photoForPlace } from '../data/photo-resolve';
 
 // Tile calculation
 const lng2tile = (lon: number, zoom: number) => {
@@ -70,7 +70,7 @@ export const OfflineManager: React.FC<OfflineManagerProps> = ({ locations, route
 
     // Add the route's photos
     for (const l of locations) {
-      const photo = placePhoto(l.id);
+      const photo = photoForPlace(l);
       if (photo) urlsToCache.push(photo.src);
     }
 

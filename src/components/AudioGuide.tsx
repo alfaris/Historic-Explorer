@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Volume2, Square, Loader2, Sparkles } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
+import { textHash } from '../lib/text-hash';
 
 interface AudioGuideProps {
   locationId: number;
@@ -13,11 +14,14 @@ type GuideAudio = { audio: ArrayBuffer } | { script: string };
 // Shared across mounts so a prefetch and a later click reuse one request.
 const guideCache = new Map<string, Promise<GuideAudio>>();
 
-const loadGuideAudio = (locationId: number, langCode: 'en' | 'ar') => {
-  const key = `${locationId}:${langCode}`;
+// The URL includes a hash of the narrated text, so editing a description in
+// the admin dashboard gives it a new URL instead of a stale cached recording.
+const loadGuideAudio = (locationId: number, langCode: 'en' | 'ar', text: string) => {
+  const version = textHash(text);
+  const key = `${locationId}:${langCode}:${version}`;
   let pending = guideCache.get(key);
   if (!pending) {
-    pending = fetch(`/api/audio-guide?id=${locationId}&lang=${langCode}`).then(async (res) => {
+    pending = fetch(`/api/audio-guide?id=${locationId}&lang=${langCode}&v=${version}`).then(async (res) => {
       if (!res.ok) throw new Error(`Audio guide request failed (${res.status})`);
       if (res.headers.get('Content-Type')?.includes('application/json')) {
         const { script } = await res.json();
@@ -50,7 +54,7 @@ export function AudioGuide({ locationId, text, langCode }: AudioGuideProps) {
   useEffect(() => {
     if (!text) return;
     const timer = setTimeout(() => {
-      loadGuideAudio(locationId, langCode).catch(() => {});
+      loadGuideAudio(locationId, langCode, text).catch(() => {});
     }, PREFETCH_DELAY_MS);
     return () => clearTimeout(timer);
   }, [locationId, langCode, text]);
@@ -111,7 +115,7 @@ export function AudioGuide({ locationId, text, langCode }: AudioGuideProps) {
     }
 
     try {
-      const result = await loadGuideAudio(locationId, langCode);
+      const result = await loadGuideAudio(locationId, langCode, text);
 
       if ('script' in result) {
         // Server could narrate the script but not voice it

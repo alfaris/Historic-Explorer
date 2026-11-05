@@ -1,3 +1,5 @@
+import type { Photo } from './photos';
+
 export type Category = 'monument' | 'coffee' | 'restaurant' | 'workshop' | 'stationary' | 'meeting';
 
 export interface Route {
@@ -11,6 +13,8 @@ export interface Route {
   highlightsAr: string[];
   distance: string;
   duration: string;
+  /** Uploaded in the admin dashboard; replaces the built-in photo. */
+  photo?: Photo;
 }
 
 export interface Location {
@@ -24,6 +28,8 @@ export interface Location {
   lat: number;
   lng: number;
   image?: string;
+  /** Uploaded in the admin dashboard; replaces the built-in photo. */
+  photo?: Photo;
 }
 
 export const routes: Route[] = [

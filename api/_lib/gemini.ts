@@ -1,8 +1,10 @@
 import { createHash } from 'node:crypto';
 import { GoogleGenAI, Modality, ThinkingLevel } from '@google/genai';
 import { BlobNotFoundError, get, head, put } from '@vercel/blob';
-import { locations, type Location } from '../../src/data/locations.js';
+import type { Location } from '../../src/data/locations.js';
+import { getContent } from './content.js';
 import { parseCanonicalQuery, rateLimit } from './guard.js';
+import { textHash } from '../../src/lib/text-hash.js';
 
 // Server-only: the key is read at request time and never shipped to the browser.
 let client: GoogleGenAI | null = null;
@@ -17,14 +19,18 @@ export type Lang = 'en' | 'ar';
 
 // Runs the rate limit and query checks shared by both endpoints. Returns the
 // place and language, or an error response to send back as is.
-const checkRequest = (request: Request): { location: Location; lang: Lang } | Response => {
+const checkRequest = async (
+  request: Request,
+  allowVersion = false,
+): Promise<{ location: Location; lang: Lang; version: string | null } | Response> => {
   const limited = rateLimit(request);
   if (limited) return limited;
-  const query = parseCanonicalQuery(new URL(request.url));
+  const query = parseCanonicalQuery(new URL(request.url), { allowVersion });
   if (query instanceof Response) return query;
-  const location = locations.find(l => l.id === query.id);
+  // The live content, so places added or edited in the admin dashboard work too.
+  const location = (await getContent()).places.find(l => l.id === query.id);
   if (!location) return json({ error: 'Unknown location' }, 404);
-  return { location, lang: query.lang };
+  return { location, lang: query.lang, version: query.version };
 };
 
 const json = (body: unknown, status = 200, cacheControl = 'no-store') =>
@@ -71,7 +77,7 @@ const AUDIO_VERSION = 'v1';
 // Without a connected store (e.g. local dev) audio is generated on every cold request.
 const hasBlobStore = () => Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID);
 
-// Keyed by content, so editing a description in locations.ts produces fresh audio.
+// Keyed by content, so editing a description (in locations.ts or the admin dashboard) produces fresh audio.
 const audioBlobPath = (text: string, lang: Lang) =>
   `audio-guide/${createHash('sha256').update(`${AUDIO_VERSION}|${lang}|${text}`).digest('hex').slice(0, 32)}.wav`;
 
@@ -238,18 +244,26 @@ const generateAudio = async (text: string, lang: Lang) => {
   }
 };
 
+/**
+ * The audio URL carries a hash of the description (?v=). Cache long only when
+ * it matches the current text: an edited description then gets a fresh URL,
+ * and old or made-up versions can't fill caches with the wrong audio.
+ */
+export const audioCacheControl = (version: string | null, text: string) => (version === textHash(text) ? AUDIO_CACHE : 'no-store');
+
 export async function handleAudioGuide(request: Request): Promise<Response> {
-  const checked = checkRequest(request);
+  const checked = await checkRequest(request, true);
   if (checked instanceof Response) return checked;
-  const { location, lang } = checked;
+  const { location, lang, version } = checked;
   const text = audioText(location, lang);
   if (!text) return json({ error: 'Unknown location' }, 404);
+  const cacheControl = audioCacheControl(version, text);
 
   const key = audioBlobPath(text, lang);
   try {
     const wav = await memoize(audioCache, key, () => loadOrGenerateAudio(text, lang, key), () => Infinity);
     return new Response(wav, {
-      headers: { 'Content-Type': 'audio/wav', 'Cache-Control': AUDIO_CACHE },
+      headers: { 'Content-Type': 'audio/wav', 'Cache-Control': cacheControl },
     });
   } catch (err) {
     // The client reads the script aloud with the browser voice instead.
@@ -280,7 +294,7 @@ const generateLiveInfo = async (location: Location, lang: Lang): Promise<LiveInf
 };
 
 export async function handleLiveInfo(request: Request): Promise<Response> {
-  const checked = checkRequest(request);
+  const checked = await checkRequest(request);
   if (checked instanceof Response) return checked;
   const { location, lang } = checked;
 

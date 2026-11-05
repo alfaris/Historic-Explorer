@@ -12,7 +12,7 @@
 import { existsSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import { audioStatus, generateAndStoreAudio, type Lang } from '../api/_lib/gemini.js';
-import { locations } from '../src/data/locations.js';
+import { getContent } from '../api/_lib/content.js';
 
 const { values: args } = parseArgs({
   options: {
@@ -49,6 +49,8 @@ const counts = { stored: 0, generated: 0, missing: 0, failed: 0, noText: 0 };
 const failures: string[] = [];
 let generatedAny = false;
 
+// The live content from Blob (or the bundled data if nothing has been saved).
+const { places: locations } = await getContent();
 for (const location of locations) {
   for (const lang of langs) {
     const name = label(location.nameEn, lang);

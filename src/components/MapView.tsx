@@ -5,12 +5,13 @@ import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import L from 'leaflet';
+import '../lib/leaflet-fixes';
 import { MapPin, ZoomIn, ZoomOut, Layers, Compass } from 'lucide-react';
 import { Location, categories } from '../data/locations';
 import { useLanguage } from '../i18n/LanguageContext';
 import { HistoricPlaceholder } from './HistoricPlaceholder';
 import { PlacePhoto } from './PlacePhoto';
-import { placePhoto } from '../data/photos';
+import { photoForPlace } from '../data/photo-resolve';
 import { useVisited } from '../lib/visited';
 
 // Fix for default marker icons in React Leaflet
@@ -20,20 +21,6 @@ L.Icon.Default.mergeOptions({
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
-
-// Leaflet 1.9.4 bug: an animated zoom (flyTo, fitBounds, zoom buttons) ends
-// via setTimeout(_onZoomTransitionEnd, 250), which map.remove() doesn't cancel.
-// If the map is removed mid-zoom (switching back to the list), the callback
-// runs on a removed map and throws "Cannot read properties of undefined
-// (reading '_leaflet_pos')". Skip it once the map's panes are gone.
-const MapPrototype = L.Map.prototype as unknown as {
-  _onZoomTransitionEnd: (this: { _mapPane?: HTMLElement }) => void;
-};
-const onZoomTransitionEnd = MapPrototype._onZoomTransitionEnd;
-MapPrototype._onZoomTransitionEnd = function () {
-  if (!this._mapPane) return;
-  onZoomTransitionEnd.call(this);
-};
 
 interface MapViewProps {
   locations: Location[];
@@ -216,7 +203,7 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
           <Tooltip direction="top" offset={[0, -20]} opacity={1} className="custom-tooltip">
             <div className="flex flex-col items-center gap-3 p-3 bg-white rounded-2xl shadow-2xl border border-sand/50 max-w-[160px]">
               <PlacePhoto
-                photo={placePhoto(loc.id)}
+                photo={photoForPlace(loc)}
                 alt={isArabic ? loc.nameAr : loc.nameEn}
                 className="w-full h-12 rounded-xl shadow-md"
                 fallback={
@@ -237,7 +224,7 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
           <Popup className="custom-popup">
             <div className="p-4 bg-[#fdfcf8] min-w-[240px]">
               <PlacePhoto
-                photo={placePhoto(loc.id)}
+                photo={photoForPlace(loc)}
                 alt={isArabic ? loc.nameAr : loc.nameEn}
                 className="w-full h-40 rounded-xl mb-4 shadow-sm border border-sand/30"
                 showCredit
