@@ -19,6 +19,8 @@ import { RouteDownload } from './RouteDownload';
 import { NextStop, StopNumber } from './WalkInfo';
 import { walkPlan } from '../lib/walk';
 import { track } from '../lib/track';
+import { matchScore, searchPlaces } from '../lib/search';
+import { OtherRouteResults } from './OtherRouteResults';
 import { askForCompass } from '../lib/useWalkSensors';
 import { LazyBoundary } from './LazyBoundary';
 
@@ -128,12 +130,18 @@ export const MainContent: React.FC = () => {
   const filteredLocations = useMemo(() => {
     return locations.filter(loc => {
       const matchesRoute = loc.routeId === selectedRoute;
-      const matchesSearch = 
-        loc.nameEn.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        loc.nameAr.includes(searchQuery);
+      // Forgiving match (Arabic letter variants, vowel marks, punctuation); see lib/search.
+      const matchesSearch = !searchQuery.trim() || matchScore(loc, searchQuery) > 0;
       const matchesCategory = selectedCategory === 'all' || loc.category === selectedCategory;
       return matchesRoute && matchesSearch && matchesCategory;
     });
+  }, [searchQuery, selectedCategory, selectedRoute, locations]);
+
+  // While searching, matches on the other routes too, best first.
+  const otherRouteMatches = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const others = locations.filter(l => l.routeId !== selectedRoute && (selectedCategory === 'all' || l.category === selectedCategory));
+    return searchPlaces(others, searchQuery);
   }, [searchQuery, selectedCategory, selectedRoute, locations]);
 
   const toggleLanguage = () => {
@@ -603,6 +611,11 @@ export const MainContent: React.FC = () => {
                 </motion.div>
               )}
             </AnimatePresence>
+            {otherRouteMatches.length > 0 && (
+              <div className="mt-6">
+                <OtherRouteResults places={otherRouteMatches} routes={routes} isArabic={isArabic} onOpen={openPlace} />
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-12">
@@ -735,7 +748,7 @@ export const MainContent: React.FC = () => {
               })}
             </AnimatePresence>
             
-            {filteredLocations.length === 0 && (
+            {filteredLocations.length === 0 && otherRouteMatches.length === 0 && (
               <div className="text-center py-32 bg-white rounded-[3rem] border border-dashed border-sand">
                 <Search className="w-12 h-12 text-stone-200 mx-auto mb-6" />
                 <h3 className={`text-3xl text-stone-400 ${headingFontClass}`}>
@@ -743,6 +756,12 @@ export const MainContent: React.FC = () => {
                 </h3>
               </div>
             )}
+            {filteredLocations.length === 0 && otherRouteMatches.length > 0 && (
+              <p className="text-center text-stone-500">
+                {isArabic ? 'لا نتائج في هذا المسار، لكن وجدنا أماكن في مسارات أخرى:' : 'Nothing on this route, but there are matches on other routes:'}
+              </p>
+            )}
+            <OtherRouteResults places={otherRouteMatches} routes={routes} isArabic={isArabic} onOpen={openPlace} />
           </div>
         )}
 
