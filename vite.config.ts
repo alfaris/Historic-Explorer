@@ -29,6 +29,7 @@ const devApi = (): Plugin => ({
         '/api/content': ['/api/content.ts', 'default'],
         '/api/report': ['/api/_lib/reports.ts', 'handleReport'],
         '/api/stats': ['/api/_lib/stats.ts', 'handleStats'],
+        '/api/share': ['/api/_lib/share.ts', 'handleShare'],
         '/api/admin': ['/api/_lib/admin.ts', 'handleAdmin'],
         '/api/photo': ['/api/_lib/photos.ts', 'handlePhotoServe'],
       };

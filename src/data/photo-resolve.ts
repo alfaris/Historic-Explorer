@@ -1,7 +1,7 @@
 // Which photo to show: one uploaded in the admin dashboard (stored on the
 // place or route) takes precedence over the built-in photo from photos.ts.
 
-import { photos, type Photo } from './photos';
+import { photos, type Photo } from './photos.js';
 import type { Location, Route } from './locations';
 
 export const photoForPlace = (place: Pick<Location, 'id' | 'photo'>): Photo | undefined =>

@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/r/:route",
+      "destination": "/api/share?route=:route"
+    },
+    {
       "source": "/admin",
       "destination": "/admin.html"
     }
@@ -29,5 +33,10 @@
       "path": "/api/digest",
       "schedule": "0 6 * * *"
     }
-  ]
+  ],
+  "functions": {
+    "api/share.ts": {
+      "includeFiles": "dist/index.html"
+    }
+  }
 }
