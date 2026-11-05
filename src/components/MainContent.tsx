@@ -10,7 +10,7 @@ import { RouteProgress, VisitedBadge, VisitedToggle } from './Visited';
 import { NearMeOverlay, NearMeView, useNearMe } from './NearMe';
 import { ReportProblem } from './ReportProblem';
 import { photoForPlace, photoForRoute } from '../data/photo-resolve';
-import { Search, MapPin, Globe, Navigation, Map, List, ChevronRight, Cake, Coffee, Utensils, Hammer, BookOpen, Users, Landmark, ArrowUp, Share2, Clock, Route as RouteIcon, Star, LocateFixed } from 'lucide-react';
+import { Search, MapPin, Globe, Navigation, Map, List, ChevronRight, Cake, Coffee, Utensils, Hammer, BookOpen, Users, Landmark, ArrowUp, Share2, Clock, Route as RouteIcon, Star, LocateFixed, Footprints } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { LiveLocationInfo } from './LiveLocationInfo';
 import { AudioGuide } from './AudioGuide';
@@ -19,6 +19,7 @@ import { RouteDownload } from './RouteDownload';
 import { NextStop, StopNumber } from './WalkInfo';
 import { walkPlan } from '../lib/walk';
 import { track } from '../lib/track';
+import { askForCompass } from '../lib/useWalkSensors';
 import { LazyBoundary } from './LazyBoundary';
 
 // The map (Leaflet, marker clustering and their CSS) is the largest part of the
@@ -26,6 +27,8 @@ import { LazyBoundary } from './LazyBoundary';
 // or straight away if the map is opened first.
 const loadMapView = () => import('./MapView');
 const MapView = lazy(() => loadMapView().then(m => ({ default: m.MapView })));
+// Loaded when a walk starts (the service worker precaches it, so it works offline).
+const WalkMode = lazy(() => import('./WalkMode').then(m => ({ default: m.WalkMode })));
 
 const MapFallback = () => (
   <div className="w-full h-full bg-chalk animate-pulse flex items-center justify-center">
@@ -162,6 +165,22 @@ export const MainContent: React.FC = () => {
 
   // Near me keeps watching location across all three tabs until stopped.
   const nearMe = useNearMe(isArabic, locations);
+  // "Start the walk": open the guided view, turning on location (and, on iOS,
+  // asking for the compass) from the tap. Location turned on for the walk is
+  // turned off again when it ends.
+  const [walking, setWalking] = useState(false);
+  const walkStartedLocation = React.useRef(false);
+  const startWalk = () => {
+    askForCompass();
+    walkStartedLocation.current = !nearMe.on;
+    if (!nearMe.on) nearMe.start();
+    setWalking(true);
+  };
+  const endWalk = () => {
+    setWalking(false);
+    if (walkStartedLocation.current) nearMe.stop();
+    walkStartedLocation.current = false;
+  };
 
   // Open a place from "Near me" (possibly on another route): show it expanded
   // in the list and scroll to it.
@@ -327,6 +346,16 @@ export const MainContent: React.FC = () => {
             </div>
 
             <RouteProgress placeIds={routePlaces.map(l => l.id)} isArabic={isArabic} />
+
+            {plan.size > 0 && (
+              <button
+                onClick={startWalk}
+                className="mb-4 flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-nile text-white text-xs font-bold uppercase tracking-widest shadow-lg hover:bg-nile-light transition-colors"
+              >
+                <Footprints className="w-4 h-4" />
+                {isArabic ? 'ابدأ الجولة' : 'Start the walk'}
+              </button>
+            )}
 
             <RouteDownload route={currentRouteData} places={routePlaces} />
           </motion.div>
@@ -716,8 +745,13 @@ export const MainContent: React.FC = () => {
         <PhotoCredits isArabic={isArabic} />
       </main>
 
-      {viewMode !== 'near' && (
+      {viewMode !== 'near' && !walking && (
         <NearMeOverlay nearMe={nearMe} isArabic={isArabic} onOpenPlace={openPlace} onShowTab={() => setViewMode('near')} />
+      )}
+      {walking && (
+        <LazyBoundary loading={null} failed={null}>
+          <WalkMode route={currentRouteData} places={locations} nearMe={nearMe} isArabic={isArabic} onClose={endWalk} />
+        </LazyBoundary>
       )}
 
       {/* Floating Scroll Top */}

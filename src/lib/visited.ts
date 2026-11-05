@@ -86,6 +86,13 @@ export function toggleVisited(id: number) {
   update(next);
 }
 
+/** Marks a place visited (no change if it already is). */
+export function markVisited(id: number) {
+  const now = latest();
+  if (now.has(id)) return;
+  update(new Set([...now, id]));
+}
+
 export function clearVisited(ids: number[]) {
   const next = new Set(latest());
   ids.forEach(id => next.delete(id));
