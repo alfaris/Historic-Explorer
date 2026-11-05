@@ -8,6 +8,7 @@
 import { categories, locations, routes, type Category, type Location, type Route } from './locations.js';
 import type { Photo } from './photos';
 import { parseDistanceKm, parseHours, routeText } from '../lib/route-format.js';
+import { hoursProblems, normalizeHours } from '../lib/opening-hours.js';
 
 export type { Category, Location, Route };
 
@@ -25,7 +26,7 @@ export const CATEGORY_IDS = categories.map(c => c.id) as Category[];
 // Roughly Greater Cairo. Generous, but catches swapped lat/lng and typos.
 export const CAIRO_BOUNDS = { minLat: 29.9, maxLat: 30.15, minLng: 31.1, maxLng: 31.4 };
 
-const LIMITS = { name: 120, description: 2000, highlights: 8 };
+const LIMITS = { name: 120, description: 2000, highlights: 8, fee: 120 };
 
 const hasArabic = (value: string) => /[؀-ۿ]/.test(value);
 const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
@@ -115,6 +116,10 @@ export function normalizeContent(input: unknown): Content {
       descriptionAr: str(p?.descriptionAr),
       ...(str(p?.nameFr) ? { nameFr: str(p.nameFr) } : {}),
       ...(str(p?.descriptionFr) ? { descriptionFr: str(p.descriptionFr) } : {}),
+      ...(normalizeHours(p?.hours) ? { hours: normalizeHours(p?.hours) } : {}),
+      ...(str(p?.feeEn) ? { feeEn: str(p.feeEn) } : {}),
+      ...(str(p?.feeAr) ? { feeAr: str(p.feeAr) } : {}),
+      ...(str(p?.feeFr) ? { feeFr: str(p.feeFr) } : {}),
       lat: Number(p?.lat),
       lng: Number(p?.lng),
       ...(normalizePhoto(p?.photo) ? { photo: normalizePhoto(p?.photo) } : {}),
@@ -170,9 +175,10 @@ export function validateContent(content: Content): string[] {
     // The audio guide narrates these, so both languages need one.
     if (!p.descriptionEn) problems.push(`${label}: English description is empty.`);
     if (!hasArabic(p.descriptionAr ?? '')) problems.push(`${label}: Arabic description is missing.`);
-    for (const [field, max] of [['nameEn', LIMITS.name], ['nameAr', LIMITS.name], ['descriptionEn', LIMITS.description], ['descriptionAr', LIMITS.description], ['nameFr', LIMITS.name], ['descriptionFr', LIMITS.description]] as const) {
+    for (const [field, max] of [['nameEn', LIMITS.name], ['nameAr', LIMITS.name], ['descriptionEn', LIMITS.description], ['descriptionAr', LIMITS.description], ['nameFr', LIMITS.name], ['descriptionFr', LIMITS.description], ['feeEn', LIMITS.fee], ['feeAr', LIMITS.fee], ['feeFr', LIMITS.fee]] as const) {
       if ((p[field] ?? '').length > max) problems.push(`${label}: ${field} is longer than ${max} characters.`);
     }
+    if (p.hours) problems.push(...hoursProblems(p.hours).map(problem => `${label}: ${problem}`));
     problems.push(...photoProblems(label, p.photo));
     const b = CAIRO_BOUNDS;
     if (!(p.lat >= b.minLat && p.lat <= b.maxLat && p.lng >= b.minLng && p.lng <= b.maxLng)) {

@@ -9,8 +9,8 @@ import type { Location } from '../data/content';
 import { api } from './api';
 import { Button } from './ui';
 
-/** Copy of `obj` with `key` set, or removed when the value is empty. */
-export function withOptional<T extends object>(obj: T, key: keyof T, value: string | string[] | undefined): T {
+/** Copy of `obj` with `key` set, or removed when the value is empty ('', [], undefined). */
+export function withOptional<T extends object, K extends keyof T>(obj: T, key: K, value: T[K] | string | undefined): T {
   const next = { ...obj };
   if (Array.isArray(value) ? value.length : value) (next as Record<keyof T, unknown>)[key] = value;
   else delete next[key];

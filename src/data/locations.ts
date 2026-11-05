@@ -1,4 +1,5 @@
 import type { Photo } from './photos';
+import type { OpeningHours } from '../lib/opening-hours';
 
 export type Category = 'monument' | 'coffee' | 'restaurant' | 'workshop' | 'stationary' | 'meeting';
 
@@ -40,6 +41,12 @@ export interface Location {
   descriptionFr?: string;
   lat: number;
   lng: number;
+  /** Weekly opening hours, in Cairo time. Optional: without them the app shows nothing rather than a guess. */
+  hours?: OpeningHours;
+  /** Entry fee as written for visitors, e.g. "EGP 60 · students EGP 30". French and Arabic fall back to English. */
+  feeEn?: string;
+  feeAr?: string;
+  feeFr?: string;
   image?: string;
   /** Uploaded in the admin dashboard; replaces the built-in photo. */
   photo?: Photo;

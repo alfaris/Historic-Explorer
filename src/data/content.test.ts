@@ -23,6 +23,9 @@ describe('validateContent', () => {
     ['missing distance', c => { (c.routes[0] as any).distanceKm = null; (c.routes[0] as any).distance = ''; }, /distance must be/],
     ['walking time backwards', c => { c.routes[0].hoursMin = 4; c.routes[0].hoursMax = 2; }, /walking time must be/],
     ['walking time zero', c => { c.routes[0].hoursMin = 0; }, /walking time must be/],
+    ['overlapping opening hours', c => { c.places[0].hours = { days: Array.from({ length: 7 }, () => [{ open: '09:00', close: '13:00' }, { open: '12:00', close: '17:00' }]) }; }, /time ranges overlap/],
+    ['bad opening time', c => { c.places[0].hours = { days: Array.from({ length: 7 }, () => [{ open: '9am', close: '17:00' }]) }; }, /HH:MM/],
+    ['fee too long', c => { c.places[0].feeEn = 'x'.repeat(121); }, /feeEn is longer than 120/],
     ['French place description too long', c => { c.places[0].descriptionFr = 'x'.repeat(2001); }, /descriptionFr is longer than 2000/],
     ['French route name too long', c => { c.routes[0].nameFr = 'x'.repeat(121); }, /nameFr is longer than 120/],
     ['too many French highlights', c => { c.routes[0].highlightsFr = Array(9).fill('x'); }, /at most 8 French highlights/],
@@ -76,6 +79,17 @@ describe('normalizeContent', () => {
       const n = normalizeContent({ routes: [r], places: [] }).routes[0];
       expect([n.distanceKm, n.hoursMin, n.hoursMax, n.distance, n.duration]).toEqual([r.distanceKm, r.hoursMin, r.hoursMax, r.distance, r.duration]);
     }
+  });
+
+  it('keeps opening hours and fees, and leaves empty ones out', () => {
+    const days = Array.from({ length: 7 }, (_, i) => (i === 5 ? [] : [{ open: '09:00', close: '17:00' }]));
+    const c = normalizeContent({ routes: [bundledContent.routes[0]], places: [{ ...bundledContent.places[0], hours: { days, noteEn: ' Closed Fridays ' }, feeEn: ' EGP 60 ', feeFr: '' }] });
+    expect(c.places[0].hours).toEqual({ days, noteEn: 'Closed Fridays' });
+    expect(c.places[0].feeEn).toBe('EGP 60');
+    expect(c.places[0]).not.toHaveProperty('feeFr');
+    expect(validateContent({ ...c, places: [{ ...c.places[0], routeId: c.routes[0].id }] }).filter(p => /hours|fee/.test(p))).toEqual([]);
+    const none = normalizeContent({ routes: [], places: [{ ...bundledContent.places[0], hours: { days: 'every day' } }] });
+    expect(none.places[0]).not.toHaveProperty('hours');
   });
 
   it('copes with garbage', () => {

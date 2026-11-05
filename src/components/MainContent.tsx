@@ -21,6 +21,7 @@ import { walkPlan } from '../lib/walk';
 import { track } from '../lib/track';
 import { matchScore, searchPlaces } from '../lib/search';
 import { formatDistance, formatDuration } from '../lib/route-format';
+import { HoursBadge, PlaceHours } from './PlaceHours';
 import { OtherRouteResults } from './OtherRouteResults';
 import { ShareRoute } from './ShareRoute';
 import { isRouteLink, routeFromLocation } from '../lib/share';
@@ -580,6 +581,7 @@ export const MainContent: React.FC = () => {
                                   {(category ? nameOf(category) : undefined)}
                                 </p>
                                 {plan.get(loc.id) && <div className="mt-2"><StopNumber info={plan.get(loc.id)!} isArabic={isArabic} /></div>}
+                                <HoursBadge place={loc} className="mt-2" />
                               </div>
                               <button 
                                 onClick={() => setSelectedLocation(null)}
@@ -605,6 +607,7 @@ export const MainContent: React.FC = () => {
                               />
                             </div>
                             
+                            <PlaceHours place={loc} />
                             <LiveLocationInfo locationId={loc.id} />
                             
                             <div className="flex flex-col sm:flex-row gap-4 mt-10">
@@ -703,6 +706,7 @@ export const MainContent: React.FC = () => {
                                 {nameOf(loc)}
                               </h3>
                               {plan.get(loc.id) && <div className="mt-2"><StopNumber info={plan.get(loc.id)!} isArabic={isArabic} /></div>}
+                                <HoursBadge place={loc} className="mt-2" />
                             </div>
                             {plan.get(loc.id) && (
                               <div className="text-3xl font-serif text-gold-soft italic" aria-hidden="true">
@@ -736,6 +740,7 @@ export const MainContent: React.FC = () => {
                                     />
                                   </div>
                                   
+                                  <PlaceHours place={loc} />
                                   <LiveLocationInfo locationId={loc.id} />
 
                                   <div className="flex flex-col sm:flex-row gap-4 mt-8">

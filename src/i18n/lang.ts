@@ -54,3 +54,13 @@ export function initialLang(saved: string | null, browser: string): Lang {
  */
 export const fallbackLang = (french: string | string[] | undefined) =>
   current === 'fr' && !(Array.isArray(french) ? french.length : french) ? 'en' : undefined;
+
+/**
+ * Optional text kept in three languages (e.g. an entry fee). Arabic and French
+ * fall back to English; `lang` is "en" when the fallback is showing, for screen readers.
+ */
+export function optionalText(en: string | undefined, ar: string | undefined, fr: string | undefined, lang: Lang = current): { text: string; lang: 'en' | undefined } {
+  const own = lang === 'ar' ? ar : lang === 'fr' ? fr : en;
+  if (own) return { text: own, lang: undefined };
+  return { text: en ?? '', lang: lang === 'en' || !en ? undefined : 'en' };
+}
