@@ -1,6 +1,7 @@
-import React, { useState, lazy, Suspense } from 'react';
+import React, { useState, lazy } from 'react';
 import { Sparkles, Map, ExternalLink } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
+import { LazyBoundary } from './LazyBoundary';
 
 // The Markdown renderer is only needed once insights arrive. Loading starts when
 // they're requested, alongside the API call, so it's normally ready in time.
@@ -102,9 +103,13 @@ export const LiveLocationInfo: React.FC<LiveLocationInfoProps> = ({ locationId }
       {info && (
         <div className="bg-chalk/50 rounded-[2rem] p-8 border border-sand/30 shadow-inner">
           <div className="prose prose-stone prose-sm max-w-none text-stone-600 font-serif leading-relaxed italic">
-            <Suspense fallback={<p className="whitespace-pre-line">{info}</p>}>
+            {/* Until the renderer arrives, or if it can't be downloaded, show plain text. */}
+            <LazyBoundary
+              loading={<p className="whitespace-pre-line">{info}</p>}
+              failed={<p className="whitespace-pre-line">{info}</p>}
+            >
               <Markdown>{info}</Markdown>
-            </Suspense>
+            </LazyBoundary>
           </div>
           
           {links.length > 0 && (

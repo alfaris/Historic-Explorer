@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useMemo, useEffect, lazy } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { locations, categories, Category, Location, routes } from '../data/locations';
 import { RoutePlaceholder } from './RoutePlaceholder';
@@ -9,6 +9,7 @@ import { LiveLocationInfo } from './LiveLocationInfo';
 import { AudioGuide } from './AudioGuide';
 import { Logo } from './Logo';
 import { OfflineManager } from './OfflineManager';
+import { LazyBoundary } from './LazyBoundary';
 
 // The map (Leaflet, marker clustering and their CSS) is the largest part of the
 // app, so it's loaded only when needed: in the background once the page is idle,
@@ -346,13 +347,33 @@ export const MainContent: React.FC = () => {
         {viewMode === 'map' ? (
           <div className="mb-8">
             <div className="rounded-3xl overflow-hidden shadow-2xl border border-sand h-[600px] md:h-[75vh] min-h-[600px]">
-              <Suspense fallback={<MapFallback />}>
+              <LazyBoundary
+                loading={<MapFallback />}
+                failed={
+                  <div className="w-full h-full bg-chalk flex flex-col items-center justify-center gap-4 p-8 text-center">
+                    <Map className="w-10 h-10 text-stone-300" />
+                    <p className="text-sm text-stone-500 max-w-xs">
+                      {isArabic
+                        ? 'تعذّر تحميل الخريطة. تحقق من اتصالك بالإنترنت.'
+                        : "The map couldn't load. Check your connection."}
+                    </p>
+                    <button
+                      // Browsers remember a failed module download, so retrying
+                      // needs a reload (as Vite recommends for failed chunks).
+                      onClick={() => window.location.reload()}
+                      className="text-[10px] font-bold bg-nile text-white px-5 py-2 rounded-xl hover:bg-nile-light transition-all duration-300 uppercase tracking-wider"
+                    >
+                      {isArabic ? 'حاول مرة أخرى' : 'Try again'}
+                    </button>
+                  </div>
+                }
+              >
                 <MapView 
                   locations={filteredLocations} 
                   selectedLocation={selectedLocation} 
                   onSelectLocation={setSelectedLocation} 
                 />
-              </Suspense>
+              </LazyBoundary>
             </div>
             
             <AnimatePresence>
