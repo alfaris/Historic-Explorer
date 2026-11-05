@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Volume2, Square, Loader2, Sparkles } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { textHash } from '../lib/text-hash';
+import { audioGuideUrl } from '../lib/offline-pack';
 
 interface AudioGuideProps {
   locationId: number;
@@ -21,7 +22,7 @@ const loadGuideAudio = (locationId: number, langCode: 'en' | 'ar', text: string)
   const key = `${locationId}:${langCode}:${version}`;
   let pending = guideCache.get(key);
   if (!pending) {
-    pending = fetch(`/api/audio-guide?id=${locationId}&lang=${langCode}&v=${version}`).then(async (res) => {
+    pending = fetch(audioGuideUrl(locationId, langCode, text)).then(async (res) => {
       if (!res.ok) throw new Error(`Audio guide request failed (${res.status})`);
       if (res.headers.get('Content-Type')?.includes('application/json')) {
         const { script } = await res.json();
