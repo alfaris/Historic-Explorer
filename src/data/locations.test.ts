@@ -62,4 +62,13 @@ describe('places', () => {
     expect(place.lng, 'longitude outside Cairo').toBeGreaterThanOrEqual(CAIRO.minLng);
     expect(place.lng, 'longitude outside Cairo').toBeLessThanOrEqual(CAIRO.maxLng);
   });
+
+  // Two places at exactly the same spot usually means coordinates were copied
+  // from a neighbouring entry. It also stacks their map markers into one
+  // cluster and makes "Near me" treat them as the same place.
+  it('do not share exact coordinates', () => {
+    const key = (l: { lat: number; lng: number }) => `${l.lat},${l.lng}`;
+    const dupes = duplicates(locations.map(key));
+    expect(locations.filter(l => dupes.includes(key(l))).map(l => `${l.id} ${l.nameEn}`)).toEqual([]);
+  });
 });
