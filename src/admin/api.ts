@@ -69,6 +69,8 @@ export const api = {
     if (!res.ok) throw new ApiError(data.error || `Upload failed (${res.status})`, res.status);
     return data as { src: string; width: number; height: number };
   },
+  digest: () => call<{ configured: boolean; to: string | null }>('digest'),
+  sendTestEmail: () => call<{ ok: true }>('digest-test', { method: 'POST' }),
   stats: (days: 7 | 30 | 90) => call<StatsResponse>('stats', {}, `&days=${days}`),
   audioStatus: (placeId: number) => call<{ en: AudioState; ar: AudioState }>('audio', {}, `&id=${placeId}`),
   generateAudio: (placeId: number, lang: 'en' | 'ar', version: string) =>

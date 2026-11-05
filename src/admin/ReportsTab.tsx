@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { Mail, RefreshCw } from 'lucide-react';
 import type { Content } from '../data/content';
 import { distanceMeters, formatDistance } from '../lib/geo';
 import { api, ApiError, type Report } from './api';
@@ -80,6 +80,7 @@ export function ReportsTab({ content, save, onEditPlace, onSignedOut }: {
         </button>
       </div>
 
+      <DigestSettings />
       {error && <ErrorBox message={error} />}
       {!reports ? (
         <p className="text-stone-500">Loading reports…</p>
@@ -216,5 +217,48 @@ function ReportCard({ report, content, save, setStatus, onEditPlace }: {
         )}
       </div>
     </li>
+  );
+}
+
+/** Whether the daily email of new reports is on, and a way to test it. */
+function DigestSettings() {
+  const [state, setState] = useState<{ configured: boolean; to: string | null } | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    api.digest().then(setState, () => setState(null));
+  }, []);
+  if (!state) return null;
+  const test = async () => {
+    setBusy(true);
+    setMessage(null);
+    try {
+      await api.sendTestEmail();
+      setMessage(`Test email sent to ${state.to}.`);
+    } catch (err) {
+      setMessage((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="flex flex-wrap items-center gap-3 bg-white rounded-2xl border border-sand/50 px-4 py-3 mb-4 text-xs text-stone-500">
+      <Mail className="w-4 h-4 text-gold shrink-0" />
+      {state.configured ? (
+        <>
+          <span className="flex-1 min-w-0">
+            Daily email of new reports: <strong className="text-nile">on</strong>, to {state.to} (around 8 am Cairo time, only on days with new reports).
+          </span>
+          <Button variant="secondary" className="!py-1.5 !px-3" onClick={test} disabled={busy}>
+            {busy ? 'Sending…' : 'Send test email'}
+          </Button>
+        </>
+      ) : (
+        <span className="flex-1 min-w-0">
+          Daily email of new reports: <strong>off</strong>. To turn it on, set <code>RESEND_API_KEY</code>, <code>ADMIN_EMAIL</code> and <code>CRON_SECRET</code> in Vercel (see the README).
+        </span>
+      )}
+      {message && <span className="w-full text-stone-600" role="status">{message}</span>}
+    </div>
   );
 }

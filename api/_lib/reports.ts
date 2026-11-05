@@ -100,6 +100,19 @@ async function readReport(pathname: string): Promise<Report | null> {
   }
 }
 
+/**
+ * Open reports created after `since` (an ISO time), newest first, at most
+ * `limit` of them, plus how many there are in all. Used by the daily email.
+ */
+export async function openReportsSince(since: string, limit = 50): Promise<{ reports: Report[]; total: number }> {
+  const after = since.replace(/[:.]/g, '-');
+  // Compare only the timestamp part of the file name (before the _id), so the
+  // report the last email ended on doesn't count as newer than itself.
+  const paths = (await listReportPaths()).filter(p => statusOf(p) === 'open' && fileName(p).split('_')[0] > after);
+  const reports = (await Promise.all(paths.slice(0, limit).map(readReport))).filter((r): r is Report => !!r);
+  return { reports, total: paths.length };
+}
+
 /** POST /api/report: a visitor reports a problem with a place. */
 export async function handleReport(request: Request): Promise<Response> {
   if (request.method !== 'POST') return json({ error: 'Use POST.' }, 405);
