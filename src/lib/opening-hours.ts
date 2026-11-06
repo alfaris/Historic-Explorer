@@ -31,14 +31,16 @@ export const isTime = (s: unknown): s is string => typeof s === 'string' && TIME
 export const toMinutes = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
 
 /** Day of week (0 = Sunday) and minutes since midnight, in Cairo. */
+let cairoFormat: Intl.DateTimeFormat | undefined;
 export function cairoTime(at: Date): { day: number; minutes: number } {
-  const parts = new Intl.DateTimeFormat('en-US', {
+  cairoFormat ??= new Intl.DateTimeFormat('en-US', {
     timeZone: CAIRO_TIME_ZONE,
     weekday: 'short',
     hour: '2-digit',
     minute: '2-digit',
     hourCycle: 'h23',
-  }).formatToParts(at);
+  });
+  const parts = cairoFormat.formatToParts(at);
   const get = (type: string) => parts.find(p => p.type === type)?.value ?? '';
   const day = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(get('weekday'));
   return { day, minutes: Number(get('hour')) * 60 + Number(get('minute')) };

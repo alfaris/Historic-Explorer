@@ -47,16 +47,24 @@ export type PrayerStatus =
 
 const MIN = 60_000;
 
+export type PrayerPause = Prayer & { start: Date; end: Date };
+
+/** The prayers from the day before `at` to the day after, each with the visiting pause around it. */
+export function pausesAround(at: Date): PrayerPause[] {
+  return [...prayersOn(at, -1), ...prayersOn(at), ...prayersOn(at, 1)].map(p => ({
+    ...p,
+    start: new Date(p.at.getTime() - LEAD_MINUTES * MIN),
+    end: new Date(p.at.getTime() + PAUSE_MINUTES[p.name] * MIN),
+  }));
+}
+
 /** Whether visits are paused for prayer at `at` (and until when), or a prayer is coming up soon. */
 export function prayerStatus(at: Date): PrayerStatus | null {
-  const prayers = [...prayersOn(at, -1), ...prayersOn(at), ...prayersOn(at, 1)];
+  const prayers = pausesAround(at);
   const now = at.getTime();
-  for (const p of prayers) {
-    const start = p.at.getTime() - LEAD_MINUTES * MIN;
-    const end = p.at.getTime() + PAUSE_MINUTES[p.name] * MIN;
-    if (now >= start && now < end) return { state: 'now', name: p.name, until: new Date(end) };
-  }
-  const next = prayers.find(p => p.at.getTime() - LEAD_MINUTES * MIN > now);
+  const pause = prayers.find(p => now >= p.start.getTime() && now < p.end.getTime());
+  if (pause) return { state: 'now', name: pause.name, until: pause.end };
+  const next = prayers.find(p => p.start.getTime() > now);
   if (next && next.at.getTime() - now <= SOON_MINUTES * MIN) return { state: 'soon', name: next.name, at: next.at };
   return null;
 }
