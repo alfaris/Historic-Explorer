@@ -14,6 +14,7 @@ import { HistoricPlaceholder } from './HistoricPlaceholder';
 import { PlacePhoto } from './PlacePhoto';
 import { photoForPlace } from '../data/photo-resolve';
 import { useVisited } from '../lib/visited';
+import { useSaved } from '../lib/saved';
 
 import { L as T, nameOf } from '../i18n/lang';
 // Fix for default marker icons in React Leaflet
@@ -175,12 +176,17 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
   }, [locations]);
 
   const visited = useVisited();
+  const saved = useSaved();
 
   const markers = React.useMemo(() => {
     return locations.map((loc, idx) => {
       const category = categories.find(c => c.id === loc.category);
       const isSelected = selectedLocation === loc.id;
       const isVisited = visited.has(loc.id);
+      // Saved places carry a small gold bookmark on the marker.
+      const savedBadge = saved.has(loc.id)
+        ? '<span class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-gold text-ink flex items-center justify-center shadow border border-white"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg></span>'
+        : '';
       // Visited places show a check instead of the pulsing dot.
       const centre = isVisited
         ? '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>'
@@ -193,6 +199,7 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
                 <div class="w-10 h-10 rounded-full flex items-center justify-center text-white shadow-xl border-2 ${isVisited ? 'border-gold' : 'border-white'} ${category?.color || 'bg-nile'} transition-all duration-500 ${isSelected ? 'marker-selected scale-125 ring-4 ring-gold/30 ring-offset-2' : 'hover:scale-125'}">
                   ${centre}
                 </div>
+                ${savedBadge}
                </div>`,
         iconSize: [40, 40],
         iconAnchor: [20, 20],
@@ -263,7 +270,7 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
         </Marker>
       );
     });
-  }, [locations, isArabic, language, onSelectLocation, selectedLocation, visited]);
+  }, [locations, isArabic, language, onSelectLocation, selectedLocation, visited, saved]);
 
   const userIcon = L.divIcon({
     className: 'user-location-marker',

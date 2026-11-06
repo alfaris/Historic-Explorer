@@ -28,6 +28,7 @@ import { HoursBadge, PlaceHours } from './PlaceHours';
 import { PrayerNotice } from './PrayerTimes';
 import { VisitorTips } from './VisitorTips';
 import { GlossaryText } from './GlossaryText';
+import { SaveToggle, SavedButton } from './Saved';
 import { OtherRouteResults } from './OtherRouteResults';
 import { SharePlace, ShareRoute } from './ShareRoute';
 import { PlanVisit } from './PlanVisit';
@@ -300,11 +301,12 @@ export const MainContent: React.FC = () => {
         transition={{ duration: 0.3, delay: Math.min(index, 10) * 0.03 }}
         key={loc.id}
         id={`location-${loc.id}`}
+        className="relative"
       >
         <button
           onClick={() => setSelectedLocation(loc.id)}
           aria-expanded={false}
-          className="w-full flex items-center gap-4 p-3 bg-white rounded-2xl border border-sand/40 shadow-sm text-start hover:border-nile/40 hover:shadow-md transition-all"
+          className="w-full flex items-center gap-4 p-3 pe-14 bg-white rounded-2xl border border-sand/40 shadow-sm text-start hover:border-nile/40 hover:shadow-md transition-all"
         >
           {/* Decorative here: the row's text names the place. */}
           <span aria-hidden="true" className="shrink-0">
@@ -331,6 +333,8 @@ export const MainContent: React.FC = () => {
           </span>
           <ChevronRight className={`w-5 h-5 shrink-0 text-stone-300 ${isArabic ? 'rotate-180' : ''}`} aria-hidden="true" />
         </button>
+        {/* Beside the row's button, not inside it (a button can't hold another). */}
+        <SaveToggle place={loc} className="absolute top-1/2 -translate-y-1/2 end-2" />
       </motion.div>
     );
   };
@@ -437,6 +441,7 @@ export const MainContent: React.FC = () => {
                           {t('directions')}
                         </button>
                         <VisitedToggle placeId={loc.id} isArabic={isArabic} className="py-4" />
+                        <SaveToggle place={loc} variant="full" className="py-4" />
                         <SharePlace place={loc} className="flex justify-center items-center py-4 px-6 bg-chalk hover:bg-sand/30 text-ink rounded-xl transition-all duration-300" />
                       </div>
                       <div className="mt-4 text-center">
@@ -523,6 +528,7 @@ export const MainContent: React.FC = () => {
               {t('routes')}
             </h2>
             <div className="h-px flex-1 bg-sand/50"></div>
+            <SavedButton places={locations} routes={routes} onOpen={openPlace} />
           </div>
           <div className="flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             {routes.map((route, routeIndex) => (
@@ -841,6 +847,7 @@ export const MainContent: React.FC = () => {
                                 {t('directions')}
                               </button>
                               <VisitedToggle placeId={loc.id} isArabic={isArabic} className="py-5 rounded-2xl" />
+                              <SaveToggle place={loc} variant="full" className="py-5 rounded-2xl" />
                               <SharePlace place={loc} className="flex justify-center items-center py-5 px-6 bg-chalk hover:bg-sand/30 text-ink rounded-2xl transition-all duration-300" />
                             </div>
                             <div className="mt-4 text-center">
