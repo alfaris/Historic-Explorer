@@ -88,18 +88,18 @@ export function AudioGuide({ locationId, text, langCode, onNext, onPrevious }: A
       onPrevious: onPrevious && (() => nav.current.onPrevious?.()),
     };
     // Straight from the tap, before any await: iOS only starts audio from a tap.
-    player.begin(t);
+    const id = player.begin(t);
     try {
       const result = await loadGuideAudio(locationId, langCode, text);
       if ('script' in result) {
         // The server could write the narration but not voice it.
-        player.playSpeech(key, result.script, langCode);
+        player.playSpeech(id, result.script, langCode);
         return;
       }
-      await player.playAudio(key, result.audio);
+      await player.playAudio(id, result.audio);
     } catch (error) {
       console.warn('Audio guide failed, using the browser voice:', error);
-      player.playSpeech(key, text, langCode);
+      player.playSpeech(id, text, langCode);
     }
   };
 

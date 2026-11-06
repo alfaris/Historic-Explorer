@@ -131,6 +131,9 @@ export function createGuidePlayer(env: PlayerEnv) {
   };
 
   let track: GuideTrack | null = null;
+  // Each start of a guide gets a number, so a recording that arrives for an
+  // earlier start (even of the same guide) can't touch a later one.
+  let attempt = 0;
   let audio: AudioLike | null = null;
   let url: string | null = null;
   let silentUrl: string | null = null;
@@ -228,12 +231,15 @@ export function createGuidePlayer(env: PlayerEnv) {
     // Some browsers report "interrupted" though speech carries on; only a real error stops.
     u.onerror = e => { if (speech?.utterance === u && e.error !== 'interrupted' && e.error !== 'canceled') stop(); };
     env.speech.cancel();
+    // Cancelling doesn't lift a pause: resume, or the new utterance waits silently.
+    env.speech.resume();
     env.speech.speak(u);
   };
 
   /** Stops whatever is playing. With a key, only if that guide is the one playing. */
   function stop(key?: string) {
     if (key && key !== state.key) return;
+    attempt++;
     track = null;
     const wasAudio = state.mode;
     set({ key: null, status: 'idle', mode: null });
@@ -281,9 +287,11 @@ export function createGuidePlayer(env: PlayerEnv) {
     /**
      * Call straight from the tap that starts a guide: stops anything else,
      * shows it loading, and unlocks audio on iOS with a moment of silence.
+     * Returns this start's number, for playAudio and playSpeech.
      */
-    begin(t: GuideTrack) {
+    begin(t: GuideTrack): number {
       stop();
+      const id = attempt;
       track = t;
       set({ key: t.key, status: 'loading', mode: null });
       const a = el();
@@ -292,11 +300,12 @@ export function createGuidePlayer(env: PlayerEnv) {
         a.src = silentUrl;
         a.play().catch(() => {});
       } catch { /* No Blob support: the real play() below may still work. */ }
+      return id;
     },
 
-    /** Plays the recorded guide, if `key` is still the guide that was started. Throws if it can't play. */
-    async playAudio(key: string, data: ArrayBuffer) {
-      if (state.key !== key) return;
+    /** Plays the recorded guide, if start `id` is still the current one. Throws if it can't play. */
+    async playAudio(id: number, data: ArrayBuffer) {
+      if (id !== attempt) return;
       const a = el();
       releaseUrl();
       url = env.createObjectURL(new Blob([data], { type: 'audio/wav' }));
@@ -307,17 +316,17 @@ export function createGuidePlayer(env: PlayerEnv) {
       try {
         await a.play();
       } catch (err) {
-        if (state.key === key) {
-          set({ mode: null });
-          releaseUrl();
-        }
+        // A newer start replaced this one (which aborts its play()): not a failure.
+        if (id !== attempt) return;
+        set({ mode: null });
+        releaseUrl();
         throw err;
       }
     },
 
-    /** Reads the text with the browser's voice, if `key` is still the guide that was started. */
-    playSpeech(key: string, text: string, lang: Lang) {
-      if (state.key !== key) return;
+    /** Reads the text with the browser's voice, if start `id` is still the current one. */
+    playSpeech(id: number, text: string, lang: Lang) {
+      if (id !== attempt) return;
       if (!env.speech || !env.createUtterance) {
         stop();
         return;

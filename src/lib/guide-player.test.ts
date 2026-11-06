@@ -70,9 +70,9 @@ describe('speeds', () => {
 describe('guide player', () => {
   it('plays a recorded guide at the saved speed and shows it on the lock screen', async () => {
     const { player, audio, session, actions } = setup('1.5');
-    player.begin(track('a'));
+    const id = player.begin(track('a'));
     expect(player.getState()).toMatchObject({ key: 'a', status: 'loading' });
-    await player.playAudio('a', wav);
+    await player.playAudio(id, wav);
     expect(player.getState()).toMatchObject({ key: 'a', status: 'playing', mode: 'audio', speed: 1.5 });
     expect(audio.playbackRate).toBe(1.5);
     expect(session.metadata).toMatchObject({ title: 'Al-Azhar Mosque', artist: 'Al-Muizz Street', album: 'Cairo Walks' });
@@ -82,8 +82,8 @@ describe('guide player', () => {
 
   it('pauses, resumes and seeks from the lock screen', async () => {
     const { player, audio, session, actions } = setup();
-    player.begin(track('a'));
-    await player.playAudio('a', wav);
+    const id = player.begin(track('a'));
+    await player.playAudio(id, wav);
     (actions.get('pause') as () => void)();
     expect(player.getState().status).toBe('paused');
     expect(session.playbackState).toBe('paused');
@@ -99,8 +99,8 @@ describe('guide player', () => {
 
   it('changes speed while playing and remembers it', async () => {
     const { player, audio, store } = setup();
-    player.begin(track('a'));
-    await player.playAudio('a', wav);
+    const id = player.begin(track('a'));
+    await player.playAudio(id, wav);
     player.setSpeed(1.25);
     expect(audio.playbackRate).toBe(1.25);
     expect(store.get(SPEED_KEY)).toBe('1.25');
@@ -108,18 +108,18 @@ describe('guide player', () => {
 
   it('ignores a recording that arrives after another guide was started', async () => {
     const { player } = setup();
-    player.begin(track('a'));
+    const first = player.begin(track('a'));
     player.begin(track('b'));
-    await player.playAudio('a', wav);
+    await player.playAudio(first, wav);
     expect(player.getState()).toMatchObject({ key: 'b', status: 'loading', mode: null });
   });
 
   it('ignores the silent unlock clip and clears the lock screen when the guide ends', async () => {
     const { player, audio, session, actions } = setup();
-    player.begin(track('a'));
+    const id = player.begin(track('a'));
     audio.fire('playing'); // the silent clip
     expect(player.getState().status).toBe('loading');
-    await player.playAudio('a', wav);
+    await player.playAudio(id, wav);
     audio.ended = true;
     audio.fire('ended');
     expect(player.getState()).toMatchObject({ key: null, status: 'idle' });
@@ -127,10 +127,23 @@ describe('guide player', () => {
     expect(actions.size).toBe(0);
   });
 
+  it('ignores an earlier start of the same guide whose recording arrives late', async () => {
+    const { player, audio } = setup();
+    const first = player.begin(track('a'));
+    player.begin(track('b'));
+    const again = player.begin(track('a'));
+    // Both starts of guide A get the same recording: the first one changes nothing.
+    const src = audio.src;
+    await expect(player.playAudio(first, wav)).resolves.toBeUndefined();
+    expect(audio.src).toBe(src);
+    await player.playAudio(again, wav);
+    expect(player.getState()).toMatchObject({ key: 'a', status: 'playing', mode: 'audio' });
+  });
+
   it('stops only the guide that asks, so another guide keeps playing', async () => {
     const { player } = setup();
-    player.begin(track('a'));
-    await player.playAudio('a', wav);
+    const id = player.begin(track('a'));
+    await player.playAudio(id, wav);
     player.stop('b');
     expect(player.getState().key).toBe('a');
     player.stop('a');
@@ -139,16 +152,16 @@ describe('guide player', () => {
 
   it('throws when audio is blocked, so the guide can fall back to the browser voice', async () => {
     const { player, audio } = setup();
-    player.begin(track('a'));
+    const id = player.begin(track('a'));
     audio.failNext = true;
-    await expect(player.playAudio('a', wav)).rejects.toThrow();
+    await expect(player.playAudio(id, wav)).rejects.toThrow();
     expect(player.getState()).toMatchObject({ key: 'a', mode: null });
   });
 
   it('reads with the browser voice at the chosen speed, and carries on from the last word when the speed changes', () => {
     const { player, spoken, texts, actions } = setup('0.75');
-    player.begin(track('a'));
-    player.playSpeech('a', 'One two three four', 'en');
+    const id = player.begin(track('a'));
+    player.playSpeech(id, 'One two three four', 'en');
     expect(player.getState()).toMatchObject({ status: 'playing', mode: 'speech' });
     expect(spoken[0]).toMatchObject({ rate: 0.75, lang: 'en-US' });
     expect(actions.has('seekforward')).toBe(false);
@@ -163,11 +176,24 @@ describe('guide player', () => {
     expect(player.getState().status).toBe('idle');
   });
 
+  it('resumes the voice when the speed changes while it is paused', () => {
+    const { player, speech, spoken, actions } = setup();
+    const id = player.begin(track('a'));
+    player.playSpeech(id, 'One two three four', 'en');
+    (actions.get('pause') as () => void)();
+    expect(player.getState().status).toBe('paused');
+    speech.resume.mockClear();
+    player.setSpeed(1.25);
+    expect(speech.resume).toHaveBeenCalled();
+    expect(spoken).toHaveLength(2);
+    expect(player.getState().status).toBe('playing');
+  });
+
   it('offers next and previous in walk mode, and lets the next guide play on', async () => {
     const { player, actions } = setup();
     const onNext = vi.fn();
-    player.begin(track('a', { onNext }));
-    await player.playAudio('a', wav);
+    const id = player.begin(track('a', { onNext }));
+    await player.playAudio(id, wav);
     expect(actions.has('nexttrack')).toBe(true);
     expect(actions.has('previoustrack')).toBe(false);
     expect(player.takeAutoplay()).toBe(false);
