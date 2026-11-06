@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { CheckCircle, Download, RefreshCw, Trash2, WifiOff, X } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import type { Location, Route } from '../data/locations';
@@ -10,31 +10,11 @@ import {
   offlineSupported,
   removeRoute,
   savedRouteKey,
-  saveRoute,
   useOfflineRoutes,
-  type Progress,
 } from '../lib/offline-store';
-
-const useOnline = () => {
-  const [online, setOnline] = useState(() => navigator.onLine);
-  useEffect(() => {
-    const on = () => setOnline(true);
-    const off = () => setOnline(false);
-    window.addEventListener('online', on);
-    window.addEventListener('offline', off);
-    return () => {
-      window.removeEventListener('online', on);
-      window.removeEventListener('offline', off);
-    };
-  }, []);
-  return online;
-};
-
-const formatSize = (bytes: number, ar: boolean) => {
-  const mb = bytes / (1024 * 1024);
-  const value = mb >= 10 ? Math.round(mb).toString() : mb.toFixed(1);
-  return ar ? `${value} ميجابايت` : `${value} ${L('MB', 'ميجابايت')}`;
-};
+import { cancelDownload, startDownload, useDownloads } from '../lib/offline-downloads';
+import { OfflineManager } from './OfflineManager';
+import { downloadError, formatSize, useOnline } from './offline-ui';
 
 /**
  * Saves a route (audio guides in the current language, photos and map) so it
@@ -67,26 +47,15 @@ export function RouteDownload({ route, places }: { route: Route; places: Locatio
     };
   }, [savedRoute]);
 
-  const [progress, setProgress] = useState<Progress | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
-  useEffect(() => () => abortRef.current?.abort(), []);
+  // Shared with the Offline sheet: the same download shows in both places.
+  const downloads = useDownloads();
+  const progress = downloads.progress[key] ?? null;
+  const error = downloads.errors[key] ? downloadError(downloads.errors[key]) : null;
 
   if (!offlineSupported() || needed.length === 0) return null;
 
-  const start = async () => {
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setError(null);
-    try {
-      const result = await saveRoute(key, needed, { signal: controller.signal, onProgress: setProgress, recheck: cleared });
-      if (result.files.length === 0) setError(L('Download failed. Check your connection and try again.', 'تعذّر التنزيل. تحقق من الاتصال وحاول مرة أخرى.'));
-    } catch (err) {
-      if ((err as Error).name !== 'AbortError') setError((err as Error).message);
-    } finally {
-      abortRef.current = null;
-      setProgress(null);
-    }
+  const start = () => {
+    startDownload(key, needed, { recheck: cleared });
   };
 
   const remove = async () => {
@@ -116,7 +85,7 @@ export function RouteDownload({ route, places }: { route: Route; places: Locatio
             <div className="h-full bg-nile transition-all" style={{ width: `${pct}%` }} />
           </div>
         </div>
-        <button onClick={() => abortRef.current?.abort()} className="flex items-center justify-center min-h-11 min-w-11 rounded-lg text-stone-400 hover:text-ink" aria-label={L('Cancel', 'إلغاء')}>
+        <button onClick={() => cancelDownload(key)} className="flex items-center justify-center min-h-11 min-w-11 rounded-lg text-stone-400 hover:text-ink" aria-label={L('Cancel', 'إلغاء')}>
           <X className="w-4 h-4" />
         </button>
       </div>
@@ -168,6 +137,7 @@ export function RouteDownload({ route, places }: { route: Route; places: Locatio
         </p>
       )}
       {error && <p className="text-xs text-red-700" role="alert">{error}</p>}
+      <OfflineManager />
     </div>
   );
 }

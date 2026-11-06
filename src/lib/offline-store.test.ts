@@ -198,6 +198,31 @@ describe('removeRoute', () => {
   });
 });
 
+describe('removeRoute during another download', () => {
+  it('keeps shared files a download in progress needs', async () => {
+    const tile = files[2];
+    const slow = { url: '/images/photos/slow.webp', kind: 'photos' as const };
+    responses = { [files[0].url]: audio(), [files[1].url]: image(), [tile.url]: image() };
+    await saveRoute('a:en', files);
+    // Route b shares the tile; its other file answers only when released.
+    let release!: () => void;
+    const gate = new Promise<void>(r => (release = r));
+    responses[slow.url] = image();
+    const realFetch = globalThis.fetch;
+    vi.stubGlobal('fetch', async (url: string) => {
+      if (url === slow.url) await gate;
+      return realFetch(url);
+    });
+    const b = saveRoute('b:en', [tile, slow]);
+    await new Promise(r => setTimeout(r, 0));
+    await removeRoute('a:en');
+    release();
+    const saved = await b;
+    expect(stores.get('leaflet-tiles')!.entries.has(tile.url)).toBe(true);
+    expect(await filesStillCached(saved)).toBe(true);
+  });
+});
+
 describe('parseSavedRoutes', () => {
   it.each([null, '', 'x', '[]', '42'])('treats %j as nothing saved', raw => {
     expect(parseSavedRoutes(raw)).toEqual({});

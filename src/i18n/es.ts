@@ -169,5 +169,14 @@ export const ES: Record<string, string> = {
   'Larger': 'Muy grande',
   'High contrast': 'Alto contraste',
   'Easier to read in bright sun.': 'Más fácil de leer a pleno sol.',
+  // Offline routes
+  'Offline routes': 'Rutas sin conexión',
+  'Audio is saved in the current language.': 'El audio se guarda en el idioma actual.',
+  'Download all': 'Descargar todo',
+  'Not saved': 'No guardado',
+  'Update available': 'Actualización disponible',
+  'Download': 'Descargar',
+  'Update': 'Actualizar',
+  'Kept on this device even when space runs low.': 'Se conserva en este dispositivo aunque falte espacio.',
   'Visitor tips': 'Consejos para la visita',
 };

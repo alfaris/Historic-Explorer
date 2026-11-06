@@ -216,8 +216,22 @@ async function fetchFiles(needed: PackFile[], { onProgress, signal, concurrency 
  * them unless another saved route uses them). Rejects with an AbortError if
  * cancelled; files fetched so far stay cached for next time.
  */
+// Files that downloads in progress need, by route key: removing another route
+// must not delete them (routes share map tiles and photos), or a download
+// would finish having counted a file that's no longer cached.
+const inFlight = new Map<string, PackFile[]>();
+
 export async function saveRoute(key: string, needed: PackFile[], opts: DownloadOptions = {}): Promise<SavedRoute> {
   if (!offlineSupported()) throw new Error('Offline storage is not available in this browser');
+  inFlight.set(key, needed);
+  try {
+    return await saveRouteNow(key, needed, opts);
+  } finally {
+    inFlight.delete(key);
+  }
+}
+
+async function saveRouteNow(key: string, needed: PackFile[], opts: DownloadOptions): Promise<SavedRoute> {
   // Ask the browser not to clear these files when space runs low.
   navigator.storage?.persist?.().catch(() => {});
 
@@ -258,10 +272,10 @@ async function saveContent(signal?: AbortSignal) {
   }
 }
 
-// Deletes files no saved route uses any more.
+// Deletes files no saved route uses any more, and no download in progress needs.
 async function deleteUnused(files: PackFile[], all: SavedRoutes) {
   if (files.length === 0 || !offlineSupported()) return;
-  const inUse = new Set(Object.values(all).flatMap(r => r.files.map(f => f.url)));
+  const inUse = new Set([...Object.values(all).flatMap(r => r.files), ...[...inFlight.values()].flat()].map(f => f.url));
   for (const f of files) {
     if (inUse.has(f.url)) continue;
     try {
