@@ -3,6 +3,7 @@
 
 import type { Content } from '../data/content';
 import type { DayStats } from '../lib/stats';
+import type { Lang, OptionalLang } from '../i18n/lang';
 
 export interface Report {
   id: string;
@@ -13,7 +14,7 @@ export interface Report {
   placeName: string;
   message: string;
   suggested?: { lat: number; lng: number; source: 'gps' | 'map'; accuracy?: number };
-  lang: 'en' | 'ar' | 'fr';
+  lang: Lang;
   adminNote?: string;
   updatedAt?: string;
 }
@@ -72,11 +73,11 @@ export const api = {
   digest: () => call<{ configured: boolean; to: string | null }>('digest'),
   sendTestEmail: () => call<{ ok: true }>('digest-test', { method: 'POST' }),
   stats: (days: 7 | 30 | 90) => call<StatsResponse>('stats', {}, `&days=${days}`),
-  audioStatus: (placeId: number) => call<{ en: AudioState; ar: AudioState; fr: AudioState }>('audio', {}, `&id=${placeId}`),
-  generateAudio: (placeId: number, lang: 'en' | 'ar' | 'fr', version: string) =>
+  audioStatus: (placeId: number) => call<Record<Lang, AudioState>>('audio', {}, `&id=${placeId}`),
+  generateAudio: (placeId: number, lang: Lang, version: string) =>
     call<{ state: 'stored' }>('audio', { method: 'POST', body: JSON.stringify({ id: placeId, lang, version }) }),
-  /** French drafts from Gemini for the given English texts; nothing is saved. */
-  translate: (texts: Record<string, string>) =>
-    call<{ texts: Record<string, string> }>('translate', { method: 'POST', body: JSON.stringify({ texts }) }),
+  /** French or Spanish drafts from Gemini for the given English texts; nothing is saved. */
+  translate: (texts: Record<string, string>, lang: OptionalLang) =>
+    call<{ texts: Record<string, string> }>('translate', { method: 'POST', body: JSON.stringify({ lang, texts }) }),
   version: (pathname: string) => call<{ content: Content & { note?: string } }>('version', {}, `&pathname=${encodeURIComponent(pathname)}`),
 };

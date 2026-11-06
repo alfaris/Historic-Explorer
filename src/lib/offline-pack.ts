@@ -11,9 +11,9 @@ import { descriptionOf, type Lang } from '../i18n/lang.js';
 export type { Lang };
 
 /** The narrated text of a place's audio guide. */
-// French falls back to the English description; the narration is still
-// written and spoken in French (see generateAudio on the server).
-export const audioText = (place: Pick<Location, 'descriptionEn' | 'descriptionAr' | 'descriptionFr'>, lang: Lang) =>
+// French and Spanish fall back to the English description; the narration is
+// still written and spoken in that language (see generateAudio on the server).
+export const audioText = (place: Pick<Location, 'descriptionEn' | 'descriptionAr' | 'descriptionFr' | 'descriptionEs'>, lang: Lang) =>
   descriptionOf(place, lang);
 
 /**

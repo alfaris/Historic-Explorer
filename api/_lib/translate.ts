@@ -1,19 +1,23 @@
-// POST /api/admin?action=translate {texts: {key: English text}} → {texts: {key: French text}}
+// POST /api/admin?action=translate {lang: 'fr'|'es', texts: {key: English text}} → {texts: {key: translation}}
 //
-// Drafts French for the admin's "Fill in missing French" button. Nothing is
+// Drafts French or Spanish for the admin's "Fill in missing …" buttons. Nothing is
 // saved here: the dashboard puts the drafts in the editor, and the admin
 // reviews and saves them the normal way, so every change lands in History.
 
 import { getClient } from './gemini.js';
 import { json, readJson } from './http.js';
+import { isOptionalLang, LANGUAGES, type OptionalLang } from '../../src/i18n/lang.js';
 
 const MAX_KEYS = 60;
 const MAX_TEXT = 2000;
 const MAX_TOTAL = 30_000;
 const KEY = /^[a-z0-9.:_-]{1,40}$/i;
 
-/** The texts to translate, or a problem to send back. */
-export function parseTranslateRequest(body: unknown): { texts: Record<string, string> } | { error: string } {
+/** The language and texts to translate, or a problem to send back. Without a language, French (as before Spanish). */
+export function parseTranslateRequest(body: unknown): { lang: OptionalLang; texts: Record<string, string> } | { error: string } {
+  const langIn = (body as { lang?: unknown } | null)?.lang;
+  if (langIn !== undefined && !isOptionalLang(langIn)) return { error: 'lang must be fr or es.' };
+  const lang: OptionalLang = isOptionalLang(langIn) ? langIn : 'fr';
   const raw = (body as { texts?: unknown } | null)?.texts;
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { error: 'Expected {texts: {key: text}}.' };
   const texts: Record<string, string> = {};
@@ -29,7 +33,7 @@ export function parseTranslateRequest(body: unknown): { texts: Record<string, st
   const count = Object.keys(texts).length;
   if (count === 0) return { error: 'Nothing to translate.' };
   if (count > MAX_KEYS || total > MAX_TOTAL) return { error: 'Too much text at once; translate fewer items.' };
-  return { texts };
+  return { lang, texts };
 }
 
 /** Keeps only the requested keys whose translation is a non-empty string, trimmed to the length limit. */
@@ -43,10 +47,18 @@ export function pickTranslations(requested: Record<string, string>, raw: unknown
   return out;
 }
 
-const PROMPT = `You translate content for Cairo Walks, a walking-tour app for historic Cairo, from English into French.
-Translate each value of the JSON object below into natural, accurate French for visitors. Keep the keys unchanged.
-Keep proper names in their usual French form (e.g. "Mosquée Al-Azhar", "Le Caire"); keep transliterated Arabic names otherwise.
+const EXAMPLES: Record<OptionalLang, string> = {
+  fr: '"Mosquée Al-Azhar", "Le Caire"',
+  es: '"Mezquita de Al-Azhar", "El Cairo"',
+};
+
+export const translatePrompt = (lang: OptionalLang) => {
+  const name = LANGUAGES[lang].english;
+  return `You translate content for Cairo Walks, a walking-tour app for historic Cairo, from English into ${name}.
+Translate each value of the JSON object below into natural, accurate ${name} for visitors. Keep the keys unchanged.
+Keep proper names in their usual ${name} form (e.g. ${EXAMPLES[lang]}); keep transliterated Arabic names otherwise.
 Do not add or drop information. Reply with only the JSON object.`;
+};
 
 export async function handleTranslate(request: Request): Promise<Response> {
   const body = await readJson(request, 100_000);
@@ -55,7 +67,7 @@ export async function handleTranslate(request: Request): Promise<Response> {
   if ('error' in parsed) return json({ error: parsed.error }, 400);
   const response = await getClient().models.generateContent({
     model: 'gemini-3.1-flash-lite-preview',
-    contents: `${PROMPT}\n\n${JSON.stringify(parsed.texts)}`,
+    contents: `${translatePrompt(parsed.lang)}\n\n${JSON.stringify(parsed.texts)}`,
     config: { responseMimeType: 'application/json' },
   });
   let raw: unknown;

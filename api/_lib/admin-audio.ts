@@ -11,7 +11,7 @@
 
 import type { Location } from '../../src/data/locations.js';
 import { textHash } from '../../src/lib/text-hash.js';
-import { descriptionOf } from '../../src/i18n/lang.js';
+import { descriptionOf, isLang, LANGS } from '../../src/i18n/lang.js';
 import { getContentWithEtag } from './content.js';
 import { audioStatus, generateAndStoreAudio, type Lang } from './gemini.js';
 import { createRateLimiter } from './guard.js';
@@ -41,15 +41,15 @@ export async function handleAdminAudio(request: Request, url: URL): Promise<Resp
     const id = Number(url.searchParams.get('id'));
     const place = Number.isInteger(id) ? await findPlace(id) : undefined;
     if (!place) return json({ error: 'Place not found. Save it first.' }, 404);
-    const [en, ar, fr] = await Promise.all([stateFor(place, 'en'), stateFor(place, 'ar'), stateFor(place, 'fr')]);
-    return json({ en, ar, fr });
+    const states = await Promise.all(LANGS.map(lang => stateFor(place, lang)));
+    return json(Object.fromEntries(LANGS.map((lang, i) => [lang, states[i]])));
   }
 
   if (request.method === 'POST') {
     const body = await readJson(request, 1_000);
     if (body instanceof Response) return body;
     const { id, lang, version } = (body ?? {}) as { id?: unknown; lang?: unknown; version?: unknown };
-    if (lang !== 'en' && lang !== 'ar' && lang !== 'fr') return json({ error: 'lang must be en, ar or fr.' }, 400);
+    if (!isLang(lang)) return json({ error: `lang must be one of ${LANGS.join(', ')}.` }, 400);
     if (!hasBlobStore()) return json({ error: 'No Blob store is connected, so audio can’t be stored.' }, 503);
     const place = typeof id === 'number' ? await findPlace(id) : undefined;
     if (!place) return json({ error: 'Place not found. Save it first.' }, 404);

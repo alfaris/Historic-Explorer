@@ -7,7 +7,8 @@ import { PhotoField } from './PhotoField';
 import { builtInPhoto } from '../data/photo-resolve';
 import { applyStopOrder, walkPlan, walkStops } from '../lib/walk';
 import { RouteQr } from './RouteQr';
-import { FillFrenchButton, withOptional } from './french';
+import { fieldKey, FillMissingButton, withOptional } from './translations';
+import { LANGS, LANGUAGES, OPTIONAL_LANGS, type Lang, type OptionalLang } from '../i18n/lang';
 import { routeText } from '../lib/route-format';
 
 const blankRoute = (): Route => ({
@@ -32,18 +33,21 @@ export function RoutesTab({ content, save }: { content: Content; save: SaveFn })
   const [busy, setBusy] = useState(false);
   // Highlights are edited as raw text (one per line) and split only when saving,
   // so spaces and new lines aren't trimmed away while typing.
-  const [highlights, setHighlights] = useState({ en: '', ar: '', fr: '' });
+  const [highlights, setHighlights] = useState<Record<Lang, string>>({ en: '', ar: '', fr: '', es: '' });
   // The stops' walking order, as place IDs. Applied to the places when saving.
   const [order, setOrder] = useState<number[]>([]);
 
   const lines = (text: string) => text.split('\n').map(s => s.trim()).filter(Boolean);
   const open = (route: Route, asNew: boolean) => {
     setDraft({ ...route, highlightsEn: [...route.highlightsEn], highlightsAr: [...route.highlightsAr] });
-    setHighlights({ en: route.highlightsEn.join('\n'), ar: route.highlightsAr.join('\n'), fr: (route.highlightsFr ?? []).join('\n') });
+    setHighlights(Object.fromEntries(LANGS.map(l => [l, (route[fieldKey('highlights', l)] ?? []).join('\n')])) as Record<Lang, string>);
     setOrder(asNew ? [] : walkStops(content.places, route.id).map(p => p.id));
     setIsNew(asNew);
   };
-  const finalDraft = draft && withOptional({ ...draft, highlightsEn: lines(highlights.en), highlightsAr: lines(highlights.ar) }, 'highlightsFr', lines(highlights.fr));
+  const finalDraft = draft && OPTIONAL_LANGS.reduce(
+    (r, l) => withOptional(r, fieldKey('highlights', l), lines(highlights[l])),
+    { ...draft, highlightsEn: lines(highlights.en), highlightsAr: lines(highlights.ar) },
+  );
 
   const original = draft && !isNew ? content.routes.find(r => r.id === draft.id) : undefined;
   const savedOrder = draft && !isNew ? walkStops(content.places, draft.id).map(p => p.id) : [];
@@ -69,17 +73,23 @@ export function RoutesTab({ content, save }: { content: Content; save: SaveFn })
       return { ...next, ...routeText(next) };
     });
   const numberValue = (n: number) => (Number.isFinite(n) ? String(n) : '');
-  const setFrench = (key: 'nameFr' | 'descriptionFr', value: string) => setDraft(d => (d ? withOptional(d, key, value) : d));
+  const setField = (key: keyof Route, value: string) => setDraft(d => (d ? withOptional(d, key, value) : d));
 
-  // Empty French fields, with the English to draft them from. Highlights go line by line.
-  const missingFrench: Record<string, string> = {};
-  if (draft && !draft.nameFr && draft.nameEn.trim()) missingFrench.nameFr = draft.nameEn;
-  if (draft && !draft.descriptionFr && draft.descriptionEn.trim()) missingFrench.descriptionFr = draft.descriptionEn;
-  if (!lines(highlights.fr).length) lines(highlights.en).forEach((line, i) => (missingFrench[`h${i}`] = line));
-  const applyFrench = (texts: Record<string, string>) => {
-    setDraft(d => d && ['nameFr', 'descriptionFr'].reduce((acc, key) => (texts[key] ? { ...acc, [key]: texts[key] } : acc), d));
-    const french = lines(highlights.en).map((_, i) => texts[`h${i}`]).filter(Boolean);
-    if (french.length) setHighlights(h => (lines(h.fr).length ? h : { ...h, fr: french.join('\n') }));
+  // Empty fields in an optional language, with the English to draft them from. Highlights go line by line.
+  const missingIn = (lang: OptionalLang): Record<string, string> => {
+    const missing: Record<string, string> = {};
+    if (!draft) return missing;
+    const name = fieldKey('name', lang);
+    const description = fieldKey('description', lang);
+    if (!draft[name] && draft.nameEn.trim()) missing[name] = draft.nameEn;
+    if (!draft[description] && draft.descriptionEn.trim()) missing[description] = draft.descriptionEn;
+    if (!lines(highlights[lang]).length) lines(highlights.en).forEach((line, i) => (missing[`h${i}`] = line));
+    return missing;
+  };
+  const applyDrafts = (lang: OptionalLang, texts: Record<string, string>) => {
+    setDraft(d => d && [fieldKey('name', lang), fieldKey('description', lang)].reduce((acc, key) => (texts[key] ? { ...acc, [key]: texts[key] } : acc), d));
+    const drafted = lines(highlights.en).map((_, i) => texts[`h${i}`]).filter(Boolean);
+    if (drafted.length) setHighlights(h => (lines(h[lang]).length ? h : { ...h, [lang]: drafted.join('\n') }));
   };
 
   const submit = async () => {
@@ -168,18 +178,27 @@ export function RoutesTab({ content, save }: { content: Content; save: SaveFn })
             <Field label="Highlights (Arabic)" hint="Same number of lines as English.">
               <textarea value={highlights.ar} onChange={e => setHighlights(h => ({ ...h, ar: e.target.value }))} className={inputClass} rows={3} dir="rtl" />
             </Field>
-            <Field label="Name (French)" hint="Optional. Empty French fields show the English.">
-              <input value={draft.nameFr ?? ''} onChange={e => setFrench('nameFr', e.target.value)} className={inputClass} lang="fr" />
-            </Field>
-            <Field label="Description (French)">
-              <textarea value={draft.descriptionFr ?? ''} onChange={e => setFrench('descriptionFr', e.target.value)} className={inputClass} rows={3} lang="fr" />
-            </Field>
-            <Field label="Highlights (French)" hint="Optional. One per line, up to 8.">
-              <textarea value={highlights.fr} onChange={e => setHighlights(h => ({ ...h, fr: e.target.value }))} className={inputClass} rows={3} lang="fr" />
-            </Field>
-            <div className="flex items-end">
-              <FillFrenchButton key={draft.id} missing={missingFrench} onFilled={applyFrench} />
-            </div>
+            {OPTIONAL_LANGS.map(lang => {
+              const name = LANGUAGES[lang].english;
+              const nameKey = fieldKey('name', lang);
+              const descriptionKey = fieldKey('description', lang);
+              return (
+                <React.Fragment key={lang}>
+                  <Field label={`Name (${name})`} hint={`Optional. Empty ${name} fields show the English.`}>
+                    <input value={draft[nameKey] ?? ''} onChange={e => setField(nameKey, e.target.value)} className={inputClass} lang={lang} />
+                  </Field>
+                  <Field label={`Description (${name})`}>
+                    <textarea value={draft[descriptionKey] ?? ''} onChange={e => setField(descriptionKey, e.target.value)} className={inputClass} rows={3} lang={lang} />
+                  </Field>
+                  <Field label={`Highlights (${name})`} hint="Optional. One per line, up to 8.">
+                    <textarea value={highlights[lang]} onChange={e => setHighlights(h => ({ ...h, [lang]: e.target.value }))} className={inputClass} rows={3} lang={lang} />
+                  </Field>
+                  <div className="flex items-end">
+                    <FillMissingButton key={`${draft.id}-${lang}`} lang={lang} missing={missingIn(lang)} onFilled={texts => applyDrafts(lang, texts)} />
+                  </div>
+                </React.Fragment>
+              );
+            })}
             <Field label="Distance (km)" hint="e.g. 2.5">
               <input type="number" inputMode="decimal" min="0.1" max="50" step="0.1" value={numberValue(draft.distanceKm)} onChange={e => setNumber('distanceKm', e.target.value)} className={inputClass} />
             </Field>

@@ -145,3 +145,35 @@ describe('validation', () => {
     expect(h).toEqual({ days: [[{ open: '09:00', close: '17:00' }], [], [], [], [], [], []], noteEn: 'Hi' });
   });
 });
+
+describe('Spanish', () => {
+  const hours = everyDay(r('09:00', '17:00'));
+  it('formats times and the status line', () => {
+    expect(formatTime(9 * 60, 'es')).toBe('9:00');
+    expect(formatTime(17 * 60 + 30, 'es')).toBe('17:30');
+    const at = cairo(1, '10:00');
+    expect(statusText(openStatus(hours, at)!, 'es', at)).toEqual({ label: 'Abierto', detail: 'cierra a las 17:00', soon: false });
+    const late = cairo(1, '16:30');
+    expect(statusText(openStatus(hours, late)!, 'es', late)).toMatchObject({ label: 'Cierra pronto', soon: true });
+    const evening = cairo(1, '20:00');
+    expect(statusText(openStatus(hours, evening)!, 'es', evening)).toEqual({ label: 'Cerrado', detail: 'abre mañana a las 9:00', soon: false });
+    const closedFriday: OpeningHours = { days: hours.days.map((d, i) => (i === 5 ? [] : d)) };
+    const thursdayNight = cairo(4, '20:00');
+    expect(statusText(openStatus(closedFriday, thursdayNight)!, 'es', thursdayNight).detail).toBe('abre el sábado a las 9:00');
+  });
+  it('says "a la" for one o’clock', () => {
+    const one = everyDay(r('13:00', '17:00'), r('01:00', '02:00'));
+    const at = cairo(1, '00:30');
+    expect(statusText(openStatus(one, at)!, 'es', at).detail).toBe('abre a la 1:00');
+  });
+  it('lists the week Monday first, with Spanish day names', () => {
+    const rows = weekRows({ days: [[r('09:00', '17:00')], [], [], [], [], [], []] }, 'es');
+    expect(rows[0]).toEqual({ day: 1, name: 'Lunes', text: 'Cerrado' });
+    expect(rows[6]).toEqual({ day: 0, name: 'Domingo', text: '9:00 – 17:00' });
+    expect(dayName(6, 'es')).toBe('sábado');
+  });
+  it('validates and keeps a Spanish note', () => {
+    expect(normalizeHours({ days: everyDay(r('09:00', '17:00')).days, noteEs: ' Cerrado los viernes ' })?.noteEs).toBe('Cerrado los viernes');
+    expect(hoursProblems({ ...everyDay(), noteEs: 'x'.repeat(201) }).join()).toMatch(/noteEs/);
+  });
+});

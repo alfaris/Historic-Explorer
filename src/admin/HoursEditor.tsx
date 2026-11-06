@@ -3,7 +3,8 @@ import { Copy, Plus, X } from 'lucide-react';
 import type { OpeningHours, TimeRange } from '../lib/opening-hours';
 import { hoursProblems } from '../lib/opening-hours';
 import { Field, inputClass } from './ui';
-import { withOptional } from './french';
+import { fieldKey, withOptional } from './translations';
+import { LANGS, LANGUAGES } from '../i18n/lang';
 
 // Monday first, as most admins think of the week. Index = Date.getDay().
 const ROWS: [number, string][] = [[1, 'Monday'], [2, 'Tuesday'], [3, 'Wednesday'], [4, 'Thursday'], [5, 'Friday'], [6, 'Saturday'], [0, 'Sunday']];
@@ -84,16 +85,15 @@ export function HoursEditor({ hours, onChange }: { hours: OpeningHours | undefin
               );
             })}
           </ul>
-          <div className="grid sm:grid-cols-3 gap-3">
-            <Field label="Note (English)" hint='Optional, e.g. "Closed for Friday prayers 11:30–13:30"'>
-              <input value={hours.noteEn ?? ''} onChange={e => onChange(withOptional(hours, 'noteEn', e.target.value))} className={inputClass} maxLength={200} />
-            </Field>
-            <Field label="Note (Arabic)">
-              <input value={hours.noteAr ?? ''} onChange={e => onChange(withOptional(hours, 'noteAr', e.target.value))} className={inputClass} dir="rtl" maxLength={200} />
-            </Field>
-            <Field label="Note (French)">
-              <input value={hours.noteFr ?? ''} onChange={e => onChange(withOptional(hours, 'noteFr', e.target.value))} className={inputClass} lang="fr" maxLength={200} />
-            </Field>
+          <div className="grid sm:grid-cols-2 gap-3">
+            {LANGS.map(lang => {
+              const key = fieldKey('note', lang);
+              return (
+                <Field key={lang} label={`Note (${LANGUAGES[lang].english})`} hint={lang === 'en' ? 'Optional, e.g. "Closed for Friday prayers 11:30–13:30"' : undefined}>
+                  <input value={hours[key] ?? ''} onChange={e => onChange(withOptional(hours, key, e.target.value))} className={inputClass} dir={LANGUAGES[lang].dir} lang={lang} maxLength={200} />
+                </Field>
+              );
+            })}
           </div>
           {problems.length > 0 && (
             <ul className="text-xs text-red-700 list-disc ps-5" role="alert">

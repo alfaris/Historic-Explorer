@@ -137,3 +137,25 @@ describe('photos on places and routes', () => {
     expect(validateContent(normalizeContent(c)).join('\n')).toMatch(message);
   });
 });
+
+describe('Spanish content', () => {
+  it('keeps Spanish fields, leaves empty ones out, and checks their length', () => {
+    const c = normalizeContent({
+      routes: [{ ...bundledContent.routes[0], nameEs: ' Ruta ', descriptionEs: '', highlightsEs: [' Uno ', ''] }],
+      places: [{ ...bundledContent.places[0], nameEs: 'Mezquita', descriptionEs: '  ', feeEs: '60 EGP' }],
+    });
+    expect(c.routes[0]).toMatchObject({ nameEs: 'Ruta', highlightsEs: ['Uno'] });
+    expect(c.routes[0]).not.toHaveProperty('descriptionEs');
+    expect(c.places[0]).toMatchObject({ nameEs: 'Mezquita', feeEs: '60 EGP' });
+    expect(c.places[0]).not.toHaveProperty('descriptionEs');
+    const long = structuredClone(bundledContent);
+    long.places[0].descriptionEs = 'x'.repeat(2001);
+    long.routes[0].highlightsEs = Array(9).fill('x');
+    const problems = validateContent(normalizeContent(long)).join('\n');
+    expect(problems).toMatch(/descriptionEs is longer than 2000/);
+    expect(problems).toMatch(/at most 8 Spanish highlights/);
+  });
+  it('the bundled routes and categories have Spanish', () => {
+    for (const r of bundledContent.routes) expect(r.nameEs && r.descriptionEs && r.highlightsEs?.length).toBeTruthy();
+  });
+});

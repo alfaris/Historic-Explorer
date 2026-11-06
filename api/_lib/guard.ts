@@ -1,7 +1,7 @@
 // Request checks that run before any Gemini work, so the API can't be used to
 // run up the Gemini bill.
 
-type Lang = 'en' | 'ar' | 'fr';
+import { isLang, LANGS, type Lang } from '../../src/i18n/lang.js';
 
 const json = (body: unknown, status: number, headers: Record<string, string> = {}) =>
   new Response(JSON.stringify(body), {
@@ -10,7 +10,7 @@ const json = (body: unknown, status: number, headers: Record<string, string> = {
   });
 
 /**
- * Accepts only the exact query the app sends (`?id=<n>&lang=en|ar`). Anything
+ * Accepts only the exact query the app sends (`?id=<n>&lang=en|ar|fr|es`). Anything
  * else is rejected, so extra or odd parameters can't create new CDN cache keys
  * that skip the cache and reach Gemini.
  */
@@ -27,9 +27,9 @@ export const parseCanonicalQuery = (
     keys.length === expected &&
     new Set(keys).size === expected &&
     /^[1-9]\d{0,5}$/.test(id) &&
-    (lang === 'en' || lang === 'ar' || lang === 'fr') &&
+    isLang(lang) &&
     (version === null || (allowVersion && /^[0-9a-f]{8}$/.test(version)));
-  if (!valid) return json({ error: `Expected ?id=<number>&lang=en|ar|fr${allowVersion ? '[&v=<hash>]' : ''}` }, 400);
+  if (!valid) return json({ error: `Expected ?id=<number>&lang=${LANGS.join('|')}${allowVersion ? '[&v=<hash>]' : ''}` }, 400);
   return { id: Number(id), lang, version };
 };
 

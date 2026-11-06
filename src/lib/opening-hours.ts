@@ -3,7 +3,9 @@
 // validation and the tests. Times are "HH:MM" strings; a range whose close is
 // at or before its open runs past midnight (e.g. 18:00–02:00).
 
-export type FormatLang = 'en' | 'ar' | 'fr';
+import { LANGS, LANGUAGES, type Lang } from '../i18n/lang.js';
+
+export type FormatLang = Lang;
 
 export interface TimeRange {
   open: string;
@@ -13,10 +15,11 @@ export interface TimeRange {
 export interface OpeningHours {
   /** Seven entries, Sunday first (as Date.getDay()). An empty list means closed that day. */
   days: TimeRange[][];
-  /** Optional note, e.g. "Closed for Friday prayers 11:30–13:30". French and Arabic fall back to English. */
+  /** Optional note, e.g. "Closed for Friday prayers 11:30–13:30". Other languages fall back to English. */
   noteEn?: string;
   noteAr?: string;
   noteFr?: string;
+  noteEs?: string;
 }
 
 const DAY = 24 * 60;
@@ -126,8 +129,9 @@ export function hoursProblems(hours: OpeningHours): string[] {
     spans.sort((a, b) => a[0] - b[0]);
     if (spans.some((sp, i) => i > 0 && sp[0] < spans[i - 1][1])) problems.push(`${name}: time ranges overlap.`);
   });
-  for (const [key, max] of [['noteEn', 200], ['noteAr', 200], ['noteFr', 200]] as const) {
-    if ((hours[key] ?? '').length > max) problems.push(`opening hours ${key} is longer than ${max} characters.`);
+  for (const lang of LANGS) {
+    const key = `note${LANGUAGES[lang].suffix}` as const;
+    if ((hours[key] ?? '').length > 200) problems.push(`opening hours ${key} is longer than 200 characters.`);
   }
   return problems;
 }
@@ -145,21 +149,20 @@ export function normalizeHours(input: unknown): OpeningHours | undefined {
   const notes = raw as Record<string, unknown>;
   return {
     days,
-    ...(str(notes.noteEn) ? { noteEn: str(notes.noteEn) } : {}),
-    ...(str(notes.noteAr) ? { noteAr: str(notes.noteAr) } : {}),
-    ...(str(notes.noteFr) ? { noteFr: str(notes.noteFr) } : {}),
+    ...Object.fromEntries(LANGS.map(l => `note${LANGUAGES[l].suffix}`).filter(k => str(notes[k])).map(k => [k, str(notes[k])])),
   };
 }
 
 // --- Words -----------------------------------------------------------------
 
-/** "9 am", "5:30 pm" · "9 h", "17 h 30" · "9 ص", "5:30 م". */
+/** "9 am", "5:30 pm" · "9 h", "17 h 30" · "9:00", "17:30" · "9 ص", "5:30 م". */
 export function formatTime(minutes: number, lang: FormatLang): string {
   const m = ((minutes % DAY) + DAY) % DAY;
   const h = Math.floor(m / 60);
   const min = m % 60;
   const mm = String(min).padStart(2, '0');
   if (lang === 'fr') return min ? `${h} h ${mm}` : `${h} h`;
+  if (lang === 'es') return `${h}:${mm}`;
   if (m === 0) return lang === 'ar' ? 'منتصف الليل' : 'midnight';
   if (m === 12 * 60) return lang === 'ar' ? 'الظهر' : 'noon';
   const h12 = h % 12 || 12;
@@ -168,16 +171,23 @@ export function formatTime(minutes: number, lang: FormatLang): string {
   return `${clock} ${h < 12 ? 'am' : 'pm'}`;
 }
 
-const LOCALE: Record<FormatLang, string> = { en: 'en-GB', ar: 'ar-EG', fr: 'fr-FR' };
-
 /** Weekday name for 0 = Sunday … 6 = Saturday. */
 export function dayName(day: number, lang: FormatLang): string {
   // 2023-01-01 was a Sunday.
   const date = new Date(Date.UTC(2023, 0, 1 + day, 12));
-  return new Intl.DateTimeFormat(LOCALE[lang], { weekday: 'long', timeZone: 'UTC' }).format(date);
+  return new Intl.DateTimeFormat(LANGUAGES[lang].locale, { weekday: 'long', timeZone: 'UTC' }).format(date);
 }
 
+// Spanish: "a las 9:00", "mañana a las 9:00", "el sábado a las 9:00" ("a la 1:00" for one o'clock).
+const whenEs = (w: When, today: number) => {
+  const at = `${Math.floor(w.minutes / 60) === 1 ? 'a la' : 'a las'} ${formatTime(w.minutes, 'es')}`;
+  if (w.inDays === 0) return at;
+  if (w.inDays === 1) return `mañana ${at}`;
+  return `el ${dayName((today + w.inDays) % 7, 'es')} ${at}`;
+};
+
 const whenText = (w: When, lang: FormatLang, today: number) => {
+  if (lang === 'es') return whenEs(w, today);
   const time = formatTime(w.minutes, lang);
   if (w.inDays === 0) return time;
   if (w.inDays === 1) return lang === 'ar' ? `غدًا ${time}` : lang === 'fr' ? `demain à ${time}` : `tomorrow ${time}`;
@@ -192,26 +202,26 @@ export function statusText(status: OpenStatus, lang: FormatLang, at: Date): { la
     const closes = status.closes;
     const soon = !!closes && closes.inDays === 0 && closes.minutes - cairoTime(at).minutes <= 60;
     const label = soon
-      ? (lang === 'ar' ? 'يغلق قريبًا' : lang === 'fr' ? 'Ferme bientôt' : 'Closing soon')
-      : (lang === 'ar' ? 'مفتوح الآن' : lang === 'fr' ? 'Ouvert' : 'Open now');
+      ? (lang === 'ar' ? 'يغلق قريبًا' : lang === 'fr' ? 'Ferme bientôt' : lang === 'es' ? 'Cierra pronto' : 'Closing soon')
+      : (lang === 'ar' ? 'مفتوح الآن' : lang === 'fr' ? 'Ouvert' : lang === 'es' ? 'Abierto' : 'Open now');
     const detail = !closes
-      ? (lang === 'ar' ? 'على مدار الساعة' : lang === 'fr' ? '24 h/24' : 'Open 24 hours')
-      : (lang === 'ar' ? `يغلق ${whenText(closes, lang, today)}` : lang === 'fr' ? `ferme ${closes.inDays === 0 ? 'à ' : ''}${whenText(closes, lang, today)}` : `closes ${whenText(closes, lang, today)}`);
+      ? (lang === 'ar' ? 'على مدار الساعة' : lang === 'fr' ? '24 h/24' : lang === 'es' ? 'Abierto 24 horas' : 'Open 24 hours')
+      : (lang === 'ar' ? `يغلق ${whenText(closes, lang, today)}` : lang === 'fr' ? `ferme ${closes.inDays === 0 ? 'à ' : ''}${whenText(closes, lang, today)}` : lang === 'es' ? `cierra ${whenText(closes, lang, today)}` : `closes ${whenText(closes, lang, today)}`);
     return { label, detail, soon };
   }
-  const label = lang === 'ar' ? 'مغلق الآن' : lang === 'fr' ? 'Fermé' : 'Closed';
+  const label = lang === 'ar' ? 'مغلق الآن' : lang === 'fr' ? 'Fermé' : lang === 'es' ? 'Cerrado' : 'Closed';
   const opens = (status as Extract<OpenStatus, { open: false }>).opens;
   const detail = !opens
     ? null
-    : lang === 'ar' ? `يفتح ${whenText(opens, lang, today)}` : lang === 'fr' ? `ouvre ${opens.inDays === 0 ? 'à ' : ''}${whenText(opens, lang, today)}` : `opens ${whenText(opens, lang, today)}`;
+    : lang === 'ar' ? `يفتح ${whenText(opens, lang, today)}` : lang === 'fr' ? `ouvre ${opens.inDays === 0 ? 'à ' : ''}${whenText(opens, lang, today)}` : lang === 'es' ? `abre ${whenText(opens, lang, today)}` : `opens ${whenText(opens, lang, today)}`;
   return { label, detail, soon: false };
 }
 
 /** The week as rows to display, starting Saturday in Arabic and Monday otherwise. */
 export function weekRows(hours: OpeningHours, lang: FormatLang): { day: number; name: string; text: string }[] {
   const order = lang === 'ar' ? [6, 0, 1, 2, 3, 4, 5] : [1, 2, 3, 4, 5, 6, 0];
-  const closed = lang === 'ar' ? 'مغلق' : lang === 'fr' ? 'Fermé' : 'Closed';
-  const dash = lang === 'fr' ? ' – ' : '–';
+  const closed = lang === 'ar' ? 'مغلق' : lang === 'fr' ? 'Fermé' : lang === 'es' ? 'Cerrado' : 'Closed';
+  const dash = lang === 'fr' || lang === 'es' ? ' – ' : '–';
   return order.map(day => ({
     day,
     name: dayName(day, lang).replace(/^./, c => c.toUpperCase()),

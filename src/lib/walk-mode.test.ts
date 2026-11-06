@@ -53,3 +53,11 @@ describe('compassPoint in French', () => {
     expect(compassPoint(315, 'fr')).toBe('NO');
   });
 });
+
+describe('compassPoint in Spanish', () => {
+  it('uses O for west, like French', () => {
+    expect(compassPoint(270, 'es')).toBe('O');
+    expect(compassPoint(315, 'es')).toBe('NO');
+    expect(compassPoint(45, 'es')).toBe('NE');
+  });
+});

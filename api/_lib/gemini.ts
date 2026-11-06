@@ -5,7 +5,7 @@ import type { Location } from '../../src/data/locations.js';
 import { getContent } from './content.js';
 import { parseCanonicalQuery, rateLimit } from './guard.js';
 import { textHash } from '../../src/lib/text-hash.js';
-import { descriptionOf } from '../../src/i18n/lang.js';
+import { descriptionOf, LANGUAGES, nameOf, type Lang } from '../../src/i18n/lang.js';
 
 // Server-only: the key is read at request time and never shipped to the browser.
 let client: GoogleGenAI | null = null;
@@ -16,8 +16,8 @@ export const getClient = () => {
   return client;
 };
 
-export type Lang = 'en' | 'ar' | 'fr';
-const LANGUAGE_NAME: Record<Lang, string> = { en: 'English', ar: 'Arabic', fr: 'French' };
+export type { Lang };
+const LANGUAGE_NAME = (lang: Lang) => LANGUAGES[lang].english;
 
 // Runs the rate limit and query checks shared by both endpoints. Returns the
 // place and language, or an error response to send back as is.
@@ -123,7 +123,7 @@ const loadOrGenerateAudio = async (text: string, lang: Lang, pathname: string) =
 // The exact text the audio is generated from and keyed by. The request handler
 // and the pre-generation script must both use this, or their keys won't match.
 const audioText = (location: Location, lang: Lang) =>
-  descriptionOf(location, lang) || null; // French falls back to the English text, narrated in French
+  descriptionOf(location, lang) || null; // French and Spanish fall back to the English text, narrated in that language
 
 /** Whether this place's audio is already in Blob for the current description and AUDIO_VERSION. */
 export async function audioStatus(location: Location, lang: Lang): Promise<'stored' | 'missing' | 'no-text'> {
@@ -220,7 +220,7 @@ const generateAudio = async (text: string, lang: Lang) => {
   // A lite model with minimal thinking and a short script keeps both steps fast.
   const scriptResponse = await ai.models.generateContent({
     model: 'gemini-3.1-flash-lite-preview',
-    contents: `You are an immersive audio guide narrator for the historical city of Cairo. Make this historical fact sound like a captivating, slightly dramatic story for a tourist standing right there. Do NOT include any formatting, markdown, or sound effect markers. Keep it to about 90 words. Speak directly to the listener as if you are standing next to them. The response MUST be ONLY the spoken text, in ${LANGUAGE_NAME[lang]}. Here is the information:\n${text}`,
+    contents: `You are an immersive audio guide narrator for the historical city of Cairo. Make this historical fact sound like a captivating, slightly dramatic story for a tourist standing right there. Do NOT include any formatting, markdown, or sound effect markers. Keep it to about 90 words. Speak directly to the listener as if you are standing next to them. The response MUST be ONLY the spoken text, in ${LANGUAGE_NAME(lang)}. Here is the information:\n${text}`,
     config: { thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL } },
   });
   const script = scriptResponse.text?.trim();
@@ -279,7 +279,9 @@ const generateLiveInfo = async (location: Location, lang: Lang): Promise<LiveInf
   const prompt = lang === 'ar'
     ? `أعطني معلومات سياحية حية ومراجعات وتفاصيل تاريخية محدثة عن "${location.nameAr}" في القاهرة، مصر. استخدم بحث جوجل للحصول على أحدث المصادر.`
     : lang === 'fr'
-    ? `Donne des informations touristiques à jour, des avis et des détails historiques récents sur « ${location.nameFr || location.nameEn} » au Caire, en Égypte. Utilise la recherche Google pour trouver les sources les plus récentes. Réponds en français.`
+    ? `Donne des informations touristiques à jour, des avis et des détails historiques récents sur « ${nameOf(location, 'fr')} » au Caire, en Égypte. Utilise la recherche Google pour trouver les sources les plus récentes. Réponds en français.`
+    : lang === 'es'
+    ? `Ofrece información turística actualizada, opiniones y detalles históricos recientes sobre «${nameOf(location, 'es')}» en El Cairo, Egipto. Usa la búsqueda de Google para encontrar las fuentes más recientes. Responde en español.`
     : `Provide live tourist information, reviews, and updated historical details about "${location.nameEn}" in Cairo, Egypt. Use Google Search to find the latest sources.`;
 
   const response = await getClient().models.generateContent({

@@ -1,6 +1,8 @@
 // Helpers for "Start the walk": which stop to begin at, and which way the
 // next stop is. Pure, so they're easy to test; the screen is WalkMode.tsx.
 
+import type { Lang } from '../i18n/lang.js';
+
 import type { Point } from './geo';
 
 /** Compass bearing from one point to another, in degrees clockwise from north (0–360). */
@@ -17,13 +19,14 @@ export function bearingDegrees(from: Point, to: Point): number {
 const EN = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 const AR = ['شمالًا', 'شمال شرق', 'شرقًا', 'جنوب شرق', 'جنوبًا', 'جنوب غرب', 'غربًا', 'شمال غرب'];
 
-const FR_POINTS = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
+// French and Spanish: west is O (ouest, oeste).
+const ROMANCE = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
 
 /** "NE" / "شمال شرق" / "NO": the nearest of the eight compass points. */
-export const compassPoint = (bearing: number, lang: 'en' | 'ar' | 'fr' | boolean) => {
+export const compassPoint = (bearing: number, lang: Lang | boolean) => {
   // `true` / `false` (Arabic or not) still works for older callers.
   const l = lang === true ? 'ar' : lang === false ? 'en' : lang;
-  return (l === 'ar' ? AR : l === 'fr' ? FR_POINTS : EN)[Math.round((((bearing % 360) + 360) % 360) / 45) % 8];
+  return (l === 'ar' ? AR : l === 'fr' || l === 'es' ? ROMANCE : EN)[Math.round((((bearing % 360) + 360) % 360) / 45) % 8];
 };
 
 /**

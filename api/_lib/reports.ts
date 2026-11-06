@@ -1,6 +1,7 @@
 // Visitor reports of wrong information, one small JSON file per report in
 // Vercel Blob. Nothing identifying (IP, account) is stored with a report.
 
+import { isLang, type Lang } from '../../src/i18n/lang.js';
 import { randomUUID } from 'node:crypto';
 import { del, get, list, put } from '@vercel/blob';
 import { CAIRO_BOUNDS } from '../../src/data/content.js';
@@ -21,7 +22,7 @@ export interface Report {
   placeName: string;
   message: string;
   suggested?: { lat: number; lng: number; source: 'gps' | 'map'; accuracy?: number };
-  lang: 'en' | 'ar' | 'fr';
+  lang: Lang;
   adminNote?: string;
   updatedAt?: string;
 }
@@ -66,7 +67,7 @@ export async function buildReport(input: any, now = new Date()): Promise<Report 
     placeName: place.nameEn,
     message,
     ...(suggested ? { suggested } : {}),
-    lang: input?.lang === 'ar' || input?.lang === 'fr' ? input.lang : 'en',
+    lang: isLang(input?.lang) ? input.lang : 'en',
   };
 }
 
