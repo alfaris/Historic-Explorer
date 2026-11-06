@@ -148,5 +148,11 @@ export const ES: Record<string, string> = {
   'No closures or prayer pauses on the way.': 'Sin cierres ni pausas para la oración en el camino.',
   'Estimates. Walking times are from the map; opening hours and prayer times are in Cairo time.': 'Estimaciones. Los tiempos a pie salen del mapa; el horario y las horas de oración están en hora de El Cairo.',
   'next day': 'al día siguiente',
+  // Saved places
+  'Save': 'Guardar',
+  'Saved': 'Guardado',
+  'Saved places': 'Lugares guardados',
+  'Remove': 'Quitar',
+  'No saved places yet. Tap the bookmark on a place to keep it here.': 'Aún no hay lugares guardados. Toca el marcador de un lugar para guardarlo aquí.',
   'Visitor tips': 'Consejos para la visita',
 };

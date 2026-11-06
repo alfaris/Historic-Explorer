@@ -16,6 +16,7 @@ import type { NearMeState } from './NearMe';
 
 import { L, nameOf, descriptionOf, currentLang, byLang, fallbackLang } from '../i18n/lang';
 import { GlossaryText } from './GlossaryText';
+import { SaveToggle } from './Saved';
 import { minutesLabel as minutes, stopOfLabel } from './WalkInfo';
 import { ArrivalWarning, HoursBadge } from './PlaceHours';
 import { PrayerArrivalWarning, PrayerNotice } from './PrayerTimes';
@@ -155,6 +156,7 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
                   onNext={next ? () => { markVisited(stop.id); go(index + 1); } : undefined}
                   onPrevious={index > 0 ? () => go(index - 1) : undefined}
                 />
+                <SaveToggle place={stop} />
                 {visited.has(stop.id) ? (
                   <span className="inline-flex items-center gap-1.5 text-xs font-bold text-nile">
                     <CircleCheck className="w-4 h-4" /> {L('Visited', 'تمت الزيارة')}
