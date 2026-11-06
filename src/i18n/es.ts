@@ -14,7 +14,9 @@ export const ES: Record<string, string> = {
   'Reload': 'Recargar',
   'Try again': 'Reintentar',
   'Reset': 'Reiniciar',
-  'Stop': 'Parada',
+  'Playback speed': 'Velocidad de reproducción',
+  'Resume': 'Reanudar',
+  'Stop': 'Detener',
   // Places and audio
   'Loading Immersive Guide': 'Cargando la guía inmersiva',
   'Immersive Audio': 'Audioguía inmersiva',
