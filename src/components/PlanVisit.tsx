@@ -10,6 +10,7 @@ import {
 } from '../lib/visit-plan';
 import { L, byLang, currentLang, nameOf, type Lang } from '../i18n/lang';
 import { minutesLabel } from './WalkInfo';
+import { useContent } from '../data/ContentContext';
 
 const clock = (d: Date, lang: Lang) => formatTime(cairoTime(d).minutes, lang);
 // Spanish says "a las 9:00" but "a la 1:00".
@@ -97,8 +98,9 @@ function PlanDialog({ route, places, onClose, onOpenPlace }: {
   const [stay, setStay] = useState<number>(() => defaultStay(places, route));
 
   const start = useMemo(() => cairoInstant(now, day, /^\d\d:\d\d$/.test(time) ? toMinutes(time) : 9 * 60), [now, day, time]);
-  const plan = useMemo(() => visitPlan(places, route.id, start, stay), [places, route.id, start, stay]);
-  const suggestion = useMemo(() => suggestStart(places, route.id, start, stay, now), [places, route.id, start, stay, now]);
+  const { specialPeriods } = useContent();
+  const plan = useMemo(() => visitPlan(places, route.id, start, stay, undefined, specialPeriods), [places, route.id, start, stay, specialPeriods]);
+  const suggestion = useMemo(() => suggestStart(places, route.id, start, stay, now, specialPeriods), [places, route.id, start, stay, now, specialPeriods]);
 
   const dayLabel = (k: number) =>
     k === 0 ? L('Today', 'اليوم') : k === 1 ? L('Tomorrow', 'غدًا') : dayName(cairoTime(cairoInstant(now, k, 12 * 60)).day, lang).replace(/^./, c => c.toUpperCase());
