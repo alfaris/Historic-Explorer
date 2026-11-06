@@ -1,17 +1,27 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Volume2, Square, Loader2, Sparkles } from 'lucide-react';
-import { useLanguage } from '../i18n/LanguageContext';
+import React, { useEffect, useRef, useSyncExternalStore } from 'react';
+import { Gauge, Loader2, Play, Sparkles } from 'lucide-react';
 import { textHash } from '../lib/text-hash';
 import { audioGuideUrl } from '../lib/offline-pack';
 import { track } from '../lib/track';
+import { guidePlayer, nextSpeed, speedLabel, type GuideTrack } from '../lib/guide-player';
+import { useContent } from '../data/ContentContext';
+import { photoForPlace } from '../data/photo-resolve';
 import type { Lang } from '../i18n/lang';
 
-import { L, LANGUAGES } from '../i18n/lang';
+import { L, nameOf } from '../i18n/lang';
 interface AudioGuideProps {
   locationId: number;
   text: string;
   langCode: Lang;
+  /** Walk mode: the lock screen's next and previous buttons move between stops. */
+  onNext?: () => void;
+  onPrevious?: () => void;
 }
+
+const usePlayer = () => {
+  const player = guidePlayer();
+  return [useSyncExternalStore(player.subscribe, player.getState, player.getState), player] as const;
+};
 
 type GuideAudio = { audio: ArrayBuffer } | { script: string };
 
@@ -44,16 +54,16 @@ const loadGuideAudio = (locationId: number, langCode: Lang, text: string) => {
 // background, so quickly skimmed places don't trigger generation.
 const PREFETCH_DELAY_MS = 1500;
 
-export function AudioGuide({ locationId, text, langCode }: AudioGuideProps) {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const { language } = useLanguage();
-  const isArabic = language === 'ar';
-  
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const sourceRef = useRef<AudioBufferSourceNode | null>(null);
+export function AudioGuide({ locationId, text, langCode, onNext, onPrevious }: AudioGuideProps) {
+  const [state, player] = usePlayer();
+  const { places, routes } = useContent();
+  const key = `${locationId}:${langCode}:${textHash(text)}`;
+  const mine = state.key === key;
+  const status = mine ? state.status : 'idle';
 
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  // The walk's next and previous change between renders; the lock screen calls the latest.
+  const nav = useRef({ onNext, onPrevious });
+  nav.current = { onNext, onPrevious };
 
   useEffect(() => {
     if (!text) return;
@@ -63,161 +73,104 @@ export function AudioGuide({ locationId, text, langCode }: AudioGuideProps) {
     return () => clearTimeout(timer);
   }, [locationId, langCode, text]);
 
-  useEffect(() => {
-    // When text or lang changes, reset playing state
-    if (sourceRef.current) {
-      sourceRef.current.stop();
-      sourceRef.current.disconnect();
-    }
-    window.speechSynthesis.cancel();
-    setIsPlaying(false);
-    setIsLoading(false);
-    
-    return () => {
-      window.speechSynthesis.cancel();
-      if (sourceRef.current) {
-        sourceRef.current.stop();
-        sourceRef.current.disconnect();
-      }
-      if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
-        audioCtxRef.current.close().catch(() => {});
-      }
-      audioCtxRef.current = null;
-    };
-  }, [locationId, text, langCode]);
-
-  const togglePlay = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    
+  const start = async () => {
     if (!text) return;
-
-    if (isPlaying) {
-      window.speechSynthesis.cancel();
-      setIsPlaying(false);
-      if (sourceRef.current) {
-        sourceRef.current.stop();
-        sourceRef.current.disconnect();
-        sourceRef.current = null;
-      }
-      return;
-    }
-
-    if (isLoading) return;
-    
-    setIsLoading(true);
     track({ t: 'play', id: locationId });
-
-    // Initialize AudioContext synchronously to satisfy iOS Safari gesture requirements
-    if (!audioCtxRef.current) {
-        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-        if (AudioContextClass) {
-            audioCtxRef.current = new AudioContextClass({ sampleRate: 24000 });
-            // Resume immediately within the synchronous click handler
-            if (audioCtxRef.current.state === 'suspended') {
-                audioCtxRef.current.resume().catch(() => {});
-            }
-        }
-    }
-
+    const place = places.find(p => p.id === locationId);
+    const route = place && routes.find(r => r.id === place.routeId);
+    const photo = place && photoForPlace(place);
+    const t: GuideTrack = {
+      key,
+      title: place ? nameOf(place) : '',
+      artist: route ? nameOf(route) : 'Cairo Walks',
+      artwork: photo ? { src: new URL(photo.src, window.location.href).href, width: photo.width, height: photo.height } : undefined,
+      onNext: onNext && (() => nav.current.onNext?.()),
+      onPrevious: onPrevious && (() => nav.current.onPrevious?.()),
+    };
+    // Straight from the tap, before any await: iOS only starts audio from a tap.
+    player.begin(t);
     try {
       const result = await loadGuideAudio(locationId, langCode, text);
-
       if ('script' in result) {
-        // Server could narrate the script but not voice it
-        useBrowserSpeech(result.script);
+        // The server could write the narration but not voice it.
+        player.playSpeech(key, result.script, langCode);
         return;
       }
-
-      const audioCtx = audioCtxRef.current;
-      if (!audioCtx) throw new Error('AudioContext not supported');
-      if (audioCtx.state === 'suspended') {
-        await audioCtx.resume();
-      }
-
-      // decodeAudioData detaches its input, so keep the cached copy intact
-      const buffer = await audioCtx.decodeAudioData(result.audio.slice(0));
-      const source = audioCtx.createBufferSource();
-      source.buffer = buffer;
-      source.connect(audioCtx.destination);
-      source.start();
-
-      sourceRef.current = source;
-      setIsPlaying(true);
-      setIsLoading(false);
-
-      source.onended = () => {
-        setIsPlaying(false);
-        sourceRef.current = null;
-      };
-    } catch (error: any) {
-      console.warn('Audio generation failed:', error);
-      setIsLoading(false);
-      
-      // Full fallback to basic browser TTS with original text if anything else fails
-      useBrowserSpeech(text);
+      await player.playAudio(key, result.audio);
+    } catch (error) {
+      console.warn('Audio guide failed, using the browser voice:', error);
+      player.playSpeech(key, text, langCode);
     }
   };
 
-  const useBrowserSpeech = (speechText: string) => {
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(speechText);
-    utterance.lang = LANGUAGES[langCode].speech;
-    
-    const voices = window.speechSynthesis.getVoices();
-    const targetLangPrefix = langCode;
-    const voice = voices.find(v => v.lang.toLowerCase().startsWith(targetLangPrefix));
-    if (voice) {
-      utterance.voice = voice;
-    }
+  // A new place or language stops this guide. After the lock screen's next or
+  // previous button (walk mode), the new stop's guide plays on.
+  useEffect(() => {
+    if (text && player.takeAutoplay()) start();
+    return () => player.stop(key);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
 
-    utterance.onend = () => setIsPlaying(false);
-    utterance.onerror = (e) => {
-       console.warn('SpeechSynthesis error:', e);
-       // Some browsers fire 'interrupted', but the speech still plays or gets caught
-       if (e.error !== 'interrupted') {
-           setIsPlaying(false);
-       }
-    };
-    
-    utteranceRef.current = utterance;
-    window.speechSynthesis.speak(utterance);
-    setIsPlaying(true);
-    setIsLoading(false);
+  const toggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (status === 'playing') player.stop(key);
+    else if (status === 'paused') player.resume();
+    else if (status === 'idle') start();
   };
 
+  const busy = status === 'loading';
   return (
-    <button
-      onClick={togglePlay}
-      disabled={isLoading && !isPlaying}
-      className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all duration-300 shadow-sm ${
-        isPlaying 
-          ? 'bg-nile text-white shadow-md shadow-nile/30 border border-nile animate-[pulse_3s_ease-in-out_infinite]' 
-          : isLoading
-            ? 'bg-stone-100 text-stone-500 border border-stone-200 cursor-wait'
-            : 'bg-white text-nile hover:bg-stone-50 border border-nile/20 hover:border-nile/50'
-      }`}
-    >
-      {isLoading ? (
-        <>
-          <Loader2 className="w-4 h-4 animate-spin text-stone-400" />
-          {L('Loading Immersive Guide', 'جاري التحضير...')}
-        </>
-      ) : isPlaying ? (
-        <>
-          <div className="flex items-center space-x-1 w-4">
-            <div className="w-1 bg-white h-2 animate-[bounce_1s_infinite]"></div>
-            <div className="w-1 bg-white h-4 animate-[bounce_1s_infinite_0.2s]"></div>
-            <div className="w-1 bg-white h-3 animate-[bounce_1s_infinite_0.4s]"></div>
-          </div>
-          {L('Stop', 'إيقاف')}
-        </>
-      ) : (
-        <>
-          <Sparkles className="w-4 h-4" />
-          {L('Immersive Audio', 'دليل صوتي تفاعلي')}
-        </>
+    <span className="inline-flex flex-wrap items-center gap-2">
+      <button
+        onClick={toggle}
+        disabled={busy}
+        className={`inline-flex items-center gap-2 min-h-11 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all duration-300 shadow-sm ${
+          status === 'playing'
+            ? 'bg-nile text-white shadow-md shadow-nile/30 border border-nile animate-[pulse_3s_ease-in-out_infinite]'
+            : busy
+              ? 'bg-stone-100 text-stone-500 border border-stone-200 cursor-wait'
+              : 'bg-white text-nile hover:bg-stone-50 border border-nile/20 hover:border-nile/50'
+        }`}
+      >
+        {busy ? (
+          <>
+            <Loader2 className="w-4 h-4 animate-spin text-stone-400" />
+            {L('Loading Immersive Guide', 'جاري التحضير...')}
+          </>
+        ) : status === 'playing' ? (
+          <>
+            <div className="flex items-center space-x-1 w-4" aria-hidden="true">
+              <div className="w-1 bg-white h-2 animate-[bounce_1s_infinite]"></div>
+              <div className="w-1 bg-white h-4 animate-[bounce_1s_infinite_0.2s]"></div>
+              <div className="w-1 bg-white h-3 animate-[bounce_1s_infinite_0.4s]"></div>
+            </div>
+            {L('Stop', 'إيقاف')}
+          </>
+        ) : status === 'paused' ? (
+          <>
+            <Play className="w-4 h-4" />
+            {L('Resume', 'متابعة')}
+          </>
+        ) : (
+          <>
+            <Sparkles className="w-4 h-4" />
+            {L('Immersive Audio', 'دليل صوتي تفاعلي')}
+          </>
+        )}
+      </button>
+      {mine && status !== 'idle' && (
+        <button
+          onClick={e => {
+            e.stopPropagation();
+            player.setSpeed(nextSpeed(state.speed));
+          }}
+          className="inline-flex items-center gap-1.5 min-h-11 min-w-11 px-3 rounded-xl border border-nile/20 bg-white text-xs font-bold text-nile tabular-nums hover:border-nile/50"
+          aria-label={`${L('Playback speed', 'سرعة التشغيل')} ${speedLabel(state.speed, langCode)}`}
+        >
+          <Gauge className="w-4 h-4" aria-hidden="true" />
+          {speedLabel(state.speed, langCode)}
+        </button>
       )}
-    </button>
+    </span>
   );
 }
-

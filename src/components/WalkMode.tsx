@@ -146,7 +146,14 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
               <p className="text-stone-600 leading-relaxed mb-4">{descriptionOf(stop)}</p>
               <VisitorTips place={stop} className="mb-4" />
               <div className="flex flex-wrap items-center gap-3">
-                <AudioGuide locationId={stop.id} text={(descriptionOf(stop)) || ''} langCode={currentLang()} />
+                <AudioGuide
+                  locationId={stop.id}
+                  text={(descriptionOf(stop)) || ''}
+                  langCode={currentLang()}
+                  // The lock screen's next button does what "Done here, next stop" does.
+                  onNext={next ? () => { markVisited(stop.id); go(index + 1); } : undefined}
+                  onPrevious={index > 0 ? () => go(index - 1) : undefined}
+                />
                 {visited.has(stop.id) ? (
                   <span className="inline-flex items-center gap-1.5 text-xs font-bold text-nile">
                     <CircleCheck className="w-4 h-4" /> {L('Visited', 'تمت الزيارة')}
