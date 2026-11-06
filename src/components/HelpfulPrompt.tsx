@@ -25,7 +25,11 @@ const REASON_ORDER: Reason[] = ['outdated', 'short', 'location', 'audio', 'other
 export function HelpfulPrompt({ placeId, className = '' }: { placeId: number; className?: string }) {
   const done = voted.useIds().has(placeId);
   // What this card shows after a vote: thanks, the reasons to pick from, or thanks for the reason.
-  const [after, setAfter] = useState<'thanks' | 'why' | 'thanks-why' | 'thanks-other' | null>(null);
+  // Tied to the place voted on: walk mode and the map reuse this prompt for the next place,
+  // which mustn't inherit it (or get a reason recorded against it).
+  const [state, setState] = useState<{ placeId: number; after: 'thanks' | 'why' | 'thanks-why' | 'thanks-other' } | null>(null);
+  const after = state?.placeId === placeId ? state.after : null;
+  const setAfter = (next: 'thanks' | 'why' | 'thanks-why' | 'thanks-other') => setState({ placeId, after: next });
   if (optedOut()) return null;
   const stop = (e: React.MouseEvent) => e.stopPropagation();
 
