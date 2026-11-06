@@ -35,6 +35,9 @@ describe('routeGaps', () => {
   it('a route missing Spanish highlights is missing Spanish', () => {
     expect(routeGaps({ ...bundledContent.routes[0], highlightsEs: [] })).toEqual(['es']);
   });
+  it('a route without highlights only needs a translated name and description', () => {
+    expect(routeGaps({ ...bundledContent.routes[0], highlightsEn: [], highlightsAr: [], highlightsFr: [], highlightsEs: [] })).toEqual([]);
+  });
 });
 
 describe('progress', () => {

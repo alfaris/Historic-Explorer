@@ -36,9 +36,10 @@ export function placeGaps(place: Location): Gap[] {
   return gaps;
 }
 
-/** Languages a route is missing (name, description and highlights). */
+/** Languages a route is missing: name and description, and highlights when it has English ones (as the editor's fill button asks). */
 export function routeGaps(route: Route): OptionalLang[] {
-  return OPTIONAL_LANGS.filter(lang => !hasLang(route as unknown as Record<string, unknown>, lang, ['name', 'description', 'highlights']));
+  const fields = route.highlightsEn.length ? ['name', 'description', 'highlights'] : ['name', 'description'];
+  return OPTIONAL_LANGS.filter(lang => !hasLang(route as unknown as Record<string, unknown>, lang, fields));
 }
 
 /** For each item: how many places have it, out of how many. */
