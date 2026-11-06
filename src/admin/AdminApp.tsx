@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { BarChart3, History, Inbox, ListChecks, LogOut, MapPinned, Route as RouteIcon } from 'lucide-react';
+import { BarChart3, BookOpen, History, Inbox, ListChecks, LogOut, MapPinned, Route as RouteIcon } from 'lucide-react';
 import type { Content } from '../data/content';
 import { normalizeContent, validateContent, withMaxPlaceId } from '../data/content';
 import { api, ApiError } from './api';
@@ -10,6 +10,7 @@ import { ContentTab } from './ContentTab';
 import type { PlaceSection } from './content-health';
 import { HistoryTab } from './HistoryTab';
 import { StatsTab } from './StatsTab';
+import { GlossaryTab } from './GlossaryTab';
 import { Button, ErrorBox } from './ui';
 
 export type SaveFn = (next: Content, note: string) => Promise<boolean>;
@@ -85,7 +86,7 @@ function Login({ onSignedIn }: { onSignedIn: () => void }) {
   );
 }
 
-type Tab = 'reports' | 'content' | 'places' | 'routes' | 'stats' | 'history';
+type Tab = 'reports' | 'content' | 'places' | 'routes' | 'glossary' | 'stats' | 'history';
 
 function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
   const [tab, setTab] = useState<Tab>('reports');
@@ -151,6 +152,7 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
     { id: 'content', label: 'Content', icon: <ListChecks className="w-4 h-4" /> },
     { id: 'places', label: 'Places', icon: <MapPinned className="w-4 h-4" /> },
     { id: 'routes', label: 'Routes', icon: <RouteIcon className="w-4 h-4" /> },
+    { id: 'glossary', label: 'Glossary', icon: <BookOpen className="w-4 h-4" /> },
     { id: 'stats', label: 'Stats', icon: <BarChart3 className="w-4 h-4" /> },
     { id: 'history', label: 'History', icon: <History className="w-4 h-4" /> },
   ];
@@ -241,6 +243,8 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
           <PlacesTab content={content} save={save} initialPlaceId={editPlaceId} initialSection={editSection} onSelected={() => { setEditPlaceId(null); setEditSection(null); }} />
         ) : tab === 'routes' ? (
           <RoutesTab content={content} save={save} initialRouteId={editRouteId} onSelected={() => setEditRouteId(null)} />
+        ) : tab === 'glossary' ? (
+          <GlossaryTab content={content} save={save} />
         ) : tab === 'stats' ? (
           <StatsTab content={content} onSignedOut={onSignedOut} />
         ) : (

@@ -27,6 +27,7 @@ import { formatDistance, formatDuration } from '../lib/route-format';
 import { HoursBadge, PlaceHours } from './PlaceHours';
 import { PrayerNotice } from './PrayerTimes';
 import { VisitorTips } from './VisitorTips';
+import { GlossaryText } from './GlossaryText';
 import { OtherRouteResults } from './OtherRouteResults';
 import { SharePlace, ShareRoute } from './ShareRoute';
 import { PlanVisit } from './PlanVisit';
@@ -410,7 +411,7 @@ export const MainContent: React.FC = () => {
                     <div className="pt-8 mt-8 border-t border-chalk">
                       <div className="mb-8">
                         <p className="text-stone-600 text-lg leading-relaxed mb-4 font-serif italic" lang={fallbackLang(loc, 'description')}>
-                          {descriptionOf(loc) || L('No description available for this location at the moment.', 'لا يوجد وصف متاح حالياً لهذا الموقع.')}
+                          {descriptionOf(loc) ? <GlossaryText text={descriptionOf(loc)} /> : L('No description available for this location at the moment.', 'لا يوجد وصف متاح حالياً لهذا الموقع.')}
                         </p>
                         <AudioGuide 
                           locationId={loc.id}
@@ -814,7 +815,7 @@ export const MainContent: React.FC = () => {
                             
                             <div className="mb-8">
                               <p className="text-stone-600 text-lg leading-relaxed mb-4 font-serif italic" lang={fallbackLang(loc, 'description')}>
-                                {descriptionOf(loc) || L('No description available for this location at the moment.', 'لا يوجد وصف متاح حالياً لهذا الموقع.')}
+                                {descriptionOf(loc) ? <GlossaryText text={descriptionOf(loc)} /> : L('No description available for this location at the moment.', 'لا يوجد وصف متاح حالياً لهذا الموقع.')}
                               </p>
                               <AudioGuide 
                                 locationId={loc.id}
