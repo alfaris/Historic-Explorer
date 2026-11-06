@@ -29,6 +29,7 @@ import { PrayerNotice } from './PrayerTimes';
 import { VisitorTips } from './VisitorTips';
 import { OtherRouteResults } from './OtherRouteResults';
 import { SharePlace, ShareRoute } from './ShareRoute';
+import { PlanVisit } from './PlanVisit';
 import { isPlaceLink, isRouteLink, placeFromLocation, routeFromLocation } from '../lib/share';
 import { askForCompass } from '../lib/useWalkSensors';
 import { LazyBoundary } from './LazyBoundary';
@@ -617,6 +618,7 @@ export const MainContent: React.FC = () => {
                   {L('Start the walk', 'ابدأ الجولة')}
                 </button>
               )}
+              {plan.size > 0 && <PlanVisit route={currentRouteData} places={locations} onOpenPlace={openPlace} compactOnPhone />}
               <ShareRoute route={currentRouteData} isArabic={isArabic} compactOnPhone />
               </div>
 

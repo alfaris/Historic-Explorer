@@ -8,7 +8,7 @@ import { PrayerArrivalWarning } from './PrayerTimes';
 
 import { L, byLang, nameOf } from '../i18n/lang';
 export const minutesLabel = (n: number) =>
-  byLang({ en: `${n} min walk`, ar: `${n} ${n === 1 ? 'دقيقة' : n === 2 ? 'دقيقتان' : n <= 10 ? 'دقائق' : 'دقيقة'} سيرًا`, fr: `${n} min à pied`, es: `${n} min a pie` });
+  byLang({ en: `${n} min walk`, ar: `${n === 1 ? 'دقيقة واحدة' : n === 2 ? 'دقيقتان' : `${n} ${n <= 10 ? 'دقائق' : 'دقيقة'}`} سيرًا`, fr: `${n} min à pied`, es: `${n} min a pie` });
 export const stopOfLabel = (number: number, total: number) =>
   byLang({ en: `Stop ${number} of ${total}`, ar: `المحطة ${number} من ${total}`, fr: `Étape ${number} sur ${total}`, es: `Parada ${number} de ${total}` });
 

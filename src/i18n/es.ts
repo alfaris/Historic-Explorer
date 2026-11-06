@@ -133,5 +133,18 @@ export const ES: Record<string, string> = {
   'Stops on the walk': 'Paradas del paseo',
   'Also nearby': 'También cerca',
   'Prayer time when you get there': 'Hora de la oración cuando llegues',
+  // Plan my visit
+  'Plan my visit': 'Planificar mi visita',
+  'Day': 'Día',
+  'Start time': 'Hora de inicio',
+  'Time at each stop': 'Tiempo en cada parada',
+  'Today': 'Hoy',
+  'Tomorrow': 'Mañana',
+  'Closed when you get there': 'Cerrado cuando llegues',
+  'Closes during your visit': 'Cierra durante tu visita',
+  'Prayer during your visit': 'Oración durante tu visita',
+  'No closures or prayer pauses on the way.': 'Sin cierres ni pausas para la oración en el camino.',
+  'Estimates. Walking times are from the map; opening hours and prayer times are in Cairo time.': 'Estimaciones. Los tiempos a pie salen del mapa; el horario y las horas de oración están en hora de El Cairo.',
+  'next day': 'al día siguiente',
   'Visitor tips': 'Consejos para la visita',
 };
