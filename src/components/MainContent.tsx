@@ -63,6 +63,14 @@ const iconMap: Record<string, React.ElementType> = {
   Users
 };
 
+/** `list`, or the previous one when it holds the same items in the same order. */
+function useSameList<T>(list: T[]): T[] {
+  const previous = React.useRef(list);
+  const same = previous.current.length === list.length && previous.current.every((item, i) => item === list[i]);
+  if (!same) previous.current = list;
+  return previous.current;
+}
+
 export const MainContent: React.FC = () => {
   // Live routes and places (admin edits), falling back to the bundled copy.
   const { places: locations, routes, specialPeriods } = useContent();
@@ -157,7 +165,7 @@ export const MainContent: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const filteredLocations = useMemo(() => {
+  const filteredRaw = useMemo(() => {
     return locations.filter(loc => {
       const matchesRoute = loc.routeId === selectedRoute;
       // Forgiving match (Arabic letter variants, vowel marks, punctuation); see lib/search.
@@ -170,6 +178,9 @@ export const MainContent: React.FC = () => {
     // `now` only matters while Open now is on.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery, selectedCategory, selectedRoute, locations, filters, filters.openNow && now, specialPeriods, selectedLocation]);
+  // The same array while the same places match, so the minute's clock tick (Open now) or
+  // opening a place doesn't make the map re-fit or fly back while the visitor pans it.
+  const filteredLocations = useSameList(filteredRaw);
 
   // While searching, matches on the other routes too, best first.
   const otherRouteMatches = useMemo(() => {
