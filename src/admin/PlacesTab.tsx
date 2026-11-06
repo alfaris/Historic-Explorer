@@ -10,6 +10,7 @@ import { descriptionOf, LANGS, LANGUAGES, OPTIONAL_LANGS, type Lang, type Option
 import { api } from './api';
 import { AudioPanel } from './AudioPanel';
 import { HoursEditor } from './HoursEditor';
+import { isActiveMosque } from '../lib/prayer-times';
 import type { PlaceSection } from './content-health';
 import { fieldKey, FillMissingButton, missingPlaceText, withOptional } from './translations';
 
@@ -243,6 +244,22 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
           <Field label="Description (Arabic)">
             <textarea value={draft.descriptionAr} onChange={e => set('descriptionAr', e.target.value)} className={inputClass} rows={4} dir="rtl" maxLength={2000} />
           </Field>
+
+          <label className="flex items-start gap-3 rounded-xl border border-sand/60 p-4 text-sm">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={isActiveMosque(draft)}
+              onChange={e => setDraft(d => (d ? { ...d, mosque: e.target.checked } : d))}
+            />
+            <span>
+              <span className="block font-bold text-stone-600">Active mosque: visits pause during prayers</span>
+              <span className="block text-[11px] text-stone-400">
+                Visitors see the next prayer time and are warned about arriving during one.{' '}
+                {draft.mosque === undefined ? 'Set from the name for now; tick or untick to decide.' : 'Set by you.'}
+              </span>
+            </span>
+          </label>
 
           <HoursEditor hours={draft.hours} onChange={hours => setDraft(d => (d ? withOptional(d, 'hours', hours) : d))} />
 

@@ -46,6 +46,8 @@ export interface Location {
   descriptionEs?: string;
   lat: number;
   lng: number;
+  /** Visits pause during prayers. Unset: worked out from the name (a mosque). See isActiveMosque. */
+  mosque?: boolean;
   /** Weekly opening hours, in Cairo time. Optional: without them the app shows nothing rather than a guess. */
   hours?: OpeningHours;
   /** Entry fee as written for visitors, e.g. "EGP 60 · students EGP 30". Other languages fall back to English. */

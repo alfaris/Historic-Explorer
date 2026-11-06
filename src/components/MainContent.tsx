@@ -25,6 +25,7 @@ import { track } from '../lib/track';
 import { matchScore, searchPlaces } from '../lib/search';
 import { formatDistance, formatDuration } from '../lib/route-format';
 import { HoursBadge, PlaceHours } from './PlaceHours';
+import { PrayerNotice } from './PrayerTimes';
 import { OtherRouteResults } from './OtherRouteResults';
 import { SharePlace, ShareRoute } from './ShareRoute';
 import { isPlaceLink, isRouteLink, placeFromLocation, routeFromLocation } from '../lib/share';
@@ -322,6 +323,7 @@ export const MainContent: React.FC = () => {
             <span className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
               <VisitedBadge placeId={loc.id} isArabic={isArabic} />
               <HoursBadge place={loc} />
+              <PrayerNotice place={loc} compact />
             </span>
           </span>
           <ChevronRight className={`w-5 h-5 shrink-0 text-stone-300 ${isArabic ? 'rotate-180' : ''}`} aria-hidden="true" />
@@ -381,6 +383,7 @@ export const MainContent: React.FC = () => {
                   </h3>
                   {plan.get(loc.id) && <div className="mt-2"><StopNumber info={plan.get(loc.id)!} isArabic={isArabic} /></div>}
                     <HoursBadge place={loc} className="mt-2" />
+                    <PrayerNotice place={loc} className="mt-1.5" />
                 </div>
                 {plan.get(loc.id) && (
                   <div className="text-3xl font-serif text-gold-soft italic" aria-hidden="true">
@@ -790,6 +793,7 @@ export const MainContent: React.FC = () => {
                                 </p>
                                 {plan.get(loc.id) && <div className="mt-2"><StopNumber info={plan.get(loc.id)!} isArabic={isArabic} /></div>}
                                 <HoursBadge place={loc} className="mt-2" />
+                    <PrayerNotice place={loc} className="mt-1.5" />
                               </div>
                               <button 
                                 onClick={() => setSelectedLocation(null)}

@@ -159,3 +159,11 @@ describe('Spanish content', () => {
     for (const r of bundledContent.routes) expect(r.nameEs && r.descriptionEs && r.highlightsEs?.length).toBeTruthy();
   });
 });
+
+describe('mosque setting', () => {
+  it('keeps an explicit true or false, and drops anything else', () => {
+    const c = normalizeContent({ routes: [], places: [{ ...bundledContent.places[0], mosque: false }, { ...bundledContent.places[1], mosque: 'yes' }] });
+    expect(c.places[0].mosque).toBe(false);
+    expect(c.places[1]).not.toHaveProperty('mosque');
+  });
+});
