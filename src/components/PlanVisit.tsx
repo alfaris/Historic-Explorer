@@ -91,7 +91,8 @@ function PlanDialog({ route, places, onClose, onOpenPlace }: {
   const ar = lang === 'ar';
   const { ref, guard } = useDialog<HTMLDivElement>(onClose);
   const [now] = useState(() => new Date());
-  const [day, setDay] = useState(0);
+  // Rounding up just before midnight lands on tomorrow: start the day picker there too.
+  const [day, setDay] = useState(() => cairoDaysBetween(now, nextQuarter(now)));
   const [time, setTime] = useState(() => cairoHHMM(nextQuarter(now)));
   const [stay, setStay] = useState<number>(() => defaultStay(places, route));
 

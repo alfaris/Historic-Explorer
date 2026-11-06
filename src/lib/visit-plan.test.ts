@@ -39,6 +39,13 @@ describe('visitPlan', () => {
     expect(plan.flagged).toBe(2);
   });
 
+  it('flags a visit that runs into a midday break, even though it reopens before the visit ends', () => {
+    const split = { days: Array.from({ length: 7 }, () => [{ open: '09:00', close: '12:00' }, { open: '12:15', close: '17:00' }]) };
+    const plan = visitPlan([place(1, 30.04, { hours: split })], 'r', cairo('2026-01-05', '11:45'), 45);
+    expect(plan.stops[0].flags.map(f => f.kind)).toEqual(['closing']);
+    expect(visitPlan([place(1, 30.04, { hours: split })], 'r', cairo('2026-01-05', '12:15'), 45).flagged).toBe(0);
+  });
+
   it('does not flag places without hours', () => {
     const plan = visitPlan(places.map(p => ({ ...p, hours: undefined })), 'r', cairo('2026-01-05', '23:00'));
     expect(plan.flagged).toBe(0);

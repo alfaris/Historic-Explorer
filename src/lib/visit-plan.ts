@@ -50,8 +50,11 @@ function flagsFor(place: Place, arrive: Date, leave: Date, pauses: PrayerPause[]
   const flags: PlanFlag[] = [];
   const onArrival = openStatus(place.hours, arrive);
   if (onArrival && !onArrival.open) flags.push({ kind: 'closed', status: onArrival });
-  else if (onArrival?.open && openStatus(place.hours, new Date(leave.getTime() - MIN))?.open === false) {
-    flags.push({ kind: 'closing', status: onArrival });
+  else if (onArrival?.open && onArrival.closes) {
+    // When it next closes (it may reopen later, e.g. after a midday break), as an instant.
+    const { inDays, minutes } = onArrival.closes;
+    const closes = arrive.getTime() + (inDays * 24 * 60 + minutes - cairoTime(arrive).minutes) * MIN;
+    if (closes < leave.getTime()) flags.push({ kind: 'closing', status: onArrival });
   }
   if (isActiveMosque(place)) {
     const pause = pauses.find(p => p.start < leave && p.end > arrive);
