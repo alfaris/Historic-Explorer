@@ -5,7 +5,7 @@
 // (Global Privacy Control or Do Not Track) send nothing. Events from a visit
 // with no connection are kept on the device and sent once it's back online.
 
-import type { StatEvent } from './stats';
+import { MAX_EVENTS_PER_REQUEST, type StatEvent } from './stats';
 
 const ENDPOINT = '/api/stats';
 const SEND_AFTER_MS = 30_000;
@@ -53,8 +53,14 @@ export function flush() {
     queue = [];
     return;
   }
-  const body = JSON.stringify({ events: queue });
+  const events = queue;
   queue = [];
+  // The server takes at most MAX_EVENTS_PER_REQUEST a request (kept events plus new ones can be more).
+  for (let i = 0; i < events.length; i += MAX_EVENTS_PER_REQUEST) send(events.slice(i, i + MAX_EVENTS_PER_REQUEST));
+}
+
+function send(events: StatEvent[]) {
+  const body = JSON.stringify({ events });
   try {
     const blob = new Blob([body], { type: 'application/json' });
     if (navigator.sendBeacon?.(ENDPOINT, blob)) return;

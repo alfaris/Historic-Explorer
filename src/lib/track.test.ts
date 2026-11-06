@@ -73,4 +73,19 @@ describe('track', () => {
     expect(await sent()).toEqual([[{ t: 'up', id: 3 }]]);
     expect(store.has(PENDING_KEY)).toBe(false);
   });
+
+  it('splits a long backlog into requests the server accepts whole', async () => {
+    nav.onLine = false;
+    for (let id = 1; id <= 50; id++) track({ t: 'up', id });
+    flush();
+    nav.onLine = true;
+    track({ t: 'down', id: 99 });
+    sendPending();
+    const batches = await sent();
+    expect(batches.map(b => b.length).sort((a, b) => b - a)).toEqual([50, 1]);
+    const all = batches.flat();
+    expect(all).toHaveLength(51);
+    expect(all).toContainEqual({ t: 'down', id: 99 });
+    expect(new Set(all.map(e => e.id)).size).toBe(51);
+  });
 });
