@@ -51,7 +51,8 @@ export function RouteProgress({ placeIds, clearIds = placeIds, isArabic }: { pla
         <span>
           {byLang({ en: `${done} / ${total} stops visited`, ar: `زرت ${done} من ${total} محطة`, fr: `${done} / ${total} étapes visitées`, es: `${done} / ${total} paradas visitadas` })}
         </span>
-        {done > 0 && (
+        {/* Reset whenever anything on the route is marked, extras included, even with no stop visited yet. */}
+        {clearIds.some(id => visited.has(id)) && (
           <button
             onClick={() => {
               const message = L('Clear your visited places on this route?', 'مسح تقدم الزيارة لهذا المسار؟');
