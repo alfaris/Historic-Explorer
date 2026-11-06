@@ -10,6 +10,7 @@ import { descriptionOf, LANGS, LANGUAGES, OPTIONAL_LANGS, type Lang, type Option
 import { api } from './api';
 import { AudioPanel } from './AudioPanel';
 import { HoursEditor } from './HoursEditor';
+import type { PlaceSection } from './content-health';
 import { fieldKey, FillMissingButton, missingPlaceText, withOptional } from './translations';
 
 const CAIRO_CENTRE = { lat: 30.0444, lng: 31.2357 };
@@ -19,7 +20,7 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
   save: SaveFn;
   initialPlaceId: number | null;
   /** Scroll to this part of the editor once the place is open. */
-  initialSection?: 'hours' | null;
+  initialSection?: PlaceSection | null;
   onSelected: () => void;
 }) {
   const [routeFilter, setRouteFilter] = useState<string>('all');
@@ -265,7 +266,7 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
             const nameKey = fieldKey('name', lang);
             const descriptionKey = fieldKey('description', lang);
             return (
-              <div key={lang} className="rounded-xl border border-sand/60 p-4 space-y-4">
+              <div key={lang} id={`lang-${lang}`} className="rounded-xl border border-sand/60 p-4 space-y-4 scroll-mt-24">
                 <div>
                   <p className="text-xs font-bold text-stone-600">{name} (optional)</p>
                   <p className="text-[11px] text-stone-400">Empty fields show the English. {name} audio is narrated from the {name} description, or from the English one until there is one.</p>
@@ -298,6 +299,7 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
             />
           )}
 
+          <div id="photo" className="scroll-mt-24" />
           <PhotoField
             photo={draft.photo}
             builtIn={builtInPhoto(`place-${draft.id}`)}

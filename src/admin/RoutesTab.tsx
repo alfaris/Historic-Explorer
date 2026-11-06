@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ArrowDown, ArrowUp, Plus } from 'lucide-react';
 import type { Content, Route } from '../data/content';
 import type { SaveFn } from './AdminApp';
@@ -10,6 +10,7 @@ import { RouteQr } from './RouteQr';
 import { fieldKey, FillMissingButton, withOptional } from './translations';
 import { LANGS, LANGUAGES, OPTIONAL_LANGS, type Lang, type OptionalLang } from '../i18n/lang';
 import { routeText } from '../lib/route-format';
+import { plannedKm, plannedWalk } from './content-health';
 
 const blankRoute = (): Route => ({
   id: '',
@@ -27,7 +28,13 @@ const blankRoute = (): Route => ({
   duration: '',
 });
 
-export function RoutesTab({ content, save }: { content: Content; save: SaveFn }) {
+export function RoutesTab({ content, save, initialRouteId = null, onSelected }: {
+  content: Content;
+  save: SaveFn;
+  /** Open this route on arrival (from the Content checklist). */
+  initialRouteId?: string | null;
+  onSelected?: () => void;
+}) {
   const [draft, setDraft] = useState<Route | null>(null);
   const [isNew, setIsNew] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -44,6 +51,18 @@ export function RoutesTab({ content, save }: { content: Content; save: SaveFn })
     setOrder(asNew ? [] : walkStops(content.places, route.id).map(p => p.id));
     setIsNew(asNew);
   };
+  // Opened from the Content checklist: select that route.
+  useEffect(() => {
+    if (!initialRouteId) return;
+    const route = content.routes.find(r => r.id === initialRouteId);
+    if (route) open(route, false);
+    onSelected?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialRouteId]);
+
+  // The walk between the stops in the order being edited, to check the distance against.
+  const planned = draft && !isNew ? plannedWalk(applyStopOrder(content.places, draft.id, order), draft.id) : { meters: 0, minutes: 0, stops: 0 };
+
   const finalDraft = draft && OPTIONAL_LANGS.reduce(
     (r, l) => withOptional(r, fieldKey('highlights', l), lines(highlights[l])),
     { ...draft, highlightsEn: lines(highlights.en), highlightsAr: lines(highlights.ar) },
@@ -199,9 +218,22 @@ export function RoutesTab({ content, save }: { content: Content; save: SaveFn })
                 </React.Fragment>
               );
             })}
-            <Field label="Distance (km)" hint="e.g. 2.5">
-              <input type="number" inputMode="decimal" min="0.1" max="50" step="0.1" value={numberValue(draft.distanceKm)} onChange={e => setNumber('distanceKm', e.target.value)} className={inputClass} />
-            </Field>
+            <div>
+              <Field label="Distance (km)" hint="e.g. 2.5">
+                <input type="number" inputMode="decimal" min="0.1" max="50" step="0.1" value={numberValue(draft.distanceKm)} onChange={e => setNumber('distanceKm', e.target.value)} className={inputClass} />
+              </Field>
+              {/* Outside the label, so the button isn't part of the field's name. */}
+              {planned.stops > 1 && (
+                <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-stone-500">
+                  Planned walk from the {planned.stops} stops: ≈ {plannedKm(planned.meters)} km, about {planned.minutes} min of walking.
+                  {plannedKm(planned.meters) !== draft.distanceKm && (
+                    <button type="button" onClick={() => setNumber('distanceKm', String(plannedKm(planned.meters)))} className="min-h-11 px-2 font-bold text-nile hover:underline">
+                      Use {plannedKm(planned.meters)} km
+                    </button>
+                  )}
+                </p>
+              )}
+            </div>
             <Field label="Walking time (hours)" hint="From and to, e.g. 2 to 3. Use the same number twice for one value.">
               <div className="flex items-center gap-2">
                 <input type="number" inputMode="decimal" min="0.25" max="24" step="0.25" value={numberValue(draft.hoursMin)} onChange={e => setNumber('hoursMin', e.target.value)} className={inputClass} aria-label="Walking time from (hours)" />
