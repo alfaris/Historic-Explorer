@@ -35,10 +35,13 @@ export function SpecialHoursTab({ content, save, initialId = null, onSelected }:
   const [originalId, setOriginalId] = useState<string | null>(null);
   const [routeId, setRouteId] = useState(content.routes[0]?.id ?? '');
   const [busy, setBusy] = useState(false);
+  // Counts each opening of the editor: keys the fill buttons, so a translation still on its way is dropped when another item is opened.
+  const [session, setSession] = useState(0);
 
   const open = (p: SpecialPeriod | null) => {
     setDraft(p ? structuredClone(p) : blank());
     setOriginalId(p ? p.id : null);
+    setSession(n => n + 1);
   };
 
   useEffect(() => {
@@ -146,7 +149,7 @@ export function SpecialHoursTab({ content, save, initialId = null, onSelected }:
             <div className="sm:col-span-2 flex flex-wrap gap-x-6 gap-y-2">
               {OPTIONAL_LANGS.map(lang => (
                 <FillMissingButton
-                  key={`${originalId ?? 'new'}-${lang}`}
+                  key={`${session}-${lang}`}
                   lang={lang}
                   missing={missingText(draft, lang, ['name'])}
                   onFilled={texts => setDraft(d => d && fillEmpty(d, texts, [fieldKey('name', lang)]))}

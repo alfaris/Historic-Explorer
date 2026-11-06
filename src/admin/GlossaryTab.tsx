@@ -32,12 +32,15 @@ export function GlossaryTab({ content, save, initialId = null, onSelected }: {
   // The spellings, edited as text (one per line) and split when saving.
   const [spellings, setSpellings] = useState('');
   const [busy, setBusy] = useState(false);
+  // Counts each opening of the editor: keys the fill buttons, so a translation still on its way is dropped when another item is opened.
+  const [session, setSession] = useState(0);
 
   const open = (t: GlossaryTerm | null) => {
     const term = t ?? blank();
     setDraft({ ...term, match: [...term.match] });
     setSpellings(term.match.join('\n'));
     setOriginalId(t ? t.id : null);
+    setSession(n => n + 1);
   };
 
   useEffect(() => {
@@ -140,7 +143,7 @@ export function GlossaryTab({ content, save, initialId = null, onSelected }: {
                   <textarea className={inputClass} rows={3} lang={lang} dir={LANGUAGES[lang].dir} value={draft[key('def', lang)] ?? ''} onChange={e => set(key('def', lang), e.target.value)} />
                 </Field>
                 {isOptionalLang(lang) && (
-                  <FillMissingButton key={`${originalId ?? 'new'}-${lang}`} lang={lang} missing={missingText(draft, lang, ['term', 'def'])} onFilled={texts => setDraft(d => d && fillEmpty(d, texts, missingKeys(lang)))} />
+                  <FillMissingButton key={`${session}-${lang}`} lang={lang} missing={missingText(draft, lang, ['term', 'def'])} onFilled={texts => setDraft(d => d && fillEmpty(d, texts, missingKeys(lang)))} />
                 )}
               </div>
             ))}

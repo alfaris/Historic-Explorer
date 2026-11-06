@@ -3,7 +3,7 @@
 // untouched draft still equals the saved content) and draft missing
 // translations with Gemini for the admin to review before saving.
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Languages, Loader2 } from 'lucide-react';
 import type { Location } from '../data/content';
 import { LANGUAGES, type OptionalLang } from '../i18n/lang';
@@ -57,18 +57,29 @@ export function FillMissingButton({ lang, missing, onFilled }: {
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
   const count = Object.keys(missing).length;
   const name = LANGUAGES[lang].english;
+  // Editors key this button by the item being edited, so it unmounts when the
+  // admin opens another one: a reply that arrives after that is dropped, never
+  // filled into the other item.
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   const fill = async () => {
     setBusy(true);
     setMessage(null);
     try {
       const { texts } = await api.translate(missing, lang);
+      if (!mounted.current) return;
       onFilled(texts);
       setMessage({ text: `${name} drafted. Check it, then save.`, error: false });
     } catch (err) {
-      setMessage({ text: (err as Error).message, error: true });
+      if (mounted.current) setMessage({ text: (err as Error).message, error: true });
     } finally {
-      setBusy(false);
+      if (mounted.current) setBusy(false);
     }
   };
 
