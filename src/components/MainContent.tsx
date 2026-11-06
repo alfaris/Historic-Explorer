@@ -461,21 +461,21 @@ export const MainContent: React.FC = () => {
   return (
     <div className={`min-h-screen pb-20 ${fontClass}`}>
       {/* Header */}
-      <header className="glass sticky top-0 z-[2000] px-6 py-8 transition-all">
-        <div className="max-w-4xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <Logo className="h-10 w-10 md:h-12 md:w-12 text-nile shrink-0" />
-            <div className={`flex flex-col ${isArabic ? 'border-r-2 border-gold pr-4' : 'border-l-2 border-gold pl-4'}`}>
+      <header className="glass sticky top-0 z-[2000] px-4 sm:px-6 py-8 transition-all">
+        <div className="max-w-4xl mx-auto flex justify-between items-center gap-3">
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+            <Logo className="h-9 w-9 sm:h-10 sm:w-10 md:h-12 md:w-12 text-nile shrink-0" />
+            <div className={`flex flex-col ${isArabic ? 'border-r-2 border-gold pr-3 sm:pr-4' : 'border-l-2 border-gold pl-3 sm:pl-4'}`}>
               <h1 className={`text-xl md:text-2xl text-ink font-bold ${headingFontClass}`}>
                 {L('CAIRO', 'القاهرة')}
               </h1>
-              <span className={`text-xs text-stone-500 uppercase font-medium whitespace-nowrap mt-0.5 ${isArabic ? 'tracking-[0.2em]' : 'tracking-[0.3em]'}`}>
+              <span className={`text-xs text-stone-500 uppercase font-medium whitespace-nowrap mt-0.5 ${isArabic ? 'tracking-[0.1em] sm:tracking-[0.2em]' : 'tracking-[0.15em] sm:tracking-[0.3em]'}`}>
                 {L('Historic Explorer', 'مستكشف التاريخ')}
               </span>
             </div>
           </div>
           {/* Language: every language in LANGUAGES. A native select, so it's keyboard and screen-reader friendly. */}
-          <label className="group flex flex-col items-center gap-1 cursor-pointer">
+          <label className="group flex flex-col items-center gap-1 cursor-pointer shrink-0">
             <span className="relative w-12 h-12 rounded-full border border-sand group-hover:border-nile transition-all duration-500 flex items-center justify-center bg-white shadow-sm">
               <Globe className="w-4 h-4 text-stone-400 group-hover:text-nile transition-colors" aria-hidden="true" />
               <select
@@ -489,7 +489,7 @@ export const MainContent: React.FC = () => {
                 ))}
               </select>
             </span>
-            <span className="text-xs font-bold text-stone-400 uppercase tracking-widest" aria-hidden="true">
+            <span className="hidden sm:block text-xs font-bold text-stone-400 uppercase tracking-widest" aria-hidden="true">
               {LANGUAGES[language].native}
             </span>
           </label>
