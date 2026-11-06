@@ -16,6 +16,9 @@ const GUTTER = 16;
 function Term({ text, term }: { text: string; term: GlossaryTerm }) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ left: number; top: number; width: number } | null>(null);
+  // Where the explanation is drawn: inside a modal that marks itself as a host
+  // (walk mode), so its focus trap and screen readers include it; else the page.
+  const [host, setHost] = useState<HTMLElement | null>(null);
   const button = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLSpanElement>(null);
   const id = useId();
@@ -29,6 +32,8 @@ function Term({ text, term }: { text: string; term: GlossaryTerm }) {
     const vw = document.documentElement.clientWidth;
     const width = Math.min(320, vw - GUTTER * 2);
     const left = Math.max(GUTTER, Math.min(r.left + r.width / 2 - width / 2, vw - GUTTER - width));
+    // Measure at the final width: a narrower panel wraps onto more lines.
+    if (panel.current) panel.current.style.width = `${width}px`;
     const height = panel.current?.offsetHeight ?? 120;
     const below = r.bottom + 8;
     const top = below + height > window.innerHeight - GUTTER && r.top - 8 - height > GUTTER ? r.top - 8 - height : below;
@@ -67,6 +72,7 @@ function Term({ text, term }: { text: string; term: GlossaryTerm }) {
         type="button"
         onClick={e => {
           e.stopPropagation();
+          setHost(e.currentTarget.closest<HTMLElement>('[data-portal-host]') ?? document.body);
           setOpen(o => !o);
         }}
         aria-expanded={open}
@@ -77,6 +83,7 @@ function Term({ text, term }: { text: string; term: GlossaryTerm }) {
         {text}
       </button>
       {open &&
+        host &&
         createPortal(
           <span
             ref={panel}
@@ -107,7 +114,7 @@ function Term({ text, term }: { text: string; term: GlossaryTerm }) {
               <X className="w-4 h-4" />
             </button>
           </span>,
-          document.body,
+          host,
         )}
     </>
   );
