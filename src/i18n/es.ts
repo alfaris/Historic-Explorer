@@ -130,4 +130,6 @@ export const ES: Record<string, string> = {
   'min walking': 'min caminando',
   'Estimated from the walk between the stops you visited.': 'Estimado a partir del trayecto entre las paradas que visitaste.',
   'Walk again': 'Repetir',
+  'Stops on the walk': 'Paradas del paseo',
+  'Also nearby': 'También cerca',
 };

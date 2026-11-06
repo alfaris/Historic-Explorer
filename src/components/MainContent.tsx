@@ -19,7 +19,7 @@ import { LiveLocationInfo } from './LiveLocationInfo';
 import { AudioGuide } from './AudioGuide';
 import { Logo } from './Logo';
 import { RouteDownload } from './RouteDownload';
-import { NextStop, StopNumber } from './WalkInfo';
+import { NextStop, StopNumber, stopOfLabel } from './WalkInfo';
 import { walkPlan } from '../lib/walk';
 import { track } from '../lib/track';
 import { matchScore, searchPlaces } from '../lib/search';
@@ -275,6 +275,177 @@ export const MainContent: React.FC = () => {
   // effect on every route change also wiped selections made together with a
   // route change (shared ?loc= links, opening a place from Near me).
 
+
+  // The list: the route's stops in walking order, then the other places
+  // (cafés, workshops, meeting points). Each place is a compact row; the open
+  // place shows its full card in place.
+  const placeGroups = [
+    { id: 'stops', title: L('Stops on the walk', 'محطات الجولة'), items: filteredLocations.filter(l => plan.has(l.id)) },
+    { id: 'extras', title: L('Also nearby', 'أماكن أخرى قريبة'), items: filteredLocations.filter(l => !plan.has(l.id)) },
+  ];
+
+  const renderRow = (loc: (typeof locations)[number], index: number) => {
+    const category = categories.find(c => c.id === loc.category);
+    const info = plan.get(loc.id);
+    return (
+      <motion.div
+        layout
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.97 }}
+        transition={{ duration: 0.3, delay: Math.min(index, 10) * 0.03 }}
+        key={loc.id}
+        id={`location-${loc.id}`}
+      >
+        <button
+          onClick={() => setSelectedLocation(loc.id)}
+          aria-expanded={false}
+          className="w-full flex items-center gap-4 p-3 bg-white rounded-2xl border border-sand/40 shadow-sm text-start hover:border-nile/40 hover:shadow-md transition-all"
+        >
+          {/* Decorative here: the row's text names the place. */}
+          <span aria-hidden="true" className="shrink-0">
+            <PlacePhoto
+              photo={photoForPlace(loc)}
+              alt=""
+              sizes="96px"
+              className="w-20 h-20 rounded-xl"
+              fallback={<HistoricPlaceholder category={loc.category} name={loc.nameEn} className="w-20 h-20 rounded-xl" />}
+            />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-xs font-bold uppercase tracking-[0.2em] text-gold-ink truncate">
+              {info ? stopOfLabel(info.number, info.total) : category ? nameOf(category) : ''}
+            </span>
+            <span className={`block text-lg leading-snug text-ink truncate ${headingFontClass}`} lang={fallbackLang(loc, 'name')}>
+              {nameOf(loc)}
+            </span>
+            <span className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+              <VisitedBadge placeId={loc.id} isArabic={isArabic} />
+              <HoursBadge place={loc} />
+            </span>
+          </span>
+          <ChevronRight className={`w-5 h-5 shrink-0 text-stone-300 ${isArabic ? 'rotate-180' : ''}`} aria-hidden="true" />
+        </button>
+      </motion.div>
+    );
+  };
+
+  // The full card: photo, details, audio, hours, actions. Shown for the open place.
+  const renderFullCard = (loc: (typeof locations)[number], index: number) => {
+                const category = categories.find(c => c.id === loc.category);
+    const isSelected = selectedLocation === loc.id;
+
+    return (
+      <motion.div
+        layout
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        transition={{ duration: 0.5, delay: index * 0.05 }}
+        key={loc.id}
+        id={`location-${loc.id}`}
+        className="group"
+      >
+        <div 
+          onClick={() => setSelectedLocation(isSelected ? null : loc.id)}
+          className={`bg-white rounded-[2rem] overflow-hidden shadow-xl border border-sand/30 cursor-pointer transition-all duration-700 ${isSelected ? 'ring-2 ring-nile ring-offset-8 shadow-2xl' : 'hover:shadow-2xl hover:-translate-y-2'}`}
+        >
+          <div className="flex flex-col md:flex-row h-full">
+            <div className="md:w-1/3 h-56 md:h-auto overflow-hidden">
+              <PlacePhoto
+                photo={photoForPlace(loc)}
+                alt={nameOf(loc)}
+                sizes="(min-width: 768px) 33vw, 100vw"
+                className="w-full h-full min-h-56"
+                showCredit={isSelected}
+                fallback={
+                  <HistoricPlaceholder 
+                    category={loc.category} 
+                    name={loc.nameEn}
+                    className="w-full h-full"
+                  />
+                }
+              />
+            </div>
+            <div className={`flex-1 p-8 md:p-10 flex flex-col justify-center ${!photoForPlace(loc) ? 'md:w-full' : ''}`}>
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-3">
+                    <p className="text-xs font-bold text-gold-ink uppercase tracking-[0.3em]">
+                      {(category ? nameOf(category) : undefined)}
+                    </p>
+                    <VisitedBadge placeId={loc.id} isArabic={isArabic} />
+                  </div>
+                  <h3 className={`text-3xl text-ink leading-tight ${headingFontClass}`} lang={fallbackLang(loc, 'name')}>
+                    {nameOf(loc)}
+                  </h3>
+                  {plan.get(loc.id) && <div className="mt-2"><StopNumber info={plan.get(loc.id)!} isArabic={isArabic} /></div>}
+                    <HoursBadge place={loc} className="mt-2" />
+                </div>
+                {plan.get(loc.id) && (
+                  <div className="text-3xl font-serif text-gold-soft italic" aria-hidden="true">
+                    {String(plan.get(loc.id)!.number).padStart(2, '0')}
+                  </div>
+                )}
+              </div>
+              {plan.get(loc.id) && (
+                <NextStop info={plan.get(loc.id)!} isArabic={isArabic} onOpen={openPlace} />
+              )}
+
+                  <AnimatePresence>
+                {isSelected && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.5 }}
+                    className="overflow-hidden"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="pt-8 mt-8 border-t border-chalk">
+                      <div className="mb-8">
+                        <p className="text-stone-600 text-lg leading-relaxed mb-4 font-serif italic" lang={fallbackLang(loc, 'description')}>
+                          {descriptionOf(loc) || L('No description available for this location at the moment.', 'لا يوجد وصف متاح حالياً لهذا الموقع.')}
+                        </p>
+                        <AudioGuide 
+                          locationId={loc.id}
+                          text={descriptionOf(loc)}
+                          langCode={currentLang()} 
+                        />
+                      </div>
+                      
+                      <PlaceHours place={loc} />
+                      <LiveLocationInfo locationId={loc.id} />
+
+                      <div className="flex flex-col sm:flex-row gap-4 mt-8">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const query = encodeURIComponent(`${loc.nameEn}, Cairo, Egypt`);
+                            window.open(`https://www.google.com/maps/dir/?api=1&destination=${query}`, '_blank');
+                          }}
+                          className="flex-1 py-4 bg-ink hover:bg-nile text-white rounded-xl text-xs font-bold uppercase tracking-widest transition-all duration-500 flex items-center justify-center shadow-lg"
+                        >
+                          <Navigation className={`w-3.5 h-3.5 ${isArabic ? 'ml-3' : 'mr-3'}`} />
+                          {t('directions')}
+                        </button>
+                        <VisitedToggle placeId={loc.id} isArabic={isArabic} className="py-4" />
+                        <SharePlace place={loc} className="flex justify-center items-center py-4 px-6 bg-chalk hover:bg-sand/30 text-ink rounded-xl transition-all duration-300" />
+                      </div>
+                      <div className="mt-4 text-center">
+                        <ReportProblem place={loc} isArabic={isArabic} />
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    );
+  };
+
   return (
     <div className={`min-h-screen pb-20 ${fontClass}`}>
       {/* Header */}
@@ -429,7 +600,7 @@ export const MainContent: React.FC = () => {
             </div>
 
             <div className="order-3 sm:order-5 w-full flex flex-col items-center mb-6 sm:mb-0">
-              <RouteProgress placeIds={routePlaces.map(l => l.id)} isArabic={isArabic} />
+              <RouteProgress placeIds={[...plan.keys()]} clearIds={routePlaces.map(l => l.id)} isArabic={isArabic} />
 
               <div className="mb-4 flex w-full sm:w-auto flex-wrap justify-center gap-3">
               {plan.size > 0 && (
@@ -680,123 +851,21 @@ export const MainContent: React.FC = () => {
             )}
           </div>
         ) : (
-          <div className="space-y-12">
-            <AnimatePresence mode="popLayout">
-              {filteredLocations.map((loc, index) => {
-                const category = categories.find(c => c.id === loc.category);
-                const isSelected = selectedLocation === loc.id;
-
-                return (
-                  <motion.div
-                    layout
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ duration: 0.5, delay: index * 0.05 }}
-                    key={loc.id}
-                    id={`location-${loc.id}`}
-                    className="group"
-                  >
-                    <div 
-                      onClick={() => setSelectedLocation(isSelected ? null : loc.id)}
-                      className={`bg-white rounded-[2rem] overflow-hidden shadow-xl border border-sand/30 cursor-pointer transition-all duration-700 ${isSelected ? 'ring-2 ring-nile ring-offset-8 shadow-2xl' : 'hover:shadow-2xl hover:-translate-y-2'}`}
-                    >
-                      <div className="flex flex-col md:flex-row h-full">
-                        <div className="md:w-1/3 h-56 md:h-auto overflow-hidden">
-                          <PlacePhoto
-                            photo={photoForPlace(loc)}
-                            alt={nameOf(loc)}
-                            sizes="(min-width: 768px) 33vw, 100vw"
-                            className="w-full h-full min-h-56"
-                            showCredit={isSelected}
-                            fallback={
-                              <HistoricPlaceholder 
-                                category={loc.category} 
-                                name={loc.nameEn}
-                                className="w-full h-full"
-                              />
-                            }
-                          />
-                        </div>
-                        <div className={`flex-1 p-8 md:p-10 flex flex-col justify-center ${!photoForPlace(loc) ? 'md:w-full' : ''}`}>
-                          <div className="flex justify-between items-start mb-4">
-                            <div>
-                              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-3">
-                                <p className="text-xs font-bold text-gold-ink uppercase tracking-[0.3em]">
-                                  {(category ? nameOf(category) : undefined)}
-                                </p>
-                                <VisitedBadge placeId={loc.id} isArabic={isArabic} />
-                              </div>
-                              <h3 className={`text-3xl text-ink leading-tight ${headingFontClass}`} lang={fallbackLang(loc, 'name')}>
-                                {nameOf(loc)}
-                              </h3>
-                              {plan.get(loc.id) && <div className="mt-2"><StopNumber info={plan.get(loc.id)!} isArabic={isArabic} /></div>}
-                                <HoursBadge place={loc} className="mt-2" />
-                            </div>
-                            {plan.get(loc.id) && (
-                              <div className="text-3xl font-serif text-gold-soft italic" aria-hidden="true">
-                                {String(plan.get(loc.id)!.number).padStart(2, '0')}
-                              </div>
-                            )}
-                          </div>
-                          {plan.get(loc.id) && (
-                            <NextStop info={plan.get(loc.id)!} isArabic={isArabic} onOpen={openPlace} />
-                          )}
-
-                              <AnimatePresence>
-                            {isSelected && (
-                              <motion.div
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: 'auto', opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                transition={{ duration: 0.5 }}
-                                className="overflow-hidden"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <div className="pt-8 mt-8 border-t border-chalk">
-                                  <div className="mb-8">
-                                    <p className="text-stone-600 text-lg leading-relaxed mb-4 font-serif italic" lang={fallbackLang(loc, 'description')}>
-                                      {descriptionOf(loc) || L('No description available for this location at the moment.', 'لا يوجد وصف متاح حالياً لهذا الموقع.')}
-                                    </p>
-                                    <AudioGuide 
-                                      locationId={loc.id}
-                                      text={descriptionOf(loc)}
-                                      langCode={currentLang()} 
-                                    />
-                                  </div>
-                                  
-                                  <PlaceHours place={loc} />
-                                  <LiveLocationInfo locationId={loc.id} />
-
-                                  <div className="flex flex-col sm:flex-row gap-4 mt-8">
-                                    <button 
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        const query = encodeURIComponent(`${loc.nameEn}, Cairo, Egypt`);
-                                        window.open(`https://www.google.com/maps/dir/?api=1&destination=${query}`, '_blank');
-                                      }}
-                                      className="flex-1 py-4 bg-ink hover:bg-nile text-white rounded-xl text-xs font-bold uppercase tracking-widest transition-all duration-500 flex items-center justify-center shadow-lg"
-                                    >
-                                      <Navigation className={`w-3.5 h-3.5 ${isArabic ? 'ml-3' : 'mr-3'}`} />
-                                      {t('directions')}
-                                    </button>
-                                    <VisitedToggle placeId={loc.id} isArabic={isArabic} className="py-4" />
-                                    <SharePlace place={loc} className="flex justify-center items-center py-4 px-6 bg-chalk hover:bg-sand/30 text-ink rounded-xl transition-all duration-300" />
-                                  </div>
-                                  <div className="mt-4 text-center">
-                                    <ReportProblem place={loc} isArabic={isArabic} />
-                                  </div>
-                                </div>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
+          <div className="space-y-10">
+            {placeGroups.map(group => group.items.length > 0 && (
+              <section key={group.id} aria-labelledby={`group-${group.id}`}>
+                <h3 id={`group-${group.id}`} className="flex items-center gap-3 mb-4 text-xs font-bold text-nile uppercase tracking-[0.25em]">
+                  {group.title}
+                  <span className="text-stone-400 tracking-normal">{group.items.length}</span>
+                  <span className="h-px flex-1 bg-sand/50" aria-hidden="true" />
+                </h3>
+                <div className="space-y-3">
+                  <AnimatePresence mode="popLayout">
+                    {group.items.map((loc, index) => (selectedLocation === loc.id ? renderFullCard(loc, index) : renderRow(loc, index)))}
+                  </AnimatePresence>
+                </div>
+              </section>
+            ))}
             
             {filteredLocations.length === 0 && otherRouteMatches.length === 0 && (
               <div className="text-center py-32 bg-white rounded-[3rem] border border-dashed border-sand">

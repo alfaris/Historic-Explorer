@@ -128,4 +128,6 @@ export const FR: Record<string, string> = {
   'min walking': 'min de marche',
   'Estimated from the walk between the stops you visited.': 'Estimation d’après le trajet entre les étapes visitées.',
   'Walk again': 'Recommencer',
+  'Stops on the walk': 'Étapes de la visite',
+  'Also nearby': 'Aussi à proximité',
 };
