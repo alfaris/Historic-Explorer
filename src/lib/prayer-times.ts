@@ -3,9 +3,9 @@
 // of Survey method), so this works offline. Pure apart from the clock passed in.
 
 import { CalculationMethod, Coordinates, PrayerTimes } from 'adhan';
-import type { Location } from '../data/locations';
-import { cairoTime, formatTime } from './opening-hours';
-import type { Lang } from '../i18n/lang';
+import type { Location } from '../data/locations.js';
+import { cairoTime, formatTime } from './opening-hours.js';
+import type { Lang } from '../i18n/lang.js';
 
 const CAIRO = new Coordinates(30.0444, 31.2357);
 

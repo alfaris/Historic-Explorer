@@ -133,4 +133,5 @@ export const ES: Record<string, string> = {
   'Stops on the walk': 'Paradas del paseo',
   'Also nearby': 'También cerca',
   'Prayer time when you get there': 'Hora de la oración cuando llegues',
+  'Visitor tips': 'Consejos para la visita',
 };

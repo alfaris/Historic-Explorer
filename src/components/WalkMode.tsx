@@ -18,6 +18,7 @@ import { L, nameOf, descriptionOf, currentLang, byLang } from '../i18n/lang';
 import { minutesLabel as minutes, stopOfLabel } from './WalkInfo';
 import { ArrivalWarning, HoursBadge } from './PlaceHours';
 import { PrayerArrivalWarning, PrayerNotice } from './PrayerTimes';
+import { VisitorTips } from './VisitorTips';
 
 
 /**
@@ -143,6 +144,7 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
               <HoursBadge place={stop} className="mb-3" />
               <PrayerNotice place={stop} className="mb-3" />
               <p className="text-stone-600 leading-relaxed mb-4">{descriptionOf(stop)}</p>
+              <VisitorTips place={stop} className="mb-4" />
               <div className="flex flex-wrap items-center gap-3">
                 <AudioGuide locationId={stop.id} text={(descriptionOf(stop)) || ''} langCode={currentLang()} />
                 {visited.has(stop.id) ? (
