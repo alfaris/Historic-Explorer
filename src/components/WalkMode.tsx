@@ -1,4 +1,4 @@
-import React, { lazy, useEffect, useMemo, useState } from 'react';
+import React, { lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowUp, ChevronDown, ChevronLeft, ChevronRight, CircleCheck, Footprints, Flag, LocateFixed, Map as MapIcon, X } from 'lucide-react';
 import type { Location, Route } from '../data/locations';
@@ -34,6 +34,7 @@ import { minutesLabel as minutes, stopOfLabel } from './WalkInfo';
 import { ArrivalWarning, HoursBadge } from './PlaceHours';
 import { PrayerArrivalWarning, PrayerNotice } from './PrayerTimes';
 import { VisitorTips } from './VisitorTips';
+import { BreakView, TakeABreak } from './TakeABreak';
 
 
 /**
@@ -57,7 +58,17 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
   const visited = useVisited();
   const [index, setIndex] = useState(() => startIndex(stops.map(s => s.id), visited));
   const [arrivedId, setArrivedId] = useState<number | null>(null);
-  const { ref, guard } = useDialog<HTMLDivElement>(onClose);
+  // "Take a break": the list (open or not) and the café or toilet stop being looked at.
+  const [breaksOpen, setBreaksOpen] = useState(false);
+  const [breakPlace, setBreakPlace] = useState<{ place: Location; distance: string } | null>(null);
+  const breakToggle = useRef<HTMLDivElement>(null);
+  const backFromBreak = () => {
+    setBreakPlace(null);
+    // Back where the visitor left: the "Take a break" list.
+    requestAnimationFrame(() => breakToggle.current?.querySelector('button')?.focus());
+  };
+  // Escape closes a break place first, then the walk.
+  const { ref, guard } = useDialog<HTMLDivElement>(() => (breakPlace ? backFromBreak() : onClose()));
   const heading = useHeading(true);
   useWakeLock(true);
   // The small map: closed by default, remembered on the device.
@@ -144,6 +155,10 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
         </div>
 
         <main className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+          {breakPlace ? (
+            <BreakView place={breakPlace.place} distance={breakPlace.distance} isArabic={ar} onBack={backFromBreak} />
+          ) : (
+          <>
           {arrivedId === stop.id && (
             <p className="flex items-center gap-2 rounded-2xl bg-nile/10 text-nile px-4 py-3 text-sm font-bold" role="status" aria-live="polite">
               <CircleCheck className="w-5 h-5 shrink-0" />
@@ -232,9 +247,23 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
               </div>
             )}
           </section>
+
+          <div ref={breakToggle}>
+            <TakeABreak
+              places={places}
+              from={fix ?? stop}
+              fromStop={!fix}
+              open={breaksOpen}
+              onToggle={() => setBreaksOpen(o => !o)}
+              onPick={(place, distance) => setBreakPlace({ place, distance })}
+              isArabic={ar}
+            />
+          </div>
+          </>
+          )}
         </main>
 
-        <footer className="grid grid-cols-[auto_1fr] gap-3 px-4 pb-6 pt-2">
+        {!breakPlace && <footer className="grid grid-cols-[auto_1fr] gap-3 px-4 pb-6 pt-2">
           <button
             onClick={() => go(index - 1)}
             disabled={index === 0}
@@ -266,7 +295,7 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
               {L('Finish the walk', 'إنهاء الجولة')}
             </button>
           )}
-        </footer>
+        </footer>}
       </div>
       <span {...guard('end')} />
     </div>,

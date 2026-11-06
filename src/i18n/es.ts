@@ -191,4 +191,11 @@ export const ES: Record<string, string> = {
   'Nothing here is open now.': 'Aquí no hay nada abierto ahora.',
   'Nothing here is marked step-free.': 'Aquí no hay nada marcado sin escalones.',
   'Clear filters': 'Quitar filtros',
+  'Take a break': 'Hacer una pausa',
+  'Toilets': 'Aseos',
+  'Distances from this stop.': 'Distancias desde esta parada.',
+  'Distances from where you are.': 'Distancias desde donde estás.',
+  'No cafés, restaurants or toilets listed nearby.': 'No hay cafés, restaurantes ni aseos indicados cerca.',
+  'Back to the walk': 'Volver al paseo',
+  'Here': 'Aquí',
 };
