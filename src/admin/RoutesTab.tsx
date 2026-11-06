@@ -7,6 +7,7 @@ import { PhotoField } from './PhotoField';
 import { builtInPhoto } from '../data/photo-resolve';
 import { applyStopOrder, walkPlan, walkStops } from '../lib/walk';
 import { RouteQr } from './RouteQr';
+import { RouteAudio } from './RouteAudio';
 import { fieldKey, FillMissingButton, withOptional } from './translations';
 import { LANGS, LANGUAGES, OPTIONAL_LANGS, type Lang, type OptionalLang } from '../i18n/lang';
 import { routeText } from '../lib/route-format';
@@ -252,6 +253,7 @@ export function RoutesTab({ content, save, initialRouteId = null, onSelected }: 
             })}
           />
           {!isNew && original && <RouteQr route={original} />}
+          {!isNew && original && placeCount(original.id) > 0 && <RouteAudio key={original.id} places={content.places.filter(p => p.routeId === original.id)} />}
           {!isNew && order.length > 0 && (
             <div>
               <p className="text-xs font-bold text-stone-600 mb-1">Walking order</p>
