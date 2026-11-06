@@ -17,6 +17,7 @@ import type { NearMeState } from './NearMe';
 import { L, nameOf, descriptionOf, currentLang, byLang, fallbackLang } from '../i18n/lang';
 import { GlossaryText } from './GlossaryText';
 import { SaveToggle } from './Saved';
+import { HelpfulPrompt } from './HelpfulPrompt';
 import { LazyBoundary } from './LazyBoundary';
 
 // Leaflet loads only when the map is first opened.
@@ -186,6 +187,7 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
                   </span>
                 ) : null}
               </div>
+              <HelpfulPrompt placeId={stop.id} className="mt-4" />
             </div>
           </article>
 

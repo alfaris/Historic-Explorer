@@ -250,7 +250,15 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
         ) : tab === 'glossary' ? (
           <GlossaryTab content={content} save={save} />
         ) : tab === 'stats' ? (
-          <StatsTab content={content} onSignedOut={onSignedOut} />
+          <StatsTab
+            content={content}
+            onSignedOut={onSignedOut}
+            onEditPlace={id => {
+              setEditPlaceId(id);
+              setEditSection(null);
+              setTab('places');
+            }}
+          />
         ) : (
           <HistoryTab save={save} />
         )}

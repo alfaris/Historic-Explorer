@@ -178,5 +178,10 @@ export const ES: Record<string, string> = {
   'Download': 'Descargar',
   'Update': 'Actualizar',
   'Kept on this device even when space runs low.': 'Se conserva en este dispositivo aunque falte espacio.',
+  // Helpful?
+  'Was this helpful?': '¿Te ha resultado útil?',
+  'Yes': 'Sí',
+  'No': 'No',
+  'Thanks for your feedback.': 'Gracias por tu opinión.',
   'Visitor tips': 'Consejos para la visita',
 };

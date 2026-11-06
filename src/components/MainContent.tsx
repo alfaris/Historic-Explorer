@@ -30,6 +30,7 @@ import { VisitorTips } from './VisitorTips';
 import { GlossaryText } from './GlossaryText';
 import { SaveToggle, SavedButton } from './Saved';
 import { DisplaySettings } from './DisplaySettings';
+import { HelpfulPrompt } from './HelpfulPrompt';
 import { OtherRouteResults } from './OtherRouteResults';
 import { SharePlace, ShareRoute } from './ShareRoute';
 import { PlanVisit } from './PlanVisit';
@@ -428,6 +429,7 @@ export const MainContent: React.FC = () => {
                       <PlaceHours place={loc} />
                                   <VisitorTips place={loc} />
                       <LiveLocationInfo locationId={loc.id} />
+                      <HelpfulPrompt placeId={loc.id} className="mt-6" />
 
                       <div className="flex flex-col sm:flex-row gap-4 mt-8">
                         <button 
@@ -817,6 +819,7 @@ export const MainContent: React.FC = () => {
                             <PlaceHours place={loc} />
                                   <VisitorTips place={loc} />
                             <LiveLocationInfo locationId={loc.id} />
+                            <HelpfulPrompt placeId={loc.id} className="mt-6" />
                             
                             <div className="flex flex-col sm:flex-row gap-4 mt-10">
                               <button 

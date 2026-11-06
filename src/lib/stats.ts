@@ -2,24 +2,30 @@
 // it stores them) and the admin (how it reads them).
 //
 // Only totals per day are kept: how many times each audio guide was played,
-// each route opened, and each place reached with Near me. No cookies, no
-// visitor or device IDs, no IP addresses, no timestamps finer than a day.
+// each route opened, each place reached with Near me, and each place's
+// "Was this helpful?" votes. No cookies, no visitor or device IDs, no IP
+// addresses, no timestamps finer than a day.
 
-export type StatEvent = { t: 'play' | 'arrive'; id: number } | { t: 'route'; id: string };
+export type StatEvent = { t: 'play' | 'arrive' | 'up' | 'down'; id: number } | { t: 'route'; id: string };
 
 /** One day's totals, keyed by place ID or route ID. */
 export interface DayStats {
   plays: Record<string, number>;
   routes: Record<string, number>;
   arrivals: Record<string, number>;
+  /** "Was this helpful?" yes and no votes, by place. */
+  helpful: Record<string, number>;
+  unhelpful: Record<string, number>;
 }
 
-export const emptyDay = (): DayStats => ({ plays: {}, routes: {}, arrivals: {} });
+const FIELDS = ['plays', 'routes', 'arrivals', 'helpful', 'unhelpful'] as const;
+
+export const emptyDay = (): DayStats => ({ plays: {}, routes: {}, arrivals: {}, helpful: {}, unhelpful: {} });
 
 /** The most events one request may carry. */
 export const MAX_EVENTS_PER_REQUEST = 50;
 
-const FIELD = { play: 'plays', route: 'routes', arrive: 'arrivals' } as const;
+const FIELD = { play: 'plays', route: 'routes', arrive: 'arrivals', up: 'helpful', down: 'unhelpful' } as const;
 
 /** Checks events from a visitor, keeping only well-formed ones for known places and routes. */
 export function cleanEvents(raw: unknown, known: { placeIds: Set<number>; routeIds: Set<string> }): StatEvent[] {
@@ -28,7 +34,7 @@ export function cleanEvents(raw: unknown, known: { placeIds: Set<number>; routeI
   for (const e of raw.slice(0, MAX_EVENTS_PER_REQUEST)) {
     if (!e || typeof e !== 'object') continue;
     const { t, id } = e as { t?: unknown; id?: unknown };
-    if ((t === 'play' || t === 'arrive') && typeof id === 'number' && known.placeIds.has(id)) out.push({ t, id });
+    if ((t === 'play' || t === 'arrive' || t === 'up' || t === 'down') && typeof id === 'number' && known.placeIds.has(id)) out.push({ t, id });
     else if (t === 'route' && typeof id === 'string' && known.routeIds.has(id)) out.push({ t, id });
   }
   return out;
@@ -36,7 +42,7 @@ export function cleanEvents(raw: unknown, known: { placeIds: Set<number>; routeI
 
 /** Adds events to a day's totals (returns a new object). */
 export function addEvents(day: DayStats, events: StatEvent[]): DayStats {
-  const next: DayStats = { plays: { ...day.plays }, routes: { ...day.routes }, arrivals: { ...day.arrivals } };
+  const next = Object.fromEntries(FIELDS.map(f => [f, { ...day[f] }])) as unknown as DayStats;
   for (const e of events) {
     const bucket = next[FIELD[e.t]];
     bucket[e.id] = (bucket[e.id] ?? 0) + 1;
@@ -48,7 +54,7 @@ export function addEvents(day: DayStats, events: StatEvent[]): DayStats {
 export function parseDay(raw: unknown): DayStats {
   const day = emptyDay();
   if (!raw || typeof raw !== 'object') return day;
-  for (const field of ['plays', 'routes', 'arrivals'] as const) {
+  for (const field of FIELDS) {
     const src = (raw as Record<string, unknown>)[field];
     if (!src || typeof src !== 'object') continue;
     for (const [k, v] of Object.entries(src)) if (Number.isInteger(v) && (v as number) > 0) day[field][k] = v as number;
@@ -60,7 +66,7 @@ export function parseDay(raw: unknown): DayStats {
 export const sumDays = (days: DayStats[]): DayStats => {
   const total = emptyDay();
   for (const d of days) {
-    for (const field of ['plays', 'routes', 'arrivals'] as const) {
+    for (const field of FIELDS) {
       for (const [k, v] of Object.entries(d[field])) total[field][k] = (total[field][k] ?? 0) + v;
     }
   }
@@ -69,3 +75,21 @@ export const sumDays = (days: DayStats[]): DayStats => {
 
 /** A UTC date as YYYY-MM-DD. */
 export const dayKey = (date: Date) => date.toISOString().slice(0, 10);
+
+export type HelpfulRow = { id: number; yes: number; no: number; votes: number; pct: number };
+
+/**
+ * Each place's "Was this helpful?" votes, for the admin: most disliked first
+ * (most No votes, then the lowest share of Yes), or most votes first.
+ */
+export function helpfulness(total: DayStats, placeIds: number[], sort: 'disliked' | 'votes' = 'disliked'): HelpfulRow[] {
+  const rows = placeIds
+    .map(id => {
+      const yes = total.helpful[id] ?? 0;
+      const no = total.unhelpful[id] ?? 0;
+      const votes = yes + no;
+      return { id, yes, no, votes, pct: votes ? Math.round((yes / votes) * 100) : 0 };
+    })
+    .filter(r => r.votes > 0);
+  return rows.sort((a, b) => (sort === 'votes' ? b.votes - a.votes : b.no - a.no || a.pct - b.pct) || a.id - b.id);
+}

@@ -53,7 +53,7 @@ describe('POST /api/stats', () => {
     const res = await send({ events: [{ t: 'play', id: 1 }, { t: 'route', id: 'ahl-al-bayt' }, { t: 'play', id: 999999 }, { t: 'route', id: 'x' }] });
     expect(res.status).toBe(204);
     const { total } = await readStats(7);
-    expect(total).toEqual({ plays: { 1: 1 }, routes: { 'ahl-al-bayt': 1 }, arrivals: {} });
+    expect(total).toEqual({ plays: { 1: 1 }, routes: { 'ahl-al-bayt': 1 }, arrivals: {}, helpful: {}, unhelpful: {} });
   });
 
   it('stores nothing about the visitor', async () => {
