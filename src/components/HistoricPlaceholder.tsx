@@ -57,7 +57,7 @@ export const HistoricPlaceholder: React.FC<HistoricPlaceholderProps> = ({ catego
       {/* Central Illustration Area */}
       <div className="relative z-10 flex flex-col items-center gap-2 text-white/90 drop-shadow-lg">
         <Icon size={48} strokeWidth={1} className="opacity-80" />
-        <span className="text-[10px] font-mono tracking-widest uppercase opacity-40 select-none">
+        <span className="text-xs font-mono tracking-widest uppercase opacity-40 select-none">
           {category}
         </span>
       </div>

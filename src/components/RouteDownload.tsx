@@ -94,9 +94,9 @@ export function RouteDownload({ route, places }: { route: Route; places: Locatio
     await removeRoute(key);
   };
 
-  const pill = 'flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all';
+  const pill = 'flex items-center justify-center gap-2 min-h-11 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all';
   const offlineBadge = !online && (
-    <span className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-100 text-stone-500 rounded-lg text-[10px] font-bold uppercase tracking-widest shrink-0">
+    <span className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-100 text-stone-500 rounded-lg text-xs font-bold uppercase tracking-widest shrink-0">
       <WifiOff className="w-3.5 h-3.5" />
       {L('Offline', 'غير متصل بالإنترنت')}
     </span>
@@ -108,7 +108,7 @@ export function RouteDownload({ route, places }: { route: Route; places: Locatio
     body = (
       <div className="flex items-center gap-3 w-full max-w-xs" role="status" aria-live="polite">
         <div className="flex-1">
-          <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest text-stone-500 mb-1">
+          <div className="flex justify-between text-xs font-bold uppercase tracking-widest text-stone-500 mb-1">
             <span>{L('Downloading', 'جاري التنزيل')}</span>
             <span>{pct}%</span>
           </div>
@@ -116,7 +116,7 @@ export function RouteDownload({ route, places }: { route: Route; places: Locatio
             <div className="h-full bg-nile transition-all" style={{ width: `${pct}%` }} />
           </div>
         </div>
-        <button onClick={() => abortRef.current?.abort()} className="p-2 rounded-lg text-stone-400 hover:text-ink" aria-label={L('Cancel', 'إلغاء')}>
+        <button onClick={() => abortRef.current?.abort()} className="flex items-center justify-center min-h-11 min-w-11 rounded-lg text-stone-400 hover:text-ink" aria-label={L('Cancel', 'إلغاء')}>
           <X className="w-4 h-4" />
         </button>
       </div>
@@ -163,7 +163,7 @@ export function RouteDownload({ route, places }: { route: Route; places: Locatio
         {body}
       </div>
       {!progress && !savedRoute && (
-        <p className="text-[11px] text-stone-400">
+        <p className="text-xs text-stone-400">
           {L('Audio guides, photos and map, so the walk works with no signal.', 'الأدلة الصوتية والصور والخريطة، لتعمل دون اتصال.')}
         </p>
       )}

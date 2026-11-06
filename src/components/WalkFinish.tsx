@@ -62,7 +62,7 @@ export function WalkFinish({ route, places, onClose }: { route: Route; places: L
               <dd>
                 <Flag className="w-4 h-4 text-nile mx-auto mb-1" aria-hidden="true" />
                 <span className="block text-lg font-bold text-ink">{summary.visited}/{summary.total}</span>
-                <span className="block text-[11px] text-stone-500">{L('stops', 'محطات')}</span>
+                <span className="block text-xs text-stone-500">{L('stops', 'محطات')}</span>
               </dd>
             </div>
             <div className="rounded-2xl bg-chalk p-3">
@@ -70,7 +70,7 @@ export function WalkFinish({ route, places, onClose }: { route: Route; places: L
               <dd>
                 <Footprints className="w-4 h-4 text-nile mx-auto mb-1" aria-hidden="true" />
                 <span className="block text-lg font-bold text-ink">{summary.meters ? `≈ ${formatDistance(summary.meters, ar)}` : '–'}</span>
-                <span className="block text-[11px] text-stone-500">{L('walked', 'مشيًا')}</span>
+                <span className="block text-xs text-stone-500">{L('walked', 'مشيًا')}</span>
               </dd>
             </div>
             <div className="rounded-2xl bg-chalk p-3">
@@ -78,11 +78,11 @@ export function WalkFinish({ route, places, onClose }: { route: Route; places: L
               <dd>
                 <Clock className="w-4 h-4 text-nile mx-auto mb-1" aria-hidden="true" />
                 <span className="block text-lg font-bold text-ink">{summary.minutes ? `≈ ${summary.minutes}` : '–'}</span>
-                <span className="block text-[11px] text-stone-500">{L('min walking', 'دقيقة مشي')}</span>
+                <span className="block text-xs text-stone-500">{L('min walking', 'دقيقة مشي')}</span>
               </dd>
             </div>
           </dl>
-          <p className="text-[11px] text-stone-400 mb-5">{L('Estimated from the walk between the stops you visited.', 'تقدير من المسافة بين المحطات التي زرتها.')}</p>
+          <p className="text-xs text-stone-400 mb-5">{L('Estimated from the walk between the stops you visited.', 'تقدير من المسافة بين المحطات التي زرتها.')}</p>
 
           <div className="flex flex-col items-stretch gap-2">
             <div className="flex justify-center [&>button]:w-full [&>button]:justify-center">

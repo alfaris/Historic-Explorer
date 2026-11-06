@@ -26,7 +26,7 @@ export function PhotoCredits({ isArabic }: { isArabic: boolean }) {
       <div className="text-center pb-32 md:pb-12">
         <button
           onClick={() => setOpen(true)}
-          className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400 hover:text-nile transition-colors"
+          className="inline-flex items-center min-h-11 px-3 text-xs font-bold uppercase tracking-[0.2em] text-stone-400 hover:text-nile transition-colors"
         >
           {L('Photo credits', 'حقوق الصور')}
         </button>

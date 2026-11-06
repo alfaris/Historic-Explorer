@@ -78,7 +78,7 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-500">{L('Next stop', 'المحطة التالية')}</p>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-stone-500">{L('Next stop', 'المحطة التالية')}</p>
           <p className="text-lg text-ink leading-tight truncate">{name(next)}</p>
           <p className="text-sm text-stone-600">
             {formatDistance(meters, ar)} · {minutes(live ? walkMinutes(live.meters) : info.leg!.minutes)}
@@ -101,7 +101,7 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
       <div ref={ref} className="flex flex-col h-full max-w-2xl w-full mx-auto">
         <header className="flex items-center gap-3 px-4 pt-4 pb-3">
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gold-ink truncate">{nameOf(route)}</p>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-gold-ink truncate">{nameOf(route)}</p>
             <p className="text-sm text-stone-600">
               {stopOfLabel(info.number, info.total)} · {byLang({ en: `${done} visited`, ar: `زرت ${done}`, fr: `${done} visitée${done > 1 ? 's' : ''}`, es: `${done} visitada${done === 1 ? '' : 's'}` })}
             </p>

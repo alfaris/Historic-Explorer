@@ -65,7 +65,7 @@ export const LiveLocationInfo: React.FC<LiveLocationInfoProps> = ({ locationId }
       onClick={(e) => e.stopPropagation()}
     >
       <div className="flex items-center justify-between mb-6">
-        <h4 className={`text-[10px] font-bold text-nile uppercase tracking-[0.3em] flex items-center gap-2`}>
+        <h4 className={`text-xs font-bold text-nile uppercase tracking-[0.3em] flex items-center gap-2`}>
           <Sparkles className="w-4 h-4 text-gold" />
           {L('Eclectic Live Insights', 'بصيرة حية من الذكاء الاصطناعي')}
         </h4>
@@ -75,7 +75,7 @@ export const LiveLocationInfo: React.FC<LiveLocationInfoProps> = ({ locationId }
               e.stopPropagation();
               fetchLiveInfo();
             }}
-            className="text-[10px] font-bold bg-nile text-white px-5 py-2 rounded-xl hover:bg-nile-light transition-all duration-300 uppercase tracking-wider shadow-lg shadow-nile/10"
+            className="text-xs font-bold bg-nile text-white px-5 py-2 rounded-xl hover:bg-nile-light transition-all duration-300 uppercase tracking-wider shadow-lg shadow-nile/10"
           >
             {L('Unlock Insights', 'فتح البصيرة')}
           </button>
@@ -89,7 +89,7 @@ export const LiveLocationInfo: React.FC<LiveLocationInfoProps> = ({ locationId }
             <div className="h-2 bg-sand/60 rounded-full w-full"></div>
             <div className="h-2 bg-sand/60 rounded-full w-5/6"></div>
           </div>
-          <p className="text-[10px] text-stone-400 italic text-center animate-pulse">
+          <p className="text-xs text-stone-400 italic text-center animate-pulse">
             {L('Consulting historical sources and live maps...', 'جارٍ التشاور مع المصادر التاريخية...')}
           </p>
         </div>
@@ -121,7 +121,7 @@ export const LiveLocationInfo: React.FC<LiveLocationInfoProps> = ({ locationId }
                   href={link.uri}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 text-[10px] font-bold bg-white border border-sand text-stone-500 hover:text-nile px-5 py-2.5 rounded-xl transition-all duration-500 shadow-sm hover:shadow-xl hover:-translate-y-1 group"
+                  className="inline-flex items-center gap-2 text-xs font-bold bg-white border border-sand text-stone-500 hover:text-nile px-5 py-2.5 rounded-xl transition-all duration-500 shadow-sm hover:shadow-xl hover:-translate-y-1 group"
                 >
                   <Map className="w-3.5 h-3.5 text-stone-300 group-hover:text-gold transition-colors" />
                   <span className="uppercase tracking-widest">{link.title}</span>

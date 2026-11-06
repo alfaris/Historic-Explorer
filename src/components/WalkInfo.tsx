@@ -14,7 +14,7 @@ export const stopOfLabel = (number: number, total: number) =>
 /** "Stop 3 of 12", shown above a stop's name. */
 export function StopNumber({ info, isArabic }: { info: StopInfo<Location>; isArabic: boolean }) {
   return (
-    <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400">
+    <span className="text-xs font-bold uppercase tracking-[0.2em] text-stone-400">
       {stopOfLabel(info.number, info.total)}
     </span>
   );
@@ -45,7 +45,7 @@ export function NextStop({ info, isArabic, onOpen }: {
     >
       <Footprints className="w-4 h-4 shrink-0 text-gold" />
       <span className="min-w-0 flex-1">
-        <span className="block text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400">
+        <span className="block text-xs font-bold uppercase tracking-[0.2em] text-stone-400">
           {L('Next stop', 'المحطة التالية')}
         </span>
         <span className="block truncate text-sm text-ink group-hover/next:text-nile">{nameOf(next)}</span>
@@ -53,7 +53,7 @@ export function NextStop({ info, isArabic, onOpen }: {
       </span>
       <span className="shrink-0 text-end text-xs text-stone-500">
         <span className="block font-bold">{minutesLabel(minutes)}</span>
-        <span className="block text-[11px] text-stone-400">{formatDistance(meters, isArabic)}</span>
+        <span className="block text-xs text-stone-400">{formatDistance(meters, isArabic)}</span>
       </span>
     </button>
   );

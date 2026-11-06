@@ -27,7 +27,7 @@ export function VisitedToggle({ placeId, isArabic, className = '' }: { placeId: 
 export function VisitedBadge({ placeId, isArabic }: { placeId: number; isArabic: boolean }) {
   if (!useVisited().has(placeId)) return null;
   return (
-    <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.2em] text-nile">
+    <span className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-[0.2em] text-nile">
       <CircleCheck className="w-3.5 h-3.5" />
       {L('Visited', 'تمت الزيارة')}
     </span>
@@ -43,7 +43,7 @@ export function RouteProgress({ placeIds, isArabic }: { placeIds: number[]; isAr
 
   return (
     <div className="w-full max-w-xs mb-8" dir={isArabic ? 'rtl' : 'ltr'}>
-      <div className="flex items-center justify-between mb-2 text-[10px] font-bold uppercase tracking-widest text-nile">
+      <div className="flex items-center justify-between mb-2 text-xs font-bold uppercase tracking-widest text-nile">
         <span>
           {byLang({ en: `${done} / ${total} visited`, ar: `زرت ${done} من ${total}`, fr: `${done} / ${total} visités`, es: `${done} / ${total} visitados` })}
         </span>

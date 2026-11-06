@@ -94,7 +94,7 @@ const CompassOverlay: React.FC<{ isArabic: boolean }> = ({ isArabic }) => {
   return (
     <div className={`absolute top-6 ${isArabic ? 'right-20' : 'left-6'} z-[1000] pointer-events-none opacity-40 hover:opacity-100 transition-opacity`}>
       <div className="relative flex flex-col items-center">
-        <div className="text-[10px] font-bold text-nile mb-1">N</div>
+        <div className="text-xs font-bold text-nile mb-1">N</div>
         <Compass className="w-8 h-8 text-nile animate-[spin_10s_linear_infinite_paused]" strokeWidth={1} />
         <div className="w-px h-8 bg-gold/30 my-2"></div>
       </div>
@@ -222,7 +222,7 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
                 }
               />
               <div className="text-center px-1">
-                <p className="font-bold text-nile text-[10px] leading-tight text-balance uppercase tracking-wider">
+                <p className="font-bold text-nile text-xs leading-tight text-balance uppercase tracking-wider">
                   {nameOf(loc)}
                 </p>
               </div>
@@ -244,7 +244,7 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
                 }
               />
               <div className="px-1">
-                <p className="text-[10px] font-bold text-gold-ink mb-2 uppercase tracking-[0.2em]">
+                <p className="text-xs font-bold text-gold-ink mb-2 uppercase tracking-[0.2em]">
                   {(category ? nameOf(category) : undefined)}
                 </p>
                 <h3 className="font-serif italic text-xl text-ink leading-tight mb-2">
@@ -253,7 +253,7 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
                 <div className="w-8 h-px bg-gold/30 mb-3"></div>
                 <button 
                   onClick={() => onSelectLocation(loc.id)}
-                  className="text-[10px] font-bold text-nile underline underline-offset-4 uppercase tracking-widest hover:text-gold-ink transition-colors"
+                  className="text-xs font-bold text-nile underline underline-offset-4 uppercase tracking-widest hover:text-gold-ink transition-colors"
                 >
                   {T('Start Lesson', 'بدء الاستماع')}
                 </button>
