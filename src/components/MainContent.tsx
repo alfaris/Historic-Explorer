@@ -135,7 +135,7 @@ export const MainContent: React.FC = () => {
 
   React.useEffect(() => {
     const handleScroll = () => {
-      setShowScrollTop(window.scrollY > 400);
+      setShowScrollTop(window.scrollY > 1600); // after a long scroll; the tab bar is always there
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
@@ -286,7 +286,7 @@ export const MainContent: React.FC = () => {
               <h1 className={`text-xl md:text-2xl text-ink font-bold ${headingFontClass}`}>
                 {L('CAIRO', 'القاهرة')}
               </h1>
-              <span className={`text-[10px] text-stone-500 uppercase font-medium whitespace-nowrap mt-0.5 ${isArabic ? 'tracking-[0.2em]' : 'tracking-[0.3em]'}`}>
+              <span className={`text-xs text-stone-500 uppercase font-medium whitespace-nowrap mt-0.5 ${isArabic ? 'tracking-[0.2em]' : 'tracking-[0.3em]'}`}>
                 {L('Historic Explorer', 'مستكشف التاريخ')}
               </span>
             </div>
@@ -306,7 +306,7 @@ export const MainContent: React.FC = () => {
                 ))}
               </select>
             </span>
-            <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest" aria-hidden="true">
+            <span className="text-xs font-bold text-stone-400 uppercase tracking-widest" aria-hidden="true">
               {LANGUAGES[language].native}
             </span>
           </label>
@@ -314,8 +314,10 @@ export const MainContent: React.FC = () => {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 md:py-8 pb-28 md:pb-8">
-        {/* Breadcrumbs */}
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-6 text-[10px] uppercase tracking-widest text-stone-400 font-bold pb-2">
+        {/* Breadcrumbs: only once a category or place is chosen (on the route's
+            home view they'd repeat the header and the route title). */}
+        {(selectedLocation !== null || selectedCategory !== 'all') && (
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-6 text-xs uppercase tracking-widest text-stone-400 font-bold pb-2">
           <span className="hover:text-nile cursor-pointer transition-colors" onClick={() => setSelectedLocation(null)}>{t('app.title')}</span>
           <ChevronRight className={`w-3 h-3 ${isArabic ? 'rotate-180' : ''}`} />
           <span className="text-nile">{nameOf(currentRouteData)}</span>
@@ -334,6 +336,7 @@ export const MainContent: React.FC = () => {
             </>
           )}
         </div>
+        )}
 
         {/* Route Selector */}
         <div className="mb-8">
@@ -393,11 +396,15 @@ export const MainContent: React.FC = () => {
             transition={{ duration: 0.8, ease: "circOut" }}
             className="flex flex-col items-center"
           >
-            <h2 className={`text-4xl md:text-5xl text-ink mb-2 ${headingFontClass}`}>
+            {/* On phones the actions come straight after the title and distance,
+                so "Start the walk" is on the first screen, above the tab bar;
+                the description and highlights follow. From sm up, the
+                original order: description, highlights, then actions. */}
+            <h2 className={`order-1 text-4xl md:text-5xl text-ink mb-2 ${headingFontClass}`}>
               {nameOf(currentRouteData)}
             </h2>
-            
-            <div className={`flex items-center gap-6 mb-6 text-[10px] font-bold uppercase tracking-widest text-nile`}>
+
+            <div className={`order-2 flex items-center gap-6 mb-5 sm:mb-6 text-xs font-bold uppercase tracking-widest text-nile`}>
               <div className="flex items-center gap-2">
                 <RouteIcon className="w-3.5 h-3.5 text-gold" />
                 <span>{formatDistance(currentRouteData.distanceKm, currentLang())}</span>
@@ -408,35 +415,37 @@ export const MainContent: React.FC = () => {
               </div>
             </div>
 
-            <p className="text-stone-500 italic text-base md:text-lg leading-relaxed font-serif mb-8">
+            <p className="order-4 sm:order-3 text-stone-500 italic text-base md:text-lg leading-relaxed font-serif mb-6 sm:mb-8 line-clamp-3 sm:line-clamp-none">
               "{descriptionOf(currentRouteData)}"
             </p>
 
-            <div className="flex flex-wrap justify-center gap-3 mb-8">
+            <div className="order-5 sm:order-4 flex flex-wrap justify-center gap-2 sm:gap-3 mb-2 sm:mb-8">
               {(highlightsOf(currentRouteData)).map((highlight, i) => (
-                <span key={i} className="px-4 py-2 bg-chalk/80 text-stone-600 rounded-full text-[10px] font-bold uppercase tracking-wider border border-sand/30 flex items-center gap-2">
+                <span key={i} className="px-3 sm:px-4 py-2 bg-chalk/80 text-stone-600 rounded-full text-xs font-bold uppercase tracking-wider border border-sand/30 flex items-center gap-2">
                   <Star className="w-3 h-3 text-gold fill-gold" />
                   {highlight}
                 </span>
               ))}
             </div>
 
-            <RouteProgress placeIds={routePlaces.map(l => l.id)} isArabic={isArabic} />
+            <div className="order-3 sm:order-5 w-full flex flex-col items-center mb-6 sm:mb-0">
+              <RouteProgress placeIds={routePlaces.map(l => l.id)} isArabic={isArabic} />
 
-            <div className="mb-4 flex flex-wrap justify-center gap-3">
-            {plan.size > 0 && (
-              <button
-                onClick={startWalk}
-                className="flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-nile text-white text-xs font-bold uppercase tracking-widest shadow-lg hover:bg-nile-light transition-colors"
-              >
-                <Footprints className="w-4 h-4" />
-                {L('Start the walk', 'ابدأ الجولة')}
-              </button>
-            )}
-            <ShareRoute route={currentRouteData} isArabic={isArabic} />
+              <div className="mb-4 flex w-full sm:w-auto flex-wrap justify-center gap-3">
+              {plan.size > 0 && (
+                <button
+                  onClick={startWalk}
+                  className="flex flex-1 sm:flex-none items-center justify-center gap-2 min-h-12 px-6 py-3.5 rounded-2xl bg-nile text-white text-xs font-bold uppercase tracking-widest shadow-lg hover:bg-nile-light transition-colors"
+                >
+                  <Footprints className="w-4 h-4" />
+                  {L('Start the walk', 'ابدأ الجولة')}
+                </button>
+              )}
+              <ShareRoute route={currentRouteData} isArabic={isArabic} compactOnPhone />
+              </div>
+
+              <RouteDownload route={currentRouteData} places={routePlaces} />
             </div>
-
-            <RouteDownload route={currentRouteData} places={routePlaces} />
           </motion.div>
         </div>
 
@@ -459,7 +468,7 @@ export const MainContent: React.FC = () => {
             <div className="hidden md:flex p-1 bg-chalk rounded-2xl w-auto">
               <button
                 onClick={() => setViewMode('list')}
-                className={`flex-none flex items-center justify-center gap-2 px-8 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
+                className={`flex-none flex items-center justify-center gap-2 min-h-11 px-8 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
                   viewMode === 'list' 
                     ? 'bg-white text-nile shadow-sm' 
                     : 'text-stone-400 hover:text-stone-600'
@@ -470,7 +479,7 @@ export const MainContent: React.FC = () => {
               </button>
               <button
                 onClick={() => setViewMode('map')}
-                className={`flex-none flex items-center justify-center gap-2 px-8 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
+                className={`flex-none flex items-center justify-center gap-2 min-h-11 px-8 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
                   viewMode === 'map' 
                     ? 'bg-white text-nile shadow-sm' 
                     : 'text-stone-400 hover:text-stone-600'
@@ -481,7 +490,7 @@ export const MainContent: React.FC = () => {
               </button>
               <button
                 onClick={() => setViewMode('near')}
-                className={`flex-none flex items-center justify-center gap-2 px-8 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
+                className={`flex-none flex items-center justify-center gap-2 min-h-11 px-8 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
                   viewMode === 'near' 
                     ? 'bg-white text-nile shadow-sm' 
                     : 'text-stone-400 hover:text-stone-600'
@@ -497,7 +506,7 @@ export const MainContent: React.FC = () => {
           <div className="mt-6 flex overflow-x-auto gap-2 pb-2 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             <button
               onClick={() => setSelectedCategory('all')}
-              className={`flex-none snap-start px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all ${
+              className={`flex-none snap-start min-h-11 px-6 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
                 selectedCategory === 'all'
                   ? 'bg-nile text-white shadow-lg shadow-nile/20'
                   : 'bg-chalk text-stone-500 hover:bg-sand/50'
@@ -514,7 +523,7 @@ export const MainContent: React.FC = () => {
                 <button
                   key={cat.id}
                   onClick={() => setSelectedCategory(cat.id as Category)}
-                  className={`flex-none snap-start flex items-center gap-2 px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
+                  className={`flex-none snap-start flex items-center gap-2 min-h-11 px-6 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
                     isSelected
                       ? 'bg-nile text-white shadow-lg shadow-nile/20'
                       : 'bg-chalk text-stone-500 hover:bg-sand/50'
@@ -553,7 +562,7 @@ export const MainContent: React.FC = () => {
                       // Browsers remember a failed module download, so retrying
                       // needs a reload (as Vite recommends for failed chunks).
                       onClick={() => window.location.reload()}
-                      className="text-[10px] font-bold bg-nile text-white px-5 py-2 rounded-xl hover:bg-nile-light transition-all duration-300 uppercase tracking-wider"
+                      className="text-xs font-bold bg-nile text-white px-5 py-2 rounded-xl hover:bg-nile-light transition-all duration-300 uppercase tracking-wider"
                     >
                       {L('Try again', 'حاول مرة أخرى')}
                     </button>
@@ -605,7 +614,7 @@ export const MainContent: React.FC = () => {
                                 <h3 className={`text-4xl text-ink leading-tight ${headingFontClass}`} lang={fallbackLang(loc, 'name')}>
                                   {nameOf(loc)}
                                 </h3>
-                                <p className="text-[10px] font-bold text-nile mt-3 uppercase tracking-[0.3em]">
+                                <p className="text-xs font-bold text-nile mt-3 uppercase tracking-[0.3em]">
                                   {(category ? nameOf(category) : undefined)}
                                 </p>
                                 {plan.get(loc.id) && <div className="mt-2"><StopNumber info={plan.get(loc.id)!} isArabic={isArabic} /></div>}
@@ -713,7 +722,7 @@ export const MainContent: React.FC = () => {
                           <div className="flex justify-between items-start mb-4">
                             <div>
                               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-3">
-                                <p className="text-[10px] font-bold text-gold-ink uppercase tracking-[0.3em]">
+                                <p className="text-xs font-bold text-gold-ink uppercase tracking-[0.3em]">
                                   {(category ? nameOf(category) : undefined)}
                                 </p>
                                 <VisitedBadge placeId={loc.id} isArabic={isArabic} />
@@ -869,7 +878,7 @@ export const MainContent: React.FC = () => {
       <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] z-[4000] bg-white/90 backdrop-blur-md rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-stone-200 p-1 flex">
         <button
           onClick={() => setViewMode('list')}
-          className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all ${
+          className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 rounded-full text-xs font-bold uppercase tracking-widest transition-all ${
             viewMode === 'list' 
               ? 'bg-nile text-white shadow-md' 
               : 'text-stone-400 hover:text-stone-600'
@@ -880,7 +889,7 @@ export const MainContent: React.FC = () => {
         </button>
         <button
           onClick={() => setViewMode('map')}
-          className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all ${
+          className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 rounded-full text-xs font-bold uppercase tracking-widest transition-all ${
             viewMode === 'map' 
               ? 'bg-nile text-white shadow-md' 
               : 'text-stone-400 hover:text-stone-600'
@@ -891,7 +900,7 @@ export const MainContent: React.FC = () => {
         </button>
         <button
           onClick={() => setViewMode('near')}
-          className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all ${
+          className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 rounded-full text-xs font-bold uppercase tracking-widest transition-all ${
             viewMode === 'near' 
               ? 'bg-nile text-white shadow-md' 
               : 'text-stone-400 hover:text-stone-600'

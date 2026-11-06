@@ -96,7 +96,7 @@ function ArrivalCard({ place, isArabic, onDismiss, onOpenPlace }: {
     <div>
       <div className="flex items-start justify-between gap-3 mb-3">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-gold-ink mb-1">
+          <p className="text-xs font-bold uppercase tracking-[0.25em] text-gold-ink mb-1">
             {L("You've arrived at", 'لقد وصلت إلى')}
           </p>
           <p className="text-lg text-ink font-serif leading-tight">{placeName(place, isArabic)}</p>
@@ -147,13 +147,13 @@ export function NearMeOverlay({ nearMe, isArabic, onOpenPlace, onShowTab }: {
   return (
     <div className={`${position} flex justify-center md:justify-end pointer-events-none`} dir={isArabic ? 'rtl' : 'ltr'}>
       <div className="pointer-events-auto flex items-center gap-1 bg-nile text-white rounded-full shadow-xl ps-4 pe-1 py-1">
-        <button onClick={onShowTab} className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest py-1.5">
+        <button onClick={onShowTab} className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest py-1.5">
           <LocateFixed className="w-3.5 h-3.5 animate-pulse" />
           {L('Near me on', '«بالقرب مني» يعمل')}
         </button>
         <button
           onClick={nearMe.stop}
-          className="ms-2 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 text-[11px] font-bold uppercase tracking-widest"
+          className="ms-2 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 text-xs font-bold uppercase tracking-widest"
         >
           {L('Stop', 'إيقاف')}
         </button>
@@ -205,7 +205,7 @@ export function NearMeView({ nearMe, routePlaces, allPlaces, routeName, isArabic
                 key={s}
                 onClick={() => setScope(s)}
                 aria-pressed={scope === s}
-                className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${
+                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${
                   scope === s ? 'bg-white text-nile shadow-sm' : 'text-stone-400 hover:text-stone-600'
                 }`}
               >
@@ -214,7 +214,7 @@ export function NearMeView({ nearMe, routePlaces, allPlaces, routeName, isArabic
             ))}
           </div>
           {on && (
-            <button onClick={nearMe.stop} className="text-[10px] font-bold uppercase tracking-widest text-stone-400 hover:text-nile">
+            <button onClick={nearMe.stop} className="text-xs font-bold uppercase tracking-widest text-stone-400 hover:text-nile">
               {L('Stop location', 'إيقاف تحديد الموقع')}
             </button>
           )}
@@ -235,7 +235,7 @@ export function NearMeView({ nearMe, routePlaces, allPlaces, routeName, isArabic
         ) : (
           <>
             {fix.accuracy > MAX_ACCURACY_METERS && (
-              <p className="text-[11px] text-stone-400 mb-3">
+              <p className="text-xs text-stone-400 mb-3">
                 {L('Location is approximate; arrival alerts may be delayed.', 'دقة الموقع منخفضة، قد تتأخر التنبيهات.')}
               </p>
             )}
@@ -250,7 +250,7 @@ export function NearMeView({ nearMe, routePlaces, allPlaces, routeName, isArabic
                         <span className={`block font-serif leading-tight group-hover:text-nile ${i === 0 ? 'text-lg text-ink' : 'text-base text-stone-700'}`}>
                           {placeName(place, isArabic)}
                         </span>
-                        <span className="block text-[10px] uppercase tracking-[0.2em] text-stone-400 mt-0.5">
+                        <span className="block text-xs uppercase tracking-[0.2em] text-stone-400 mt-0.5">
                           {(category ? nameOf(category) : undefined)}
                         </span>
                       </span>

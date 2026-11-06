@@ -28,7 +28,7 @@ export function ReportProblem({ place, isArabic }: { place: Location; isArabic: 
           e.stopPropagation();
           setOpen(true);
         }}
-        className="inline-flex items-center gap-1.5 text-[11px] text-stone-400 hover:text-nile transition-colors"
+        className="inline-flex items-center gap-1.5 text-xs text-stone-400 hover:text-nile transition-colors"
       >
         <Flag className="w-3.5 h-3.5" />
         {L('Report a problem', 'الإبلاغ عن خطأ')}
@@ -120,7 +120,7 @@ function ReportDialog({ place, isArabic, onClose }: { place: Location; isArabic:
       <div ref={panelRef} className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
         <div className="flex items-start justify-between gap-3 mb-4">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-gold-ink mb-1">{t('Report a problem', 'الإبلاغ عن خطأ')}</p>
+            <p className="text-xs font-bold uppercase tracking-[0.25em] text-gold-ink mb-1">{t('Report a problem', 'الإبلاغ عن خطأ')}</p>
             <p className="text-lg text-ink font-serif leading-tight">{nameOf(place)}</p>
           </div>
           <button onClick={onClose} className="p-1 text-stone-400 hover:text-ink" aria-label={t('Close', 'إغلاق')}>
@@ -217,7 +217,7 @@ function ReportDialog({ place, isArabic, onClose }: { place: Location; isArabic:
             >
               {state === 'sending' ? t('Sending…', 'جارٍ الإرسال…') : t('Send report', 'إرسال البلاغ')}
             </button>
-            <p className="text-[11px] text-stone-400 mt-3 text-center">
+            <p className="text-xs text-stone-400 mt-3 text-center">
               {t('Reports don’t include your name or contact details.', 'لا تتضمن البلاغات اسمك أو بيانات الاتصال بك.')}
             </p>
           </>

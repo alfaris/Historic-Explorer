@@ -36,8 +36,12 @@ function useCopied() {
   return [copied, flash] as const;
 }
 
-/** "Share route": a link that opens the app on this route, with a preview card. */
-export function ShareRoute({ route }: { route: Route; isArabic?: boolean }) {
+/**
+ * "Share route": a link that opens the app on this route, with a preview card.
+ * `compactOnPhone`: an icon-only square on phones (the label stays the
+ * button's accessible name), so it fits beside "Start the walk".
+ */
+export function ShareRoute({ route, compactOnPhone = false }: { route: Route; isArabic?: boolean; compactOnPhone?: boolean }) {
   const [copied, flash] = useCopied();
   const share = async () => {
     const text = `${nameOf(route)}: ${L('a walk through historic Cairo', 'جولة سير في القاهرة التاريخية')}`;
@@ -46,10 +50,10 @@ export function ShareRoute({ route }: { route: Route; isArabic?: boolean }) {
   return (
     <button
       onClick={share}
-      className="flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-white border border-sand text-ink text-xs font-bold uppercase tracking-widest shadow-sm hover:border-nile transition-colors"
+      className={`flex items-center justify-center gap-2 min-h-12 py-3.5 rounded-2xl bg-white border border-sand text-ink text-xs font-bold uppercase tracking-widest shadow-sm hover:border-nile transition-colors ${compactOnPhone ? 'min-w-12 px-3.5 sm:px-5' : 'px-5'}`}
     >
       {copied ? <Check className="w-4 h-4 text-nile" /> : <Share2 className="w-4 h-4 text-stone-500" />}
-      <span aria-live="polite">{copied ? (L('Link copied', 'تم نسخ الرابط')) : L('Share route', 'مشاركة المسار')}</span>
+      <span aria-live="polite" className={compactOnPhone ? 'sr-only sm:not-sr-only' : undefined}>{copied ? (L('Link copied', 'تم نسخ الرابط')) : L('Share route', 'مشاركة المسار')}</span>
     </button>
   );
 }

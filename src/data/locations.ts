@@ -171,7 +171,7 @@ export const categories = [
   { id: 'coffee', nameEn: 'Coffee Shops', nameAr: 'مقاهي', nameFr: 'Cafés', nameEs: 'Cafés', color: 'bg-stone-500', icon: 'Coffee' },
   { id: 'restaurant', nameEn: 'Restaurants & Food', nameAr: 'مطاعم وغذاء', nameFr: 'Restaurants et cuisine', nameEs: 'Restaurantes y comida', color: 'bg-gold', icon: 'Utensils' },
   { id: 'workshop', nameEn: 'Workshops & Handicrafts', nameAr: 'ورش ومنتجات يدوية', nameFr: 'Ateliers et artisanat', nameEs: 'Talleres y artesanía', color: 'bg-stone-600', icon: 'Hammer' },
-  { id: 'stationary', nameEn: 'Stationary & Toys', nameAr: 'خردوات ومكتبات', nameFr: 'Papeteries et jouets', nameEs: 'Papelerías y juguetes', color: 'bg-stone-400', icon: 'BookOpen' },
+  { id: 'stationary', nameEn: 'Stationery & Toys', nameAr: 'خردوات ومكتبات', nameFr: 'Papeteries et jouets', nameEs: 'Papelerías y juguetes', color: 'bg-stone-400', icon: 'BookOpen' },
   { id: 'meeting', nameEn: 'Meeting Points', nameAr: 'نقاط التجمع', nameFr: 'Points de rendez-vous', nameEs: 'Puntos de encuentro', color: 'bg-nile-light', icon: 'Users' },
 ];
 

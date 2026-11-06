@@ -48,8 +48,8 @@ export function PlaceHours({ place }: { place: Location }) {
             <Clock className="w-4 h-4 shrink-0 text-gold" aria-hidden="true" />
             {/* The status itself sits under the place's name (HoursBadge). */}
             <span className="flex-1 font-bold text-stone-600">{L('Opening hours', 'مواعيد العمل')}</span>
-            <span className="text-[11px] font-bold uppercase tracking-widest text-nile underline-offset-4 group-open:hidden">{L('Show', 'عرض')}</span>
-            <span className="text-[11px] font-bold uppercase tracking-widest text-nile underline-offset-4 hidden group-open:inline">{L('Hide', 'إخفاء')}</span>
+            <span className="text-xs font-bold uppercase tracking-widest text-nile underline-offset-4 group-open:hidden">{L('Show', 'عرض')}</span>
+            <span className="text-xs font-bold uppercase tracking-widest text-nile underline-offset-4 hidden group-open:inline">{L('Hide', 'إخفاء')}</span>
           </summary>
           <table className="mt-3 w-full text-xs">
             <caption className="sr-only">{L('Opening hours', 'مواعيد العمل')}</caption>
@@ -62,7 +62,7 @@ export function PlaceHours({ place }: { place: Location }) {
               ))}
             </tbody>
           </table>
-          <p className="mt-2 text-[11px] text-stone-500">{L('Cairo time. Hours can change on holidays and during Ramadan.', 'بتوقيت القاهرة. قد تتغير المواعيد في الأعياد وشهر رمضان.')}</p>
+          <p className="mt-2 text-xs text-stone-500">{L('Cairo time. Hours can change on holidays and during Ramadan.', 'بتوقيت القاهرة. قد تتغير المواعيد في الأعياد وشهر رمضان.')}</p>
         </details>
       )}
       {note.text && <p className="text-xs text-stone-600" lang={note.lang}>{note.text}</p>}
