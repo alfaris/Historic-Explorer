@@ -10,7 +10,7 @@ import { join } from 'node:path';
 import { photoForPlace, photoForRoute } from '../../src/data/photo-resolve.js';
 import type { Photo } from '../../src/data/photos.js';
 import type { Location, Route } from '../../src/data/locations.js';
-import { descriptionOf, nameOf, type Lang } from '../../src/i18n/lang.js';
+import { byLang, descriptionOf, isLang, LANGUAGES, nameOf, type Lang } from '../../src/i18n/lang.js';
 import { getContent } from './content.js';
 
 const escapeHtml = (s: string) =>
@@ -18,7 +18,6 @@ const escapeHtml = (s: string) =>
 
 type Preview = { title: string; description: string; url: string; photo: Photo | undefined; locale?: string };
 
-const OG_LOCALE: Record<Lang, string> = { en: 'en_GB', ar: 'ar_EG', fr: 'fr_FR' };
 
 /** Adds the preview tags for a route to the app's HTML, and names the page after it. */
 export function withRoutePreview(html: string, route: Route, origin: string): string {
@@ -45,13 +44,16 @@ const short = (text: string, max = 200) => {
  */
 export function withPlacePreview(html: string, place: Location, route: Route | undefined, origin: string, linkLang: Lang | null): string {
   const lang = linkLang ?? 'en';
-  const tagline = lang === 'ar' ? 'جولة بدليل صوتي في القاهرة التاريخية' : lang === 'fr' ? 'Visite audioguidée du Caire historique' : 'Audio-guided walk in historic Cairo';
+  const tagline = byLang(
+    { en: 'Audio-guided walk in historic Cairo', ar: 'جولة بدليل صوتي في القاهرة التاريخية', fr: 'Visite audioguidée du Caire historique', es: 'Paseo con audioguía por El Cairo histórico' },
+    lang,
+  );
   return withPreview(html, origin, {
     url: `${origin}/p/${place.id}${linkLang ? `?lang=${linkLang}` : ''}`,
     title: `${nameOf(place, lang)}${route ? ` · ${nameOf(route, lang)}` : ''} | Cairo Historic Explorer`,
     description: short(descriptionOf(place, lang)) || tagline,
     photo: photoForPlace(place),
-    locale: OG_LOCALE[lang],
+    locale: LANGUAGES[lang].og,
   });
 }
 
@@ -96,7 +98,7 @@ async function appHtml(origin: string): Promise<string | null> {
   }
 }
 
-const asLang = (v: string | null): Lang | null => (v === 'en' || v === 'ar' || v === 'fr' ? v : null);
+const asLang = (v: string | null): Lang | null => (isLang(v) ? v : null);
 
 export async function handleShare(request: Request): Promise<Response> {
   const url = new URL(request.url);

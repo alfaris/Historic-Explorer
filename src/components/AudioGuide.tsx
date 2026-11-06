@@ -6,7 +6,7 @@ import { audioGuideUrl } from '../lib/offline-pack';
 import { track } from '../lib/track';
 import type { Lang } from '../i18n/lang';
 
-import { L } from '../i18n/lang';
+import { L, LANGUAGES } from '../i18n/lang';
 interface AudioGuideProps {
   locationId: number;
   text: string;
@@ -161,7 +161,7 @@ export function AudioGuide({ locationId, text, langCode }: AudioGuideProps) {
   const useBrowserSpeech = (speechText: string) => {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(speechText);
-    utterance.lang = langCode === 'ar' ? 'ar-EG' : langCode === 'fr' ? 'fr-FR' : 'en-US';
+    utterance.lang = LANGUAGES[langCode].speech;
     
     const voices = window.speechSynthesis.getVoices();
     const targetLangPrefix = langCode;

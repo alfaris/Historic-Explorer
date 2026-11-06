@@ -9,6 +9,7 @@ import { categories, locations, routes, type Category, type Location, type Route
 import type { Photo } from './photos';
 import { parseDistanceKm, parseHours, routeText } from '../lib/route-format.js';
 import { hoursProblems, normalizeHours } from '../lib/opening-hours.js';
+import { LANGS, LANGUAGES, OPTIONAL_LANGS } from '../i18n/lang.js';
 
 export type { Category, Location, Route };
 
@@ -77,6 +78,19 @@ function routeNumbers(r: any) {
   return { ...numbers, ...routeText(numbers) };
 }
 
+// Optional per-language fields (nameFr, descriptionEs, feeAr, …) that have
+// text, trimmed; empty ones are left out.
+const textFields = (o: any, bases: string[], langs: readonly (keyof typeof LANGUAGES)[]) =>
+  Object.fromEntries(
+    langs.flatMap(l => bases.map(b => `${b}${LANGUAGES[l].suffix}`)).filter(k => str(o?.[k])).map(k => [k, str(o[k])]),
+  );
+const listFields = (o: any, base: string) =>
+  Object.fromEntries(
+    OPTIONAL_LANGS.map(l => `${base}${LANGUAGES[l].suffix}`)
+      .map(k => [k, Array.isArray(o?.[k]) ? o[k].map(str).filter(Boolean) : []] as const)
+      .filter(([, v]) => v.length),
+  );
+
 /**
  * Copies only the known fields, trimmed and typed, so whatever a client sends
  * can't add unexpected properties to the stored content.
@@ -97,12 +111,9 @@ export function normalizeContent(input: unknown): Content {
       image: '',
       highlightsEn: Array.isArray(r?.highlightsEn) ? r.highlightsEn.map(str).filter(Boolean) : [],
       highlightsAr: Array.isArray(r?.highlightsAr) ? r.highlightsAr.map(str).filter(Boolean) : [],
-      // French is optional; empty fields are left out (the app falls back to English).
-      ...(str(r?.nameFr) ? { nameFr: str(r.nameFr) } : {}),
-      ...(str(r?.descriptionFr) ? { descriptionFr: str(r.descriptionFr) } : {}),
-      ...(Array.isArray(r?.highlightsFr) && r.highlightsFr.map(str).filter(Boolean).length
-        ? { highlightsFr: r.highlightsFr.map(str).filter(Boolean) }
-        : {}),
+      // French and Spanish are optional; empty fields are left out (the app falls back to English).
+      ...textFields(r, ['name', 'description'], OPTIONAL_LANGS),
+      ...listFields(r, 'highlights'),
       ...routeNumbers(r),
       ...(normalizePhoto(r?.photo) ? { photo: normalizePhoto(r?.photo) } : {}),
     })),
@@ -114,12 +125,9 @@ export function normalizeContent(input: unknown): Content {
       category: str(p?.category) as Category,
       descriptionEn: str(p?.descriptionEn),
       descriptionAr: str(p?.descriptionAr),
-      ...(str(p?.nameFr) ? { nameFr: str(p.nameFr) } : {}),
-      ...(str(p?.descriptionFr) ? { descriptionFr: str(p.descriptionFr) } : {}),
+      ...textFields(p, ['name', 'description'], OPTIONAL_LANGS),
       ...(normalizeHours(p?.hours) ? { hours: normalizeHours(p?.hours) } : {}),
-      ...(str(p?.feeEn) ? { feeEn: str(p.feeEn) } : {}),
-      ...(str(p?.feeAr) ? { feeAr: str(p.feeAr) } : {}),
-      ...(str(p?.feeFr) ? { feeFr: str(p.feeFr) } : {}),
+      ...textFields(p, ['fee'], LANGS),
       lat: Number(p?.lat),
       lng: Number(p?.lng),
       ...(normalizePhoto(p?.photo) ? { photo: normalizePhoto(p?.photo) } : {}),
@@ -151,9 +159,13 @@ export function validateContent(content: Content): string[] {
     if (!(r.hoursMin > 0 && r.hoursMax <= 24 && r.hoursMin <= r.hoursMax)) problems.push(`${label}: walking time must be in hours, above 0, at most 24, with "from" no more than "to".`);
     if (r.highlightsEn.length !== r.highlightsAr.length) problems.push(`${label}: English and Arabic highlights must have the same number of lines.`);
     if (r.highlightsEn.length > LIMITS.highlights) problems.push(`${label}: at most ${LIMITS.highlights} highlights.`);
-    if (r.highlightsFr && r.highlightsFr.length > LIMITS.highlights) problems.push(`${label}: at most ${LIMITS.highlights} French highlights.`);
-    for (const [field, max] of [['nameFr', LIMITS.name], ['descriptionFr', LIMITS.description]] as const) {
-      if ((r[field] ?? '').length > max) problems.push(`${label}: ${field} is longer than ${max} characters.`);
+    for (const lang of OPTIONAL_LANGS) {
+      const s = LANGUAGES[lang].suffix;
+      const highlights = r[`highlights${s}`];
+      if (highlights && highlights.length > LIMITS.highlights) problems.push(`${label}: at most ${LIMITS.highlights} ${LANGUAGES[lang].english} highlights.`);
+      for (const [field, max] of [[`name${s}`, LIMITS.name], [`description${s}`, LIMITS.description]] as const) {
+        if ((r[field] ?? '').length > max) problems.push(`${label}: ${field} is longer than ${max} characters.`);
+      }
     }
     for (const [field, max] of [['nameEn', LIMITS.name], ['nameAr', LIMITS.name], ['descriptionEn', LIMITS.description], ['descriptionAr', LIMITS.description]] as const) {
       if (r[field].length > max) problems.push(`${label}: ${field} is longer than ${max} characters.`);
@@ -175,7 +187,9 @@ export function validateContent(content: Content): string[] {
     // The audio guide narrates these, so both languages need one.
     if (!p.descriptionEn) problems.push(`${label}: English description is empty.`);
     if (!hasArabic(p.descriptionAr ?? '')) problems.push(`${label}: Arabic description is missing.`);
-    for (const [field, max] of [['nameEn', LIMITS.name], ['nameAr', LIMITS.name], ['descriptionEn', LIMITS.description], ['descriptionAr', LIMITS.description], ['nameFr', LIMITS.name], ['descriptionFr', LIMITS.description], ['feeEn', LIMITS.fee], ['feeAr', LIMITS.fee], ['feeFr', LIMITS.fee]] as const) {
+    const optional = OPTIONAL_LANGS.flatMap(l => [[`name${LANGUAGES[l].suffix}`, LIMITS.name], [`description${LANGUAGES[l].suffix}`, LIMITS.description]] as const);
+    const fees = LANGS.map(l => [`fee${LANGUAGES[l].suffix}`, LIMITS.fee] as const);
+    for (const [field, max] of [['nameEn', LIMITS.name], ['nameAr', LIMITS.name], ['descriptionEn', LIMITS.description], ['descriptionAr', LIMITS.description], ...optional, ...fees] as const) {
       if ((p[field] ?? '').length > max) problems.push(`${label}: ${field} is longer than ${max} characters.`);
     }
     if (p.hours) problems.push(...hoursProblems(p.hours).map(problem => `${label}: ${problem}`));

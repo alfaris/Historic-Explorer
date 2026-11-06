@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { initialLang, setCurrentLang, type Lang } from './lang';
+import { initialLang, LANGUAGES, setCurrentLang, type Lang } from './lang';
 
 type Language = Lang;
 const STORAGE_KEY = 'cairo-walks:lang';
@@ -72,7 +72,27 @@ const translations = {
     'directions': 'Itinéraire',
     'routes': 'Parcours',
   },
-};
+  es: {
+    'app.title': 'Explorador de El Cairo histórico',
+    'app.subtitle': 'Descubre los monumentos y la vida de las calles históricas',
+    'explore': 'Explorar',
+    'categories': 'Categorías',
+    'all': 'Todos los lugares',
+    'search': 'Buscar un lugar…',
+    'map': 'Mapa',
+    'list': 'Lista',
+    'near': 'Cerca de mí',
+    'monument': 'Monumentos y patrimonio',
+    'coffee': 'Cafés',
+    'restaurant': 'Restaurantes y comida',
+    'workshop': 'Talleres y artesanía',
+    'stationary': 'Papelerías y juguetes',
+    'meeting': 'Puntos de encuentro',
+    'nearby': 'Lugares cercanos',
+    'directions': 'Cómo llegar',
+    'routes': 'Rutas',
+  },
+} satisfies Record<Lang, Record<string, string>>;
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
@@ -102,7 +122,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return translations[language][key as keyof typeof translations['en']] || key;
   };
 
-  const dir = language === 'ar' ? 'rtl' : 'ltr';
+  const dir = LANGUAGES[language].dir;
 
   useEffect(() => {
     document.documentElement.dir = dir;

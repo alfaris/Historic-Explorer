@@ -12,10 +12,13 @@ export interface Route {
   image: string;
   highlightsEn: string[];
   highlightsAr: string[];
-  /** French (optional): shown in French, falling back to English when empty. */
+  /** French and Spanish (optional): shown in that language, falling back to English when empty. */
   nameFr?: string;
   descriptionFr?: string;
   highlightsFr?: string[];
+  nameEs?: string;
+  descriptionEs?: string;
+  highlightsEs?: string[];
   /** Length of the walk, in kilometres. */
   distanceKm: number;
   /** Walking time in hours, as a range (the same number twice for a single value). */
@@ -36,17 +39,20 @@ export interface Location {
   category: Category;
   descriptionEn?: string;
   descriptionAr?: string;
-  /** French (optional): shown in French, falling back to English when empty. */
+  /** French and Spanish (optional): shown in that language, falling back to English when empty. */
   nameFr?: string;
   descriptionFr?: string;
+  nameEs?: string;
+  descriptionEs?: string;
   lat: number;
   lng: number;
   /** Weekly opening hours, in Cairo time. Optional: without them the app shows nothing rather than a guess. */
   hours?: OpeningHours;
-  /** Entry fee as written for visitors, e.g. "EGP 60 · students EGP 30". French and Arabic fall back to English. */
+  /** Entry fee as written for visitors, e.g. "EGP 60 · students EGP 30". Other languages fall back to English. */
   feeEn?: string;
   feeAr?: string;
   feeFr?: string;
+  feeEs?: string;
   image?: string;
   /** Uploaded in the admin dashboard; replaces the built-in photo. */
   photo?: Photo;
@@ -65,6 +71,9 @@ export const routes: Route[] = [
     nameFr: "Parcours d'Ahl al-Bayt",
     descriptionFr: "Un voyage entre histoire et spiritualité au cœur du Caire",
     highlightsFr: ["Plus de 20 sites spirituels", "Un minaret en spirale unique", "Artisanat traditionnel"],
+    nameEs: 'Ruta de Ahl al-Bayt',
+    descriptionEs: 'Un viaje por la historia y la espiritualidad en el corazón de El Cairo',
+    highlightsEs: ['Más de 20 lugares espirituales', 'Un minarete en espiral único', 'Artesanía tradicional'],
     distanceKm: 2.5,
     hoursMin: 2,
     hoursMax: 3,
@@ -83,6 +92,9 @@ export const routes: Route[] = [
     nameFr: "Rue Al-Muizz",
     descriptionFr: "La plus grande concentration de trésors architecturaux médiévaux du monde islamique",
     highlightsFr: ["Architecture médiévale", "Le bazar de Khan el-Khalili", "Les anciennes portes de la ville"],
+    nameEs: 'Calle Al-Muizz',
+    descriptionEs: 'La mayor concentración de tesoros arquitectónicos medievales del mundo islámico',
+    highlightsEs: ['Arquitectura medieval', 'Bazar de Jan el-Jalili', 'Antiguas puertas de la ciudad'],
     distanceKm: 1.8,
     hoursMin: 3,
     hoursMax: 4,
@@ -101,6 +113,9 @@ export const routes: Route[] = [
     nameFr: "Le Caire copte (complexe des religions)",
     descriptionFr: "Un petit quartier fortifié où les églises anciennes et la synagogue Ben Ezra se côtoient",
     highlightsFr: ["L'Église suspendue", "La synagogue Ben Ezra", "Les vestiges de la forteresse romaine"],
+    nameEs: 'El Cairo copto (complejo de las religiones)',
+    descriptionEs: 'Un pequeño barrio amurallado donde antiguas iglesias y la sinagoga Ben Ezra se alzan una junto a otra',
+    highlightsEs: ['La Iglesia Colgante', 'Sinagoga Ben Ezra', 'Ruinas de la fortaleza romana'],
     distanceKm: 1,
     hoursMin: 1.5,
     hoursMax: 2,
@@ -119,6 +134,9 @@ export const routes: Route[] = [
     nameFr: "Al-Darb Al-Ahmar et la Citadelle",
     descriptionFr: "Un quartier historique avec la majestueuse Citadelle et une superbe architecture mamelouke",
     highlightsFr: ["La Citadelle de Saladin", "La mosquée d'albâtre", "Les vues du parc Al-Azhar"],
+    nameEs: 'Al-Darb Al-Ahmar y la Ciudadela',
+    descriptionEs: 'Barrio histórico con la majestuosa Ciudadela y una espléndida arquitectura mameluca',
+    highlightsEs: ['Ciudadela de Saladino', 'Mezquita de Alabastro', 'Vistas desde el parque Al-Azhar'],
     distanceKm: 2.2,
     hoursMin: 3,
     hoursMax: 4,
@@ -137,6 +155,9 @@ export const routes: Route[] = [
     nameFr: "Fustat, Roda et le Vieux-Caire",
     descriptionFr: "Des palais du Nil et du nilomètre abbasside de l'île de Roda jusqu'à Fustat, la première capitale islamique de l'Égypte",
     highlightsFr: ["Le nilomètre abbasside (861)", "Les momies royales au NMEC", "La plus ancienne mosquée d'Afrique"],
+    nameEs: 'Fustat, Roda y El Cairo Viejo',
+    descriptionEs: 'De los palacios del Nilo y el nilómetro abasí de la isla de Roda a Fustat, la primera capital islámica de Egipto',
+    highlightsEs: ['Nilómetro abasí (861 d. C.)', 'Momias reales en el NMEC', 'La mezquita más antigua de África'],
     distanceKm: 7,
     hoursMin: 3.5,
     hoursMax: 4.5,
@@ -146,12 +167,12 @@ export const routes: Route[] = [
 ];
 
 export const categories = [
-  { id: 'monument', nameEn: 'Monuments & Historic', nameAr: 'آثار ومباني تاريخية', nameFr: 'Monuments et patrimoine', color: 'bg-nile', icon: 'Landmark' },
-  { id: 'coffee', nameEn: 'Coffee Shops', nameAr: 'مقاهي', nameFr: 'Cafés', color: 'bg-stone-500', icon: 'Coffee' },
-  { id: 'restaurant', nameEn: 'Restaurants & Food', nameAr: 'مطاعم وغذاء', nameFr: 'Restaurants et cuisine', color: 'bg-gold', icon: 'Utensils' },
-  { id: 'workshop', nameEn: 'Workshops & Handicrafts', nameAr: 'ورش ومنتجات يدوية', nameFr: 'Ateliers et artisanat', color: 'bg-stone-600', icon: 'Hammer' },
-  { id: 'stationary', nameEn: 'Stationary & Toys', nameAr: 'خردوات ومكتبات', nameFr: 'Papeteries et jouets', color: 'bg-stone-400', icon: 'BookOpen' },
-  { id: 'meeting', nameEn: 'Meeting Points', nameAr: 'نقاط التجمع', nameFr: 'Points de rendez-vous', color: 'bg-nile-light', icon: 'Users' },
+  { id: 'monument', nameEn: 'Monuments & Historic', nameAr: 'آثار ومباني تاريخية', nameFr: 'Monuments et patrimoine', nameEs: 'Monumentos y patrimonio', color: 'bg-nile', icon: 'Landmark' },
+  { id: 'coffee', nameEn: 'Coffee Shops', nameAr: 'مقاهي', nameFr: 'Cafés', nameEs: 'Cafés', color: 'bg-stone-500', icon: 'Coffee' },
+  { id: 'restaurant', nameEn: 'Restaurants & Food', nameAr: 'مطاعم وغذاء', nameFr: 'Restaurants et cuisine', nameEs: 'Restaurantes y comida', color: 'bg-gold', icon: 'Utensils' },
+  { id: 'workshop', nameEn: 'Workshops & Handicrafts', nameAr: 'ورش ومنتجات يدوية', nameFr: 'Ateliers et artisanat', nameEs: 'Talleres y artesanía', color: 'bg-stone-600', icon: 'Hammer' },
+  { id: 'stationary', nameEn: 'Stationary & Toys', nameAr: 'خردوات ومكتبات', nameFr: 'Papeteries et jouets', nameEs: 'Papelerías y juguetes', color: 'bg-stone-400', icon: 'BookOpen' },
+  { id: 'meeting', nameEn: 'Meeting Points', nameAr: 'نقاط التجمع', nameFr: 'Points de rendez-vous', nameEs: 'Puntos de encuentro', color: 'bg-nile-light', icon: 'Users' },
 ];
 
 export const locations: Location[] = [

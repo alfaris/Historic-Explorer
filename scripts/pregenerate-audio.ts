@@ -12,6 +12,7 @@
 import { existsSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import { audioStatus, generateAndStoreAudio, type Lang } from '../api/_lib/gemini.js';
+import { isLang, LANGS } from '../src/i18n/lang.js';
 import { getContent } from '../api/_lib/content.js';
 
 const { values: args } = parseArgs({
@@ -22,9 +23,9 @@ const { values: args } = parseArgs({
   },
 });
 
-const langs: Lang[] = args.lang === 'en' || args.lang === 'ar' || args.lang === 'fr' ? [args.lang] : ['en', 'ar', 'fr'];
+const langs: Lang[] = isLang(args.lang) ? [args.lang] : [...LANGS];
 if (args.lang && langs.length !== 1) {
-  console.error('--lang must be "en" or "ar"');
+  console.error(`--lang must be one of ${LANGS.join(', ')}`);
   process.exit(1);
 }
 const delayMs = Number(args.delay);

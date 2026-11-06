@@ -21,7 +21,7 @@ export function normalizeForSearch(text: string): string {
     .trim();
 }
 
-type Searchable = { id: number; nameEn: string; nameAr: string; nameFr?: string };
+type Searchable = { id: number; nameEn: string; nameAr: string; nameFr?: string; nameEs?: string };
 
 /**
  * How well a place matches: 3 = a name starts with the query, 2 = a word in
@@ -31,7 +31,7 @@ type Searchable = { id: number; nameEn: string; nameAr: string; nameFr?: string 
 export function matchScore(place: Searchable, query: string): number {
   const q = normalizeForSearch(query);
   if (!q) return 0;
-  const names = [place.nameEn, place.nameAr, place.nameFr ?? ''].filter(Boolean).map(normalizeForSearch);
+  const names = [place.nameEn, place.nameAr, place.nameFr ?? '', place.nameEs ?? ''].filter(Boolean).map(normalizeForSearch);
   // Also try the English name with spaces removed, so "alazhar" finds "Al Azhar".
   const joined = names.map(n => n.replace(/ /g, ''));
   const words = q.split(' ');

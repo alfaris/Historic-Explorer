@@ -4,12 +4,10 @@ import { textHash } from '../lib/text-hash';
 import { api, type AudioState } from './api';
 import { Button } from './ui';
 
-type Lang = 'en' | 'ar' | 'fr';
-const LANGS: { lang: Lang; label: string }[] = [
-  { lang: 'en', label: 'English' },
-  { lang: 'ar', label: 'Arabic' },
-  { lang: 'fr', label: 'French' },
-];
+import { LANGS as LANG_IDS, LANGUAGES, type Lang } from '../i18n/lang';
+
+const LANGS: { lang: Lang; label: string }[] = LANG_IDS.map(lang => ({ lang, label: LANGUAGES[lang].english }));
+const byLangKey = <T,>(f: (lang: Lang) => T) => Object.fromEntries(LANG_IDS.map(l => [l, f(l)])) as Record<Lang, T>;
 const hashOf = (text: string) => (text ? textHash(text) : null);
 
 /**
@@ -19,7 +17,7 @@ const hashOf = (text: string) => (text ? textHash(text) : null);
  */
 export function AudioPanel({ placeId, draftText, savedText, generateOnLoad = false }: {
   placeId: number;
-  /** The text each language is narrated from, in the editor (maybe unsaved). French falls back to English. */
+  /** The text each language is narrated from, in the editor (maybe unsaved). French and Spanish fall back to English. */
   draftText: Record<Lang, string>;
   /** The saved descriptions, which visitors hear. */
   savedText: Record<Lang, string>;
@@ -27,11 +25,11 @@ export function AudioPanel({ placeId, draftText, savedText, generateOnLoad = fal
   generateOnLoad?: boolean;
 }) {
   const [states, setStates] = useState<Record<Lang, AudioState> | null>(null);
-  const [busy, setBusy] = useState<Record<Lang, boolean>>({ en: false, ar: false, fr: false });
+  const [busy, setBusy] = useState<Record<Lang, boolean>>(() => byLangKey(() => false));
   const [error, setError] = useState<string | null>(null);
 
-  const savedVersion = { en: hashOf(savedText.en), ar: hashOf(savedText.ar), fr: hashOf(savedText.fr) };
-  const unsaved = { en: draftText.en !== savedText.en, ar: draftText.ar !== savedText.ar, fr: draftText.fr !== savedText.fr };
+  const savedVersion = byLangKey(l => hashOf(savedText[l]));
+  const unsaved = byLangKey(l => draftText[l] !== savedText[l]);
 
   const generate = useCallback(async (lang: Lang, version: string) => {
     setBusy(b => ({ ...b, [lang]: true }));
@@ -51,7 +49,7 @@ export function AudioPanel({ placeId, draftText, savedText, generateOnLoad = fal
   // Load the status whenever the place or its saved text changes. When the
   // saved text changed while this panel was open (i.e. the admin just saved an
   // edit), generate the new audio right away.
-  const seen = useRef<{ placeId: number; en: string | null; ar: string | null; fr: string | null } | null>(null);
+  const seen = useRef<({ placeId: number } & Record<Lang, string | null>) | null>(null);
   useEffect(() => {
     let active = true;
     const before = seen.current?.placeId === placeId ? seen.current : null;
@@ -70,8 +68,9 @@ export function AudioPanel({ placeId, draftText, savedText, generateOnLoad = fal
     return () => {
       active = false;
     };
-    // savedVersion is derived from savedText; its parts are the dependencies.
-  }, [placeId, savedVersion.en, savedVersion.ar, savedVersion.fr, generate, generateOnLoad]);
+    // savedVersion is derived from savedText; its parts (joined) are the dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [placeId, LANG_IDS.map(l => savedVersion[l]).join('|'), generate, generateOnLoad]);
 
   return (
     <div className="rounded-xl border border-sand/60 p-4">

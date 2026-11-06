@@ -31,7 +31,7 @@ import { isPlaceLink, isRouteLink, placeFromLocation, routeFromLocation } from '
 import { askForCompass } from '../lib/useWalkSensors';
 import { LazyBoundary } from './LazyBoundary';
 
-import { L, nameOf, descriptionOf, highlightsOf, currentLang, fallbackLang } from '../i18n/lang';
+import { L, nameOf, descriptionOf, highlightsOf, currentLang, fallbackLang, LANGS, LANGUAGES } from '../i18n/lang';
 // The map (Leaflet, marker clustering and their CSS) is the largest part of the
 // app, so it's loaded only when needed: in the background once the page is idle,
 // or straight away if the map is opened first.
@@ -291,23 +291,23 @@ export const MainContent: React.FC = () => {
               </span>
             </div>
           </div>
-          {/* Language: English, Arabic, French. A native select, so it's keyboard and screen-reader friendly. */}
+          {/* Language: every language in LANGUAGES. A native select, so it's keyboard and screen-reader friendly. */}
           <label className="group flex flex-col items-center gap-1 cursor-pointer">
             <span className="relative w-12 h-12 rounded-full border border-sand group-hover:border-nile transition-all duration-500 flex items-center justify-center bg-white shadow-sm">
               <Globe className="w-4 h-4 text-stone-400 group-hover:text-nile transition-colors" aria-hidden="true" />
               <select
                 value={language}
                 onChange={e => setLanguage(e.target.value as typeof language)}
-                aria-label="Language / اللغة / Langue"
+                aria-label="Language / اللغة / Langue / Idioma"
                 className="absolute inset-0 opacity-0 cursor-pointer"
               >
-                <option value="en">English</option>
-                <option value="ar">العربية</option>
-                <option value="fr">Français</option>
+                {LANGS.map(l => (
+                  <option key={l} value={l} lang={l}>{LANGUAGES[l].native}</option>
+                ))}
               </select>
             </span>
             <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest" aria-hidden="true">
-              {language === 'en' ? 'English' : language === 'ar' ? 'العربية' : 'Français'}
+              {LANGUAGES[language].native}
             </span>
           </label>
         </div>
@@ -602,7 +602,7 @@ export const MainContent: React.FC = () => {
                           <div>
                             <div className="flex justify-between items-start mb-6">
                               <div>
-                                <h3 className={`text-4xl text-ink leading-tight ${headingFontClass}`} lang={fallbackLang(loc.nameFr)}>
+                                <h3 className={`text-4xl text-ink leading-tight ${headingFontClass}`} lang={fallbackLang(loc, 'name')}>
                                   {nameOf(loc)}
                                 </h3>
                                 <p className="text-[10px] font-bold text-nile mt-3 uppercase tracking-[0.3em]">
@@ -625,7 +625,7 @@ export const MainContent: React.FC = () => {
                             )}
                             
                             <div className="mb-8">
-                              <p className="text-stone-600 text-lg leading-relaxed mb-4 font-serif italic" lang={fallbackLang(loc.descriptionFr)}>
+                              <p className="text-stone-600 text-lg leading-relaxed mb-4 font-serif italic" lang={fallbackLang(loc, 'description')}>
                                 {descriptionOf(loc) || L('No description available for this location at the moment.', 'لا يوجد وصف متاح حالياً لهذا الموقع.')}
                               </p>
                               <AudioGuide 
@@ -718,7 +718,7 @@ export const MainContent: React.FC = () => {
                                 </p>
                                 <VisitedBadge placeId={loc.id} isArabic={isArabic} />
                               </div>
-                              <h3 className={`text-3xl text-ink leading-tight ${headingFontClass}`} lang={fallbackLang(loc.nameFr)}>
+                              <h3 className={`text-3xl text-ink leading-tight ${headingFontClass}`} lang={fallbackLang(loc, 'name')}>
                                 {nameOf(loc)}
                               </h3>
                               {plan.get(loc.id) && <div className="mt-2"><StopNumber info={plan.get(loc.id)!} isArabic={isArabic} /></div>}
@@ -746,7 +746,7 @@ export const MainContent: React.FC = () => {
                               >
                                 <div className="pt-8 mt-8 border-t border-chalk">
                                   <div className="mb-8">
-                                    <p className="text-stone-600 text-lg leading-relaxed mb-4 font-serif italic" lang={fallbackLang(loc.descriptionFr)}>
+                                    <p className="text-stone-600 text-lg leading-relaxed mb-4 font-serif italic" lang={fallbackLang(loc, 'description')}>
                                       {descriptionOf(loc) || L('No description available for this location at the moment.', 'لا يوجد وصف متاح حالياً لهذا الموقع.')}
                                     </p>
                                     <AudioGuide 

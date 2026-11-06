@@ -3,7 +3,7 @@ import { CheckCircle, Download, RefreshCw, Trash2, WifiOff, X } from 'lucide-rea
 import { useLanguage } from '../i18n/LanguageContext';
 import type { Location, Route } from '../data/locations';
 import { routePack } from '../lib/offline-pack';
-import { L, currentLang } from '../i18n/lang';
+import { L, currentLang, byLang } from '../i18n/lang';
 import {
   filesStillCached,
   missingFiles,
@@ -140,11 +140,12 @@ export function RouteDownload({ route, places }: { route: Route; places: Locatio
           <button onClick={start} disabled={!online} className={`${pill} bg-white border border-gold/60 text-ink shadow-sm hover:border-nile disabled:opacity-50`}>
             <RefreshCw className="w-4 h-4 text-gold" />
             {retryOnly && !cleared
-              ? ar
-                ? `إعادة المحاولة (${missingAudio || missing.length} ناقصة)`
-                : currentLang() === 'fr'
-                  ? `Réessayer (${missingAudio ? `${missingAudio} audio` : missing.length} manquant${(missingAudio || missing.length) > 1 ? 's' : ''})`
-                  : `Retry (${missingAudio ? `${missingAudio} audio` : missing.length} missing)`
+              ? byLang({
+                  en: `Retry (${missingAudio ? `${missingAudio} audio` : missing.length} missing)`,
+                  ar: `إعادة المحاولة (${missingAudio || missing.length} ناقصة)`,
+                  fr: `Réessayer (${missingAudio ? `${missingAudio} audio` : missing.length} manquant${(missingAudio || missing.length) > 1 ? 's' : ''})`,
+                  es: `Reintentar (faltan ${missingAudio ? `${missingAudio} audios` : missing.length})`,
+                })
               : L('Update offline copy', 'تحديث النسخة المحفوظة')}
           </button>
         )}

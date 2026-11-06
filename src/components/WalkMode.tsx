@@ -14,9 +14,10 @@ import { HistoricPlaceholder } from './HistoricPlaceholder';
 import { PlacePhoto } from './PlacePhoto';
 import type { NearMeState } from './NearMe';
 
-import { L, nameOf, descriptionOf, currentLang } from '../i18n/lang';
+import { L, nameOf, descriptionOf, currentLang, byLang } from '../i18n/lang';
+import { minutesLabel as minutes, stopOfLabel } from './WalkInfo';
 import { ArrivalWarning, HoursBadge } from './PlaceHours';
-const minutes = (n: number, ar: boolean) => (ar ? `${n} ${n === 1 ? 'دقيقة' : n === 2 ? 'دقيقتان' : n <= 10 ? 'دقائق' : 'دقيقة'} سيرًا` : currentLang() === 'fr' ? `${n} min à pied` : `${n} min walk`);
+
 
 /**
  * "Start the walk": a full-screen guide through a route's stops. Shows the
@@ -80,7 +81,7 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-500">{L('Next stop', 'المحطة التالية')}</p>
           <p className="text-lg text-ink leading-tight truncate">{name(next)}</p>
           <p className="text-sm text-stone-600">
-            {formatDistance(meters, ar)} · {minutes(live ? walkMinutes(live.meters) : info.leg!.minutes, ar)}
+            {formatDistance(meters, ar)} · {minutes(live ? walkMinutes(live.meters) : info.leg!.minutes)}
             {live && <span className="text-stone-500"> · {heading === null ? compassPoint(live.bearing, currentLang()) : L('follow the arrow', 'اتبع السهم')}</span>}
           </p>
           <ArrivalWarning place={next} minutes={live ? walkMinutes(live.meters) : info.leg!.minutes} className="mt-1" />
@@ -102,7 +103,7 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gold-ink truncate">{nameOf(route)}</p>
             <p className="text-sm text-stone-600">
-              {ar ? `المحطة ${info.number} من ${info.total}` : currentLang() === 'fr' ? `Étape ${info.number} sur ${info.total}` : `Stop ${info.number} of ${info.total}`} · {ar ? `زرت ${done}` : currentLang() === 'fr' ? `${done} visitée${done > 1 ? 's' : ''}` : `${done} visited`}
+              {stopOfLabel(info.number, info.total)} · {byLang({ en: `${done} visited`, ar: `زرت ${done}`, fr: `${done} visitée${done > 1 ? 's' : ''}`, es: `${done} visitada${done === 1 ? '' : 's'}` })}
             </p>
           </div>
           <button onClick={onClose} className="p-2.5 rounded-full bg-white border border-sand/60 text-stone-600 hover:text-ink" aria-label={L('End walk', 'إنهاء الجولة')}>
@@ -117,7 +118,12 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
           {arrivedId === stop.id && (
             <p className="flex items-center gap-2 rounded-2xl bg-nile/10 text-nile px-4 py-3 text-sm font-bold" role="status" aria-live="polite">
               <CircleCheck className="w-5 h-5 shrink-0" />
-              {ar ? `وصلت إلى ${name(stop)}. اضغط للاستماع إلى الدليل الصوتي.` : currentLang() === 'fr' ? `Vous êtes arrivé à ${name(stop)}. Touchez ci-dessous pour écouter le guide audio.` : `You've arrived at ${name(stop)}. Tap below to hear its audio guide.`}
+              {byLang({
+                en: `You've arrived at ${name(stop)}. Tap below to hear its audio guide.`,
+                ar: `وصلت إلى ${name(stop)}. اضغط للاستماع إلى الدليل الصوتي.`,
+                fr: `Vous êtes arrivé à ${name(stop)}. Touchez ci-dessous pour écouter le guide audio.`,
+                es: `Has llegado a ${name(stop)}. Toca abajo para escuchar su audioguía.`,
+              })}
             </p>
           )}
 

@@ -5,14 +5,17 @@ import { formatDistance } from '../lib/geo';
 import type { StopInfo } from '../lib/walk';
 import { ArrivalWarning } from './PlaceHours';
 
-import { L, currentLang, nameOf } from '../i18n/lang';
-const minutesLabel = (n: number, ar: boolean) => (ar ? `${n} ${n === 1 ? 'دقيقة' : n === 2 ? 'دقيقتان' : n <= 10 ? 'دقائق' : 'دقيقة'} سيرًا` : currentLang() === 'fr' ? `${n} min à pied` : `${n} min walk`);
+import { L, byLang, nameOf } from '../i18n/lang';
+export const minutesLabel = (n: number) =>
+  byLang({ en: `${n} min walk`, ar: `${n} ${n === 1 ? 'دقيقة' : n === 2 ? 'دقيقتان' : n <= 10 ? 'دقائق' : 'دقيقة'} سيرًا`, fr: `${n} min à pied`, es: `${n} min a pie` });
+export const stopOfLabel = (number: number, total: number) =>
+  byLang({ en: `Stop ${number} of ${total}`, ar: `المحطة ${number} من ${total}`, fr: `Étape ${number} sur ${total}`, es: `Parada ${number} de ${total}` });
 
 /** "Stop 3 of 12", shown above a stop's name. */
 export function StopNumber({ info, isArabic }: { info: StopInfo<Location>; isArabic: boolean }) {
   return (
     <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400">
-      {isArabic ? `المحطة ${info.number} من ${info.total}` : currentLang() === 'fr' ? `Étape ${info.number} sur ${info.total}` : `Stop ${info.number} of ${info.total}`}
+      {stopOfLabel(info.number, info.total)}
     </span>
   );
 }
@@ -49,7 +52,7 @@ export function NextStop({ info, isArabic, onOpen }: {
         <ArrivalWarning place={next} minutes={minutes} className="mt-1" />
       </span>
       <span className="shrink-0 text-end text-xs text-stone-500">
-        <span className="block font-bold">{minutesLabel(minutes, isArabic)}</span>
+        <span className="block font-bold">{minutesLabel(minutes)}</span>
         <span className="block text-[11px] text-stone-400">{formatDistance(meters, isArabic)}</span>
       </span>
     </button>

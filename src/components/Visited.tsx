@@ -2,7 +2,7 @@ import React from 'react';
 import { Check, CircleCheck, RotateCcw } from 'lucide-react';
 import { clearVisited, toggleVisited, useVisited } from '../lib/visited';
 
-import { L, currentLang } from '../i18n/lang';
+import { L, currentLang, byLang } from '../i18n/lang';
 /** Button to mark the place as visited, or undo it. */
 export function VisitedToggle({ placeId, isArabic, className = '' }: { placeId: number; isArabic: boolean; className?: string }) {
   const visited = useVisited().has(placeId);
@@ -45,7 +45,7 @@ export function RouteProgress({ placeIds, isArabic }: { placeIds: number[]; isAr
     <div className="w-full max-w-xs mb-8" dir={isArabic ? 'rtl' : 'ltr'}>
       <div className="flex items-center justify-between mb-2 text-[10px] font-bold uppercase tracking-widest text-nile">
         <span>
-          {currentLang() === 'ar' ? `زرت ${done} من ${total}` : currentLang() === 'fr' ? `${done} / ${total} visités` : `${done} / ${total} visited`}
+          {byLang({ en: `${done} / ${total} visited`, ar: `زرت ${done} من ${total}`, fr: `${done} / ${total} visités`, es: `${done} / ${total} visitados` })}
         </span>
         {done > 0 && (
           <button

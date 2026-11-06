@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Mail, RefreshCw } from 'lucide-react';
 import type { Content } from '../data/content';
 import { distanceMeters, formatDistance } from '../lib/geo';
+import { LANGUAGES } from '../i18n/lang';
 import { api, ApiError, type Report } from './api';
 import type { SaveFn } from './AdminApp';
 import { Button, ErrorBox, formatDate, MapPicker } from './ui';
@@ -161,7 +162,7 @@ function ReportCard({ report, content, save, setStatus, onEditPlace }: {
           <p>{formatDate(report.createdAt)}</p>
           <p className="capitalize">
             {report.status}
-            {report.lang === 'ar' ? ' · sent in Arabic' : report.lang === 'fr' ? ' · sent in French' : ''}
+            {report.lang !== 'en' && LANGUAGES[report.lang] ? ` · sent in ${LANGUAGES[report.lang].english}` : ''}
           </p>
         </div>
       </div>

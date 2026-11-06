@@ -5,7 +5,9 @@
 //
 // Shared by the browser, the API functions and the tests.
 
-export type FormatLang = 'en' | 'ar' | 'fr';
+import type { Lang } from '../i18n/lang.js';
+
+export type FormatLang = Lang;
 
 const num = (s: string) => Number(s.replace(',', '.'));
 
@@ -26,10 +28,10 @@ export function parseHours(text: string): [number, number] | null {
   return [a, b];
 }
 
-// Up to one decimal place, without a trailing ".0". French uses a decimal comma.
+// Up to one decimal place, without a trailing ".0". French and Spanish use a decimal comma.
 const decimal = (n: number, lang: FormatLang) => {
   const s = String(Math.round(n * 10) / 10);
-  return lang === 'fr' ? s.replace('.', ',') : s;
+  return lang === 'fr' || lang === 'es' ? s.replace('.', ',') : s;
 };
 
 export function formatDistance(km: number, lang: FormatLang): string {
@@ -43,6 +45,10 @@ export function formatDuration(min: number, max: number, lang: FormatLang): stri
   if (lang === 'fr') {
     const unit = max < 2 ? 'heure' : 'heures';
     return single ? `${a} ${unit}` : `${a} à ${b} ${unit}`;
+  }
+  if (lang === 'es') {
+    const unit = single && max === 1 ? 'hora' : 'horas';
+    return single ? `${a} ${unit}` : `${a} a ${b} ${unit}`;
   }
   if (lang === 'ar') {
     if (single && max === 1) return 'ساعة واحدة';

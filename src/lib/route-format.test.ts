@@ -43,3 +43,13 @@ describe('formatting', () => {
     expect(routeText({ distanceKm: NaN, hoursMin: NaN, hoursMax: NaN })).toEqual({ distance: '', duration: '' });
   });
 });
+
+describe('Spanish', () => {
+  it('writes distance and walking time in Spanish', () => {
+    expect(formatDistance(2.5, 'es')).toBe('2,5 km');
+    expect(formatDuration(2, 3, 'es')).toBe('2 a 3 horas');
+    expect(formatDuration(1.5, 2, 'es')).toBe('1,5 a 2 horas');
+    expect(formatDuration(1, 1, 'es')).toBe('1 hora');
+    expect(formatDuration(3, 3, 'es')).toBe('3 horas');
+  });
+});

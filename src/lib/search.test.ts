@@ -57,3 +57,9 @@ describe('French names', () => {
     expect(matchScore({ ...place, nameFr: undefined }, 'mosquee')).toBe(0);
   });
 });
+
+describe('Spanish names', () => {
+  it('finds a place by its Spanish name, ignoring accents', () => {
+    expect(matchScore({ id: 1, nameEn: 'Citadel', nameAr: 'القلعة', nameEs: 'Ciudadela de Saladino' }, 'ciudadela')).toBe(3);
+  });
+});

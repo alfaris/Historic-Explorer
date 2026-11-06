@@ -52,6 +52,7 @@ describe('admin audio', () => {
       ar: { status: 'missing', version: textHash(place.descriptionAr) },
       // No French description yet: French audio is narrated from the English text.
       fr: { status: 'missing', version: textHash(place.descriptionEn) },
+      es: { status: 'missing', version: textHash(place.descriptionEn) },
     });
   });
 

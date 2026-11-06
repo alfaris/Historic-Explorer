@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { parseTranslateRequest, pickTranslations } from './translate';
+import { parseTranslateRequest, pickTranslations, translatePrompt } from './translate';
 
 describe('parseTranslateRequest', () => {
   it('keeps non-empty trimmed texts', () => {
-    expect(parseTranslateRequest({ texts: { 'p1.name': ' Al-Azhar ', 'p1.desc': '  ' } })).toEqual({ texts: { 'p1.name': 'Al-Azhar' } });
+    expect(parseTranslateRequest({ texts: { 'p1.name': ' Al-Azhar ', 'p1.desc': '  ' } })).toEqual({ lang: 'fr', texts: { 'p1.name': 'Al-Azhar' } });
   });
   it('rejects bad shapes, keys and sizes', () => {
     expect(parseTranslateRequest(null)).toHaveProperty('error');
@@ -21,5 +21,18 @@ describe('pickTranslations', () => {
   it('keeps only requested keys with string values', () => {
     expect(pickTranslations({ a: 'x', b: 'y' }, { a: ' Bonjour ', b: 3, c: 'extra' })).toEqual({ a: 'Bonjour' });
     expect(pickTranslations({ a: 'x' }, 'nope')).toEqual({});
+  });
+});
+
+describe('target language', () => {
+  it('takes French or Spanish, defaulting to French', () => {
+    expect(parseTranslateRequest({ lang: 'es', texts: { a: 'Hi' } })).toEqual({ lang: 'es', texts: { a: 'Hi' } });
+    expect(parseTranslateRequest({ lang: 'ar', texts: { a: 'Hi' } })).toEqual({ error: 'lang must be fr or es.' });
+    expect(parseTranslateRequest({ lang: 'de', texts: { a: 'Hi' } })).toHaveProperty('error');
+  });
+  it('asks for that language', () => {
+    expect(translatePrompt('es')).toMatch(/into Spanish/);
+    expect(translatePrompt('es')).toMatch(/El Cairo/);
+    expect(translatePrompt('fr')).toMatch(/into French/);
   });
 });

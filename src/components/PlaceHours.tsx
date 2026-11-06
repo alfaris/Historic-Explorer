@@ -36,10 +36,10 @@ export function HoursBadge({ place, className = '' }: { place: Location; classNa
 export function PlaceHours({ place }: { place: Location }) {
   const lang = currentLang();
   const today = cairoTime(useNow()).day;
-  const fee = optionalText(place.feeEn, place.feeAr, place.feeFr);
+  const fee = optionalText(place, 'fee');
   const hours = place.hours;
   if (!hours && !fee.text) return null;
-  const note = hours ? optionalText(hours.noteEn, hours.noteAr, hours.noteFr) : { text: '', lang: undefined };
+  const note = hours ? optionalText(hours, 'note') : { text: '', lang: undefined };
   return (
     <div className="mb-6 rounded-2xl border border-sand/60 bg-chalk/50 p-4 space-y-3 text-sm">
       {hours && (

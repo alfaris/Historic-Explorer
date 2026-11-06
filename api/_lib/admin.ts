@@ -12,7 +12,7 @@
 //   POST photo?width=&height= (image body) → { src, width, height }
 //   GET  audio?id=n / POST audio {id, lang, version}  (see admin-audio.ts)
 //   GET  stats?days=7|30|90 → { total, perDay }  (see stats.ts)
-//   POST translate {texts}  → { texts } French drafts, nothing saved  (see translate.ts)
+//   POST translate {lang, texts} → { texts } French or Spanish drafts, nothing saved  (see translate.ts)
 //   GET  digest → { configured, to }   POST digest-test → sends a test email  (see digest.ts)
 //
 // Everything except session and login requires a signed-in admin.
