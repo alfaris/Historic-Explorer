@@ -10,6 +10,7 @@ import { descriptionOf, LANGS, LANGUAGES, OPTIONAL_LANGS, type Lang, type Option
 import { api } from './api';
 import { AudioPanel } from './AudioPanel';
 import { HoursEditor } from './HoursEditor';
+import { withoutPlace } from '../lib/special-hours';
 import { TipsEditor } from './TipsEditor';
 import { isActiveMosque } from '../lib/prayer-times';
 import type { PlaceSection } from './content-health';
@@ -93,7 +94,10 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
     if (!draft || isNew) return setDraft(null);
     if (!window.confirm(`Delete "${draft.nameEn}"? You can restore it from History.`)) return;
     setBusy(true);
-    if (await save({ ...content, places: content.places.filter(p => p.id !== draft.id) }, `Deleted "${draft.nameEn}"`)) setDraft(null);
+    // Its special hours go too (and periods left with no places), or the save check would refuse them.
+    const specialPeriods = withoutPlace(content.specialPeriods, draft.id);
+    const next = { ...content, places: content.places.filter(p => p.id !== draft.id), ...(specialPeriods ? { specialPeriods } : {}) };
+    if (await save(next, `Deleted "${draft.nameEn}"`)) setDraft(null);
     setBusy(false);
   };
 

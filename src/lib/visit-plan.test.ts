@@ -46,6 +46,15 @@ describe('visitPlan', () => {
     expect(visitPlan([place(1, 30.04, { hours: split })], 'r', cairo('2026-01-05', '12:15'), 45).flagged).toBe(0);
   });
 
+  it('uses special hours on the planned day', () => {
+    // A one-day closure of stop 2 on Monday 5 January.
+    const periods = [{ id: 'closure', nameEn: 'Closure', nameAr: 'إغلاق', from: '2026-01-05', to: '2026-01-05', places: { '2': { closed: true as const } } }];
+    const plan = visitPlan(places, 'r', cairo('2026-01-05', '10:00'), 20, undefined, periods);
+    expect(plan.stops.map(s => s.flags.map(f => f.kind))).toEqual([[], ['closed'], []]);
+    // The next day, usual hours again.
+    expect(visitPlan(places, 'r', cairo('2026-01-06', '10:00'), 20, undefined, periods).flagged).toBe(0);
+  });
+
   it('does not flag places without hours', () => {
     const plan = visitPlan(places.map(p => ({ ...p, hours: undefined })), 'r', cairo('2026-01-05', '23:00'));
     expect(plan.flagged).toBe(0);

@@ -12,6 +12,7 @@ import { hoursProblems, normalizeHours } from '../lib/opening-hours.js';
 import { normalizeTips, tipsProblems } from '../lib/visitor-tips.js';
 import { glossaryProblems, normalizeGlossary, type GlossaryTerm } from '../lib/glossary.js';
 import { DEFAULT_GLOSSARY } from './glossary.js';
+import { normalizePeriods, periodProblems, type SpecialPeriod } from '../lib/special-hours.js';
 import { LANGS, LANGUAGES, OPTIONAL_LANGS } from '../i18n/lang.js';
 
 export type { Category, Location, Route };
@@ -23,6 +24,8 @@ export interface Content {
   maxPlaceId?: number;
   /** Architecture terms linked in descriptions. Absent until the admin saves one: DEFAULT_GLOSSARY applies. */
   glossary?: GlossaryTerm[];
+  /** Ramadan, Eid, one-off closures: dates on which some places keep other hours. */
+  specialPeriods?: SpecialPeriod[];
 }
 
 export const bundledContent: Content = { routes, places: locations };
@@ -109,7 +112,9 @@ export function normalizeContent(input: unknown): Content {
   const placesIn = Array.isArray(raw.places) ? raw.places : [];
   const maxPlaceId = Number((raw as { maxPlaceId?: unknown }).maxPlaceId);
   const glossary = normalizeGlossary((raw as { glossary?: unknown }).glossary);
+  const specialPeriods = normalizePeriods((raw as { specialPeriods?: unknown }).specialPeriods);
   return {
+    ...(specialPeriods ? { specialPeriods } : {}),
     ...(Number.isInteger(maxPlaceId) && maxPlaceId > 0 ? { maxPlaceId } : {}),
     ...(glossary ? { glossary } : {}),
     routes: routesIn.map((r: any): Route => ({
@@ -218,6 +223,7 @@ export function validateContent(content: Content): string[] {
     }
   }
   if (content.glossary) problems.push(...glossaryProblems(content.glossary));
+  if (content.specialPeriods) problems.push(...periodProblems(content.specialPeriods, placeIds));
   return problems;
 }
 

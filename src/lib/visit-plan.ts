@@ -7,6 +7,7 @@ import type { Location } from '../data/locations.js';
 import { cairoTime, openStatus, type OpenStatus } from './opening-hours.js';
 import { isActiveMosque, pausesAround, type PrayerPause } from './prayer-times.js';
 import { walkStops, walkPlan } from './walk.js';
+import { openStatusAt, type SpecialPeriod } from './special-hours.js';
 
 const MIN = 60_000;
 
@@ -46,9 +47,10 @@ export interface VisitPlan<T> {
 
 type Place = Pick<Location, 'id' | 'routeId' | 'category' | 'lat' | 'lng' | 'hours' | 'nameEn' | 'nameAr' | 'mosque'>;
 
-function flagsFor(place: Place, arrive: Date, leave: Date, pauses: PrayerPause[]): PlanFlag[] {
+function flagsFor(place: Place, arrive: Date, leave: Date, pauses: PrayerPause[], periods?: SpecialPeriod[]): PlanFlag[] {
   const flags: PlanFlag[] = [];
-  const onArrival = openStatus(place.hours, arrive);
+  // The hours in force on the day of arrival (Ramadan, Eid… included).
+  const onArrival = openStatusAt(place, arrive, periods);
   if (onArrival && !onArrival.open) flags.push({ kind: 'closed', status: onArrival });
   else if (onArrival?.open && onArrival.closes) {
     // When it next closes (it may reopen later, e.g. after a midday break), as an instant.
@@ -71,6 +73,7 @@ export function visitPlan<T extends Place>(
   stayMinutes = DEFAULT_STAY,
   // Prayer times from the day before the start to the day after cover any walk.
   pauses: PrayerPause[] = pausesAround(start),
+  periods?: SpecialPeriod[],
 ): VisitPlan<T> {
   const stops = walkStops(places, routeId);
   const legs = walkPlan(places, routeId);
@@ -81,7 +84,7 @@ export function visitPlan<T extends Place>(
     t += walk * MIN;
     const arrive = new Date(t);
     const leave = new Date(t + stayMinutes * MIN);
-    out.push({ place, number: i + 1, arrive, leave, walkMinutes: walk, flags: flagsFor(place, arrive, leave, pauses) });
+    out.push({ place, number: i + 1, arrive, leave, walkMinutes: walk, flags: flagsFor(place, arrive, leave, pauses, periods) });
     t = leave.getTime();
     walk = legs.get(place.id)?.leg?.minutes ?? 0;
   });
@@ -107,17 +110,18 @@ export function suggestStart<T extends Place>(
   start: Date,
   stayMinutes: number,
   notBefore: Date,
+  periods?: SpecialPeriod[],
 ): { start: Date; flagged: number } | null {
   // Every candidate is on the same day, so one set of prayer times covers them all.
   const pauses = pausesAround(start);
-  const current = score(visitPlan(places, routeId, start, stayMinutes, pauses));
+  const current = score(visitPlan(places, routeId, start, stayMinutes, pauses, periods));
   if (current === 0) return null;
   const from = cairoTime(start).minutes;
   let best: { start: Date; flagged: number; score: number; distance: number } | null = null;
   for (let m = EARLIEST_START; m <= LATEST_START; m += STEP) {
     const candidate = new Date(start.getTime() + (m - from) * MIN);
     if (candidate < notBefore) continue;
-    const plan = visitPlan(places, routeId, candidate, stayMinutes, pauses);
+    const plan = visitPlan(places, routeId, candidate, stayMinutes, pauses, periods);
     const s = score(plan);
     const distance = Math.abs(m - from);
     if (s < current && (!best || s < best.score || (s === best.score && distance < best.distance))) {

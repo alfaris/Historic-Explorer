@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Clock, Ticket, TriangleAlert } from 'lucide-react';
+import { CalendarDays, Clock, Ticket, TriangleAlert } from 'lucide-react';
 import type { Location } from '../data/locations';
-import { cairoTime, closedOnArrival, openStatus, statusText, weekRows } from '../lib/opening-hours';
-import { L, currentLang, optionalText } from '../i18n/lang';
+import { useContent } from '../data/ContentContext';
+import { cairoTime, openStatus, statusText, weekRows } from '../lib/opening-hours';
+import { effectiveHours, openStatusAt, periodName, type SpecialPeriod } from '../lib/special-hours';
+import { L, byLang, currentLang, optionalText } from '../i18n/lang';
 
 /** The current time, refreshed every minute so "Open now" stays true. */
 export function useNow(intervalMs = 60_000): Date {
@@ -17,17 +19,39 @@ export function useNow(intervalMs = 60_000): Date {
 const tone = (open: boolean, soon: boolean) => (open ? (soon ? 'text-amber-800' : 'text-nile') : 'text-red-800');
 const dot = (open: boolean, soon: boolean) => (open ? (soon ? 'bg-amber-500' : 'bg-nile-light') : 'bg-red-600');
 
-/** "● Open now · closes 5 pm". Nothing when the place has no hours. */
+/** The place's hours in force at `at`, with the special periods (Ramadan, Eid…) applied. */
+export function useEffectiveHours(place: Location, at: Date) {
+  const { specialPeriods } = useContent();
+  return effectiveHours(place, at, specialPeriods);
+}
+
+/** "Ramadan", marking hours that come from a special period. */
+function PeriodTag({ period }: { period: SpecialPeriod }) {
+  const name = periodName(period, currentLang());
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-gold/15 px-2 py-0.5 text-xs font-bold text-gold-ink">
+      <CalendarDays className="w-3 h-3" aria-hidden="true" />
+      <span className="sr-only">{L('Special hours', 'مواعيد خاصة')}: </span>
+      <span lang={name.lang}>{name.text}</span>
+    </span>
+  );
+}
+
+/** "● Open now · closes 5 pm", with "Ramadan" when special hours apply. Nothing when the place has no hours. */
 export function HoursBadge({ place, className = '' }: { place: Location; className?: string }) {
   const now = useNow();
-  const status = openStatus(place.hours, now);
+  const eff = useEffectiveHours(place, now);
+  const { specialPeriods } = useContent();
+  const status = openStatusAt(place, now, specialPeriods);
   if (!status) return null;
-  const { label, detail, soon } = statusText(status, currentLang(), now);
+  const text = statusText(status, currentLang(), now);
+  const label = eff.closedToday ? L('Closed today', 'مغلق اليوم') : text.label;
   return (
-    <span className={`inline-flex items-center gap-1.5 text-xs ${className}`}>
-      <span className={`w-2 h-2 rounded-full shrink-0 ${dot(status.open, soon)}`} aria-hidden="true" />
-      <span className={`font-bold ${tone(status.open, soon)}`}>{label}</span>
-      {detail && <span className="text-stone-500">· {detail}</span>}
+    <span className={`inline-flex flex-wrap items-center gap-1.5 text-xs ${className}`}>
+      <span className={`w-2 h-2 rounded-full shrink-0 ${dot(status.open, text.soon)}`} aria-hidden="true" />
+      <span className={`font-bold ${tone(status.open, text.soon)}`}>{label}</span>
+      {text.detail && <span className="text-stone-500">· {text.detail}</span>}
+      {eff.period && <PeriodTag period={eff.period} />}
     </span>
   );
 }
@@ -35,10 +59,13 @@ export function HoursBadge({ place, className = '' }: { place: Location; classNa
 /** Status, the week's hours, the note and the entry fee. Nothing when the place has none of them. */
 export function PlaceHours({ place }: { place: Location }) {
   const lang = currentLang();
-  const today = cairoTime(useNow()).day;
+  const now = useNow();
+  const today = cairoTime(now).day;
   const fee = optionalText(place, 'fee');
-  const hours = place.hours;
+  const eff = useEffectiveHours(place, now);
+  const hours = eff.hours;
   if (!hours && !fee.text) return null;
+  const mayDiffer = eff.mayDiffer && periodName(eff.mayDiffer, lang).text;
   const note = hours ? optionalText(hours, 'note') : { text: '', lang: undefined };
   return (
     <div className="mb-6 rounded-2xl border border-sand/60 bg-chalk/50 p-4 space-y-3 text-sm">
@@ -47,7 +74,10 @@ export function PlaceHours({ place }: { place: Location }) {
           <summary className="flex cursor-pointer list-none items-center gap-2 [&::-webkit-details-marker]:hidden">
             <Clock className="w-4 h-4 shrink-0 text-gold" aria-hidden="true" />
             {/* The status itself sits under the place's name (HoursBadge). */}
-            <span className="flex-1 font-bold text-stone-600">{L('Opening hours', 'مواعيد العمل')}</span>
+            <span className="flex-1 font-bold text-stone-600">
+              {L('Opening hours', 'مواعيد العمل')}
+              {eff.period && <span className="ms-2 align-middle"><PeriodTag period={eff.period} /></span>}
+            </span>
             <span className="text-xs font-bold uppercase tracking-widest text-nile underline-offset-4 group-open:hidden">{L('Show', 'عرض')}</span>
             <span className="text-xs font-bold uppercase tracking-widest text-nile underline-offset-4 hidden group-open:inline">{L('Hide', 'إخفاء')}</span>
           </summary>
@@ -64,6 +94,17 @@ export function PlaceHours({ place }: { place: Location }) {
           </table>
           <p className="mt-2 text-xs text-stone-500">{L('Cairo time. Hours can change on holidays and during Ramadan.', 'بتوقيت القاهرة. قد تتغير المواعيد في الأعياد وشهر رمضان.')}</p>
         </details>
+      )}
+      {mayDiffer && (
+        <p className="flex items-start gap-2 text-xs text-amber-800">
+          <CalendarDays className="w-3.5 h-3.5 shrink-0 mt-0.5" aria-hidden="true" />
+          {byLang({
+            en: `${mayDiffer}: these hours may differ.`,
+            ar: `${mayDiffer}: قد تختلف هذه المواعيد.`,
+            fr: `${mayDiffer} : ces horaires peuvent changer.`,
+            es: `${mayDiffer}: este horario puede cambiar.`,
+          })}
+        </p>
       )}
       {note.text && <p className="text-xs text-stone-600" lang={note.lang}>{note.text}</p>}
       {fee.text && (
@@ -84,9 +125,12 @@ export function PlaceHours({ place }: { place: Location }) {
  */
 export function ArrivalWarning({ place, minutes, className = '' }: { place: Location; minutes: number; className?: string }) {
   const now = useNow();
-  if (!closedOnArrival(place.hours, minutes, now)) return null;
   const arrival = new Date(now.getTime() + minutes * 60_000);
-  const { detail } = statusText(openStatus(place.hours, arrival)!, currentLang(), arrival);
+  // The hours in force on the day of arrival.
+  const { specialPeriods } = useContent();
+  const status = openStatusAt(place, arrival, specialPeriods);
+  if (!status || status.open) return null;
+  const { detail } = statusText(status, currentLang(), arrival);
   return (
     <span className={`block text-xs leading-snug text-amber-800 ${className}`}>
       <TriangleAlert className="inline w-3.5 h-3.5 me-1 -mt-0.5 align-middle" aria-hidden="true" />

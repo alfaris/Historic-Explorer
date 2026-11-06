@@ -14,19 +14,26 @@ const DEFAULT_RANGE: TimeRange = { open: '09:00', close: '17:00' };
  * Weekly opening hours for a place: time ranges per day (none = closed that
  * day), a note in three languages, or no hours at all.
  */
-export function HoursEditor({ hours, onChange }: { hours: OpeningHours | undefined; onChange: (hours: OpeningHours | undefined) => void }) {
+export function HoursEditor({ hours, onChange, showNote = true, label = 'Opening hours', id = 'hours' }: {
+  hours: OpeningHours | undefined;
+  onChange: (hours: OpeningHours | undefined) => void;
+  /** The note fields (not used for special periods). */
+  showNote?: boolean;
+  label?: string;
+  id?: string;
+}) {
   const setDay = (day: number, ranges: TimeRange[]) => hours && onChange({ ...hours, days: hours.days.map((d, i) => (i === day ? ranges : d)) });
   const problems = hours ? hoursProblems(hours) : [];
 
   return (
-    <div id="hours" className="rounded-xl border border-sand/60 p-4 space-y-3 scroll-mt-24">
+    <div id={id} className="rounded-xl border border-sand/60 p-4 space-y-3 scroll-mt-24">
       <label className="flex items-center gap-2 text-sm font-bold text-stone-600">
         <input
           type="checkbox"
           checked={!!hours}
           onChange={e => onChange(e.target.checked ? { days: Array.from({ length: 7 }, () => [{ ...DEFAULT_RANGE }]) } : undefined)}
         />
-        Opening hours
+        {label}
       </label>
       {!hours ? (
         <p className="text-[11px] text-stone-400">No hours: visitors see nothing about opening times. Tick to add them (Cairo time).</p>
@@ -85,7 +92,7 @@ export function HoursEditor({ hours, onChange }: { hours: OpeningHours | undefin
               );
             })}
           </ul>
-          <div className="grid sm:grid-cols-2 gap-3">
+          {showNote && <div className="grid sm:grid-cols-2 gap-3">
             {LANGS.map(lang => {
               const key = fieldKey('note', lang);
               return (
@@ -94,7 +101,7 @@ export function HoursEditor({ hours, onChange }: { hours: OpeningHours | undefin
                 </Field>
               );
             })}
-          </div>
+          </div>}
           {problems.length > 0 && (
             <ul className="text-xs text-red-700 list-disc ps-5" role="alert">
               {problems.map(p => <li key={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</li>)}
