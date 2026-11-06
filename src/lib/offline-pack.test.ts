@@ -87,3 +87,14 @@ describe('routePack photos', () => {
     for (const u of full) if (u.startsWith('/images/photos/')) expect(photos).toContain(u.replace(/\.webp$/, '-480.webp'));
   });
 });
+
+describe('offline zoom levels', () => {
+  it('exposes the downloaded zooms that walk mode’s map stays within', async () => {
+    const { OFFLINE_AREA_MAX_ZOOM, OFFLINE_MAX_ZOOM, tilesForPlaces } = await import('./offline-pack');
+    expect(OFFLINE_AREA_MAX_ZOOM).toBe(16);
+    expect(OFFLINE_MAX_ZOOM).toBe(17);
+    const zooms = new Set(tilesForPlaces([{ lat: 30.05, lng: 31.26 }]).map(u => Number(u.split('/')[3])));
+    expect(Math.max(...zooms)).toBe(OFFLINE_MAX_ZOOM);
+    expect(zooms.has(OFFLINE_AREA_MAX_ZOOM)).toBe(true);
+  });
+});

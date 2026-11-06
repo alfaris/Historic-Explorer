@@ -6,6 +6,7 @@ import '../lib/leaflet-fixes';
 import { LocateFixed } from 'lucide-react';
 import type { Location } from '../data/locations';
 import { L as T, nameOf } from '../i18n/lang';
+import { OFFLINE_AREA_MAX_ZOOM, OFFLINE_MAX_ZOOM } from '../lib/offline-pack';
 
 type Fix = { lat: number; lng: number; accuracy: number };
 
@@ -27,8 +28,10 @@ function Follow({ points, following, onPan }: { points: [number, number][]; foll
     if (!following || points.length === 0) return;
     const t = setTimeout(() => {
       map.invalidateSize();
-      if (points.length === 1) map.setView(points[0], 17, { animate: true });
-      else map.fitBounds(L.latLngBounds(points), { padding: [28, 28], maxZoom: 18, animate: true });
+      // Never closer than the zoom a downloaded route has tiles for everywhere,
+      // or the map would go blank offline between stops.
+      if (points.length === 1) map.setView(points[0], OFFLINE_AREA_MAX_ZOOM, { animate: true });
+      else map.fitBounds(L.latLngBounds(points), { padding: [28, 28], maxZoom: OFFLINE_AREA_MAX_ZOOM, animate: true });
     }, 50);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -52,11 +55,13 @@ export default function WalkMiniMap({ stops, current, next, fix }: { stops: Loca
 
   return (
     <div className="relative z-0 h-52 overflow-hidden rounded-2xl border border-sand/60" role="region" aria-label={T('Map of the walk', 'خريطة الجولة')}>
-      <MapContainer center={[current.lat, current.lng]} zoom={16} zoomControl={false} attributionControl style={{ height: '100%', width: '100%' }}>
+      <MapContainer center={[current.lat, current.lng]} zoom={OFFLINE_AREA_MAX_ZOOM} zoomControl={false} attributionControl style={{ height: '100%', width: '100%' }}>
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           maxZoom={19}
+          // Zooming in further by hand enlarges the closest downloaded tiles rather than asking for new ones.
+          maxNativeZoom={OFFLINE_MAX_ZOOM}
         />
         <Polyline positions={line} pathOptions={{ color: '#c49a6c', weight: 4, opacity: 0.7, dashArray: '6, 10', lineJoin: 'round' }} />
         {stops.map(s => {
