@@ -17,6 +17,7 @@ import type { NearMeState } from './NearMe';
 import { L, nameOf, descriptionOf, currentLang, byLang } from '../i18n/lang';
 import { minutesLabel as minutes, stopOfLabel } from './WalkInfo';
 import { ArrivalWarning, HoursBadge } from './PlaceHours';
+import { PrayerArrivalWarning, PrayerNotice } from './PrayerTimes';
 
 
 /**
@@ -85,6 +86,7 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
             {live && <span className="text-stone-500"> · {heading === null ? compassPoint(live.bearing, currentLang()) : L('follow the arrow', 'اتبع السهم')}</span>}
           </p>
           <ArrivalWarning place={next} minutes={live ? walkMinutes(live.meters) : info.leg!.minutes} className="mt-1" />
+          <PrayerArrivalWarning place={next} minutes={live ? walkMinutes(live.meters) : info.leg!.minutes} className="mt-1" />
         </div>
       </div>
     );
@@ -139,6 +141,7 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
             <div className="p-5">
               <h2 className={`text-2xl text-ink leading-tight mb-2 ${ar ? 'font-arabic font-bold' : 'font-serif'}`}>{name(stop)}</h2>
               <HoursBadge place={stop} className="mb-3" />
+              <PrayerNotice place={stop} className="mb-3" />
               <p className="text-stone-600 leading-relaxed mb-4">{descriptionOf(stop)}</p>
               <div className="flex flex-wrap items-center gap-3">
                 <AudioGuide locationId={stop.id} text={(descriptionOf(stop)) || ''} langCode={currentLang()} />

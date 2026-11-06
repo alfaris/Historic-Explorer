@@ -4,6 +4,7 @@ import type { Location } from '../data/locations';
 import { formatDistance } from '../lib/geo';
 import type { StopInfo } from '../lib/walk';
 import { ArrivalWarning } from './PlaceHours';
+import { PrayerArrivalWarning } from './PrayerTimes';
 
 import { L, byLang, nameOf } from '../i18n/lang';
 export const minutesLabel = (n: number) =>
@@ -50,6 +51,7 @@ export function NextStop({ info, isArabic, onOpen }: {
         </span>
         <span className="block truncate text-sm text-ink group-hover/next:text-nile">{nameOf(next)}</span>
         <ArrivalWarning place={next} minutes={minutes} className="mt-1" />
+        <PrayerArrivalWarning place={next} minutes={minutes} className="mt-1" />
       </span>
       <span className="shrink-0 text-end text-xs text-stone-500">
         <span className="block font-bold">{minutesLabel(minutes)}</span>

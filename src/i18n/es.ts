@@ -132,4 +132,5 @@ export const ES: Record<string, string> = {
   'Walk again': 'Repetir',
   'Stops on the walk': 'Paradas del paseo',
   'Also nearby': 'También cerca',
+  'Prayer time when you get there': 'Hora de la oración cuando llegues',
 };
