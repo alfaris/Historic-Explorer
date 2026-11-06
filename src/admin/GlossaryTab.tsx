@@ -1,35 +1,55 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
 import type { Content } from '../data/content';
 import { glossaryOf } from '../data/content';
 import { glossaryProblems, glossarySegments, type GlossaryTerm } from '../lib/glossary';
-import { LANGS, LANGUAGES, type Lang } from '../i18n/lang';
+import { LANGS, LANGUAGES, isOptionalLang, type Lang, type OptionalLang } from '../i18n/lang';
 import type { SaveFn } from './AdminApp';
 import { Button, ErrorBox, Field, inputClass, sameValue } from './ui';
+import { missingText } from './content-health';
+import { FillMissingButton, fillEmpty } from './translations';
 
 const blank = (): GlossaryTerm => ({ id: '', termEn: '', termAr: '', defEn: '', defAr: '', match: [] });
 const slug = (s: string) => s.toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const key = (kind: 'term' | 'def', lang: Lang) => `${kind}${LANGUAGES[lang].suffix}` as const;
+const missingKeys = (lang: OptionalLang) => [key('term', lang), key('def', lang)];
 
 /**
  * The architecture terms linked in place descriptions. Until the first save
  * here, the app uses the built-in list; saving stores the whole list with the
  * content.
  */
-export function GlossaryTab({ content, save }: { content: Content; save: SaveFn }) {
+export function GlossaryTab({ content, save, initialId = null, onSelected }: {
+  content: Content;
+  save: SaveFn;
+  /** Open this term on arrival (from the Content checklist). */
+  initialId?: string | null;
+  onSelected?: () => void;
+}) {
   const terms = glossaryOf(content);
   const [draft, setDraft] = useState<GlossaryTerm | null>(null);
   const [originalId, setOriginalId] = useState<string | null>(null);
   // The spellings, edited as text (one per line) and split when saving.
   const [spellings, setSpellings] = useState('');
   const [busy, setBusy] = useState(false);
+  // Counts each opening of the editor: keys the fill buttons, so a translation still on its way is dropped when another item is opened.
+  const [session, setSession] = useState(0);
 
   const open = (t: GlossaryTerm | null) => {
     const term = t ?? blank();
     setDraft({ ...term, match: [...term.match] });
     setSpellings(term.match.join('\n'));
     setOriginalId(t ? t.id : null);
+    setSession(n => n + 1);
   };
+
+  useEffect(() => {
+    if (!initialId) return;
+    const term = terms.find(t => t.id === initialId);
+    if (term) open(term);
+    onSelected?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialId]);
 
   const final = draft && { ...draft, id: draft.id || slug(draft.termEn), match: [...new Set(spellings.split('\n').map(s => s.trim()).filter(Boolean))] };
   const original = originalId ? terms.find(t => t.id === originalId) : undefined;
@@ -122,6 +142,9 @@ export function GlossaryTab({ content, save }: { content: Content; save: SaveFn 
                 <Field label={`Explanation (${LANGUAGES[lang].english})`} hint={lang === 'en' || lang === 'ar' ? 'One line.' : 'Falls back to English when empty.'}>
                   <textarea className={inputClass} rows={3} lang={lang} dir={LANGUAGES[lang].dir} value={draft[key('def', lang)] ?? ''} onChange={e => set(key('def', lang), e.target.value)} />
                 </Field>
+                {isOptionalLang(lang) && (
+                  <FillMissingButton key={`${session}-${lang}`} lang={lang} missing={missingText(draft, lang, ['term', 'def'])} onFilled={texts => setDraft(d => d && fillEmpty(d, texts, missingKeys(lang)))} />
+                )}
               </div>
             ))}
           </div>

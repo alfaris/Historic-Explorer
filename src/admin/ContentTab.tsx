@@ -1,18 +1,20 @@
 import React, { useMemo, useState } from 'react';
 import { CheckCircle2, ChevronRight } from 'lucide-react';
-import type { Content } from '../data/content';
-import { LANGUAGES } from '../i18n/lang';
-import { GAPS, placeGaps, progress, routeGaps, type Gap, type PlaceSection } from './content-health';
+import { glossaryOf, type Content } from '../data/content';
+import { LANGUAGES, type OptionalLang } from '../i18n/lang';
+import { GAPS, glossaryGaps, periodGaps, placeGaps, progress, routeGaps, type Gap, type PlaceSection } from './content-health';
 import { inputClass } from './ui';
 
 /**
  * What content is still missing: progress per item, and the places (and
  * routes) that need something, each linking to the right part of its editor.
  */
-export function ContentTab({ content, onEditPlace, onEditRoute }: {
+export function ContentTab({ content, onEditPlace, onEditRoute, onEditTerm, onEditPeriod }: {
   content: Content;
   onEditPlace: (placeId: number, section: PlaceSection) => void;
   onEditRoute: (routeId: string) => void;
+  onEditTerm: (termId: string) => void;
+  onEditPeriod: (periodId: string) => void;
 }) {
   const [filter, setFilter] = useState<Gap | 'all'>('all');
   const [routeFilter, setRouteFilter] = useState<string>('all');
@@ -26,6 +28,8 @@ export function ContentTab({ content, onEditPlace, onEditRoute }: {
     [content.places, filter, routeFilter],
   );
   const routesMissing = content.routes.map(route => ({ route, gaps: routeGaps(route) })).filter(r => r.gaps.length > 0);
+  const termsMissing = glossaryOf(content).map(t => ({ id: t.id, name: t.termEn, gaps: glossaryGaps(t) })).filter(r => r.gaps.length > 0);
+  const periodsMissing = (content.specialPeriods ?? []).map(p => ({ id: p.id, name: p.nameEn, gaps: periodGaps(p) })).filter(r => r.gaps.length > 0);
   const routeName = (id: string) => content.routes.find(r => r.id === id)?.nameEn ?? id;
   const sectionFor = (gaps: Gap[]) => GAPS.find(g => (filter === 'all' ? gaps.includes(g.id) : g.id === filter))!.section;
 
@@ -54,22 +58,9 @@ export function ContentTab({ content, onEditPlace, onEditRoute }: {
         })}
       </div>
 
-      {routesMissing.length > 0 && (
-        <div className="bg-white rounded-2xl border border-sand/50 p-4">
-          <p className="text-xs font-bold uppercase tracking-widest text-stone-500 mb-2">Routes</p>
-          <ul className="divide-y divide-sand/40">
-            {routesMissing.map(({ route, gaps }) => (
-              <li key={route.id} className="flex items-center gap-3 py-2 text-sm">
-                <span className="flex-1">{route.nameEn}</span>
-                <span className="text-xs text-amber-800">Missing {gaps.map(g => LANGUAGES[g].english).join(', ')}</span>
-                <button onClick={() => onEditRoute(route.id)} className="flex items-center gap-1 min-h-11 px-3 text-xs font-bold text-nile hover:underline">
-                  Edit <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <MissingList title="Routes" rows={routesMissing.map(({ route, gaps }) => ({ id: route.id, name: route.nameEn, gaps }))} onEdit={onEditRoute} />
+      <MissingList title="Glossary terms" rows={termsMissing} onEdit={onEditTerm} />
+      <MissingList title="Special hours" rows={periodsMissing} onEdit={onEditPeriod} />
 
       <div className="bg-white rounded-2xl border border-sand/50 p-4">
         <div className="flex flex-wrap items-center gap-3 mb-3">
@@ -113,5 +104,26 @@ export function ContentTab({ content, onEditPlace, onEditRoute }: {
         )}
       </div>
     </section>
+  );
+}
+
+/** Routes, glossary terms or special hours missing a language, each with a link to its editor. Nothing when none are. */
+function MissingList({ title, rows, onEdit }: { title: string; rows: { id: string; name: string; gaps: OptionalLang[] }[]; onEdit: (id: string) => void }) {
+  if (rows.length === 0) return null;
+  return (
+    <div className="bg-white rounded-2xl border border-sand/50 p-4">
+      <p className="text-xs font-bold uppercase tracking-widest text-stone-500 mb-2">{title} ({rows.length})</p>
+      <ul className="divide-y divide-sand/40">
+        {rows.map(row => (
+          <li key={row.id} className="flex items-center gap-3 py-2 text-sm">
+            <span className="flex-1">{row.name}</span>
+            <span className="text-xs text-amber-800">Missing {row.gaps.map(g => LANGUAGES[g].english).join(', ')}</span>
+            <button onClick={() => onEdit(row.id)} className="flex items-center gap-1 min-h-11 px-3 text-xs font-bold text-nile hover:underline" aria-label={`Edit ${row.name}`}>
+              Edit <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
