@@ -57,7 +57,7 @@ function Sheet({ onClose }: { onClose: () => void }) {
             {TEXT_SIZES.map(size => (
               <label
                 key={size}
-                className={`flex flex-col items-center justify-center gap-1 min-h-16 rounded-2xl border px-2 py-2 text-center cursor-pointer ${
+                className={`flex flex-col items-center justify-center gap-1 min-h-16 rounded-2xl border px-2 py-2 text-center cursor-pointer has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-nile ${
                   display.text === size ? 'border-nile bg-nile/10 text-nile font-bold' : 'border-sand text-ink hover:border-nile/50'
                 }`}
               >
