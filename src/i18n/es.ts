@@ -156,5 +156,9 @@ export const ES: Record<string, string> = {
   'No saved places yet. Tap the bookmark on a place to keep it here.': 'Aún no hay lugares guardados. Toca el marcador de un lugar para guardarlo aquí.',
   'Special hours': 'Horario especial',
   'Closed today': 'Cerrado hoy',
+  'Show map': 'Mostrar el mapa',
+  'Hide map': 'Ocultar el mapa',
+  'Map of the walk': 'Mapa del paseo',
+  'Follow me': 'Seguirme',
   'Visitor tips': 'Consejos para la visita',
 };
