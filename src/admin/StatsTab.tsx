@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { RefreshCw } from 'lucide-react';
 import type { Content } from '../data/content';
 import { walkStops } from '../lib/walk';
+import { helpfulness } from '../lib/stats';
 import { api, ApiError, type StatsResponse } from './api';
 import { ErrorBox } from './ui';
 
@@ -60,8 +61,9 @@ function Daily({ perDay, days }: { perDay: StatsResponse['perDay']; days: Days }
   );
 }
 
-export function StatsTab({ content, onSignedOut }: { content: Content; onSignedOut: () => void }) {
+export function StatsTab({ content, onSignedOut, onEditPlace }: { content: Content; onSignedOut: () => void; onEditPlace?: (id: number) => void }) {
   const [days, setDays] = useState<Days>(30);
+  const [helpSort, setHelpSort] = useState<'disliked' | 'votes'>('disliked');
   const [data, setData] = useState<StatsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -96,6 +98,11 @@ export function StatsTab({ content, onSignedOut }: { content: Content; onSignedO
       .slice(0, 10);
   }, [data, placeName]);
 
+  const helpRows = useMemo(
+    () => (data ? helpfulness(data.total, content.places.map(p => p.id), helpSort) : []),
+    [data, content, helpSort],
+  );
+
   const routeRows = useMemo(() => {
     if (!data) return [];
     return content.routes
@@ -128,7 +135,7 @@ export function StatsTab({ content, onSignedOut }: { content: Content; onSignedO
         </button>
       </div>
       <p className="text-[11px] text-stone-400 -mt-3">
-        Anonymous totals per day: no cookies, IDs or IP addresses are stored, and visitors with Do Not Track or Global Privacy Control on aren't counted. Each audio guide, route and arrival counts once per visit.
+        Anonymous totals per day: no cookies, IDs or IP addresses are stored, and visitors with Do Not Track or Global Privacy Control on aren't counted. Each audio guide, route and arrival counts once per visit; each place's helpful vote, once per device.
       </p>
 
       {error && <ErrorBox message={error} />}
@@ -157,6 +164,52 @@ export function StatsTab({ content, onSignedOut }: { content: Content; onSignedO
                   <Bar key={id} label={placeName.get(id)!} value={n} max={topPlaces[0][1]} />
                 ))}
               </div>
+            )}
+          </div>
+
+          <div className="bg-white rounded-2xl border border-sand/50 p-5">
+            <div className="flex flex-wrap items-center gap-3 mb-1">
+              <h2 className="text-sm font-bold text-stone-700 flex-1">Was this helpful?</h2>
+              <label className="text-xs text-stone-600">
+                Sort{' '}
+                <select value={helpSort} onChange={e => setHelpSort(e.target.value as 'disliked' | 'votes')} className="ms-1 rounded-lg border border-sand/60 bg-white px-2 py-1 text-xs">
+                  <option value="disliked">Most “No” first</option>
+                  <option value="votes">Most votes first</option>
+                </select>
+              </label>
+            </div>
+            <p className="text-[11px] text-stone-400 mb-3">Votes from the end of each place’s card, once per place per device. Many “No” votes usually mean the description or audio needs work.</p>
+            {helpRows.length === 0 ? (
+              <p className="text-sm text-stone-400">No votes in this period yet.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-xs text-stone-500 text-start">
+                    <th scope="col" className="text-start font-bold pb-2">Place</th>
+                    <th scope="col" className="text-end font-bold pb-2">Yes</th>
+                    <th scope="col" className="text-end font-bold pb-2">No</th>
+                    <th scope="col" className="text-end font-bold pb-2">Helpful</th>
+                    {onEditPlace && <th scope="col" className="pb-2"><span className="sr-only">Edit</span></th>}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-sand/40">
+                  {helpRows.map(r => (
+                    <tr key={r.id}>
+                      <td className="py-1.5 pe-3 text-stone-700">{placeName.get(String(r.id))}</td>
+                      <td className="py-1.5 text-end tabular-nums text-stone-600">{fmt(r.yes)}</td>
+                      <td className={`py-1.5 text-end tabular-nums ${r.no > r.yes ? 'text-red-700 font-bold' : 'text-stone-600'}`}>{fmt(r.no)}</td>
+                      <td className="py-1.5 text-end tabular-nums text-stone-700">{r.pct}%</td>
+                      {onEditPlace && (
+                        <td className="py-1.5 text-end">
+                          <button onClick={() => onEditPlace(r.id)} className="min-h-9 px-2 text-xs font-bold text-nile hover:underline">
+                            Edit
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             )}
           </div>
 

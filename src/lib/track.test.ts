@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { flush, resetTrackingForTest, track } from './track';
+import { PENDING_KEY, flush, resetTrackingForTest, sendPending, track } from './track';
 
 let beacons: string[];
 let nav: Record<string, unknown>;
+let store: Map<string, string>;
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -16,6 +17,8 @@ beforeEach(() => {
   vi.stubGlobal('navigator', nav);
   vi.stubGlobal('document', { addEventListener: () => {}, visibilityState: 'visible' });
   vi.stubGlobal('window', { addEventListener: () => {} });
+  store = new Map();
+  vi.stubGlobal('localStorage', { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => store.set(k, v), removeItem: (k: string) => store.delete(k) });
   resetTrackingForTest();
 });
 afterEach(() => {
@@ -57,5 +60,32 @@ describe('track', () => {
   it('sends nothing when there is nothing queued', async () => {
     flush();
     expect(await sent()).toEqual([]);
+  });
+
+  it('keeps events made with no connection, and sends them once back online', async () => {
+    nav.onLine = false;
+    track({ t: 'up', id: 3 });
+    flush();
+    expect(beacons).toEqual([]);
+    expect(JSON.parse(store.get(PENDING_KEY)!)).toEqual([{ t: 'up', id: 3 }]);
+    nav.onLine = true;
+    sendPending();
+    expect(await sent()).toEqual([[{ t: 'up', id: 3 }]]);
+    expect(store.has(PENDING_KEY)).toBe(false);
+  });
+
+  it('splits a long backlog into requests the server accepts whole', async () => {
+    nav.onLine = false;
+    for (let id = 1; id <= 50; id++) track({ t: 'up', id });
+    flush();
+    nav.onLine = true;
+    track({ t: 'down', id: 99 });
+    sendPending();
+    const batches = await sent();
+    expect(batches.map(b => b.length).sort((a, b) => b - a)).toEqual([50, 1]);
+    const all = batches.flat();
+    expect(all).toHaveLength(51);
+    expect(all).toContainEqual({ t: 'down', id: 99 });
+    expect(new Set(all.map(e => e.id)).size).toBe(51);
   });
 });
