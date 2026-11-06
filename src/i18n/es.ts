@@ -184,4 +184,11 @@ export const ES: Record<string, string> = {
   'No': 'No',
   'Thanks for your feedback.': 'Gracias por tu opinión.',
   'Visitor tips': 'Consejos para la visita',
+  'Filters': 'Filtros',
+  'Open now': 'Abierto ahora',
+  'Step-free': 'Sin escalones',
+  'Nothing here is open now and step-free.': 'Aquí no hay nada abierto ahora y sin escalones.',
+  'Nothing here is open now.': 'Aquí no hay nada abierto ahora.',
+  'Nothing here is marked step-free.': 'Aquí no hay nada marcado sin escalones.',
+  'Clear filters': 'Quitar filtros',
 };

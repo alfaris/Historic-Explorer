@@ -13,7 +13,7 @@ import { justCompleted, walkSummary } from '../lib/walk-summary';
 import { NearMeOverlay, NearMeView, useNearMe } from './NearMe';
 import { ReportProblem } from './ReportProblem';
 import { photoForPlace, photoForRoute } from '../data/photo-resolve';
-import { Search, MapPin, Navigation, Map, List, ChevronRight, Cake, Coffee, Utensils, Hammer, BookOpen, Users, Landmark, ArrowUp, Clock, Route as RouteIcon, Star, LocateFixed, Footprints } from 'lucide-react';
+import { Search, MapPin, Navigation, Map, List, ChevronRight, Cake, Coffee, Utensils, Hammer, BookOpen, Users, Landmark, ArrowUp, Clock, Accessibility, X, Route as RouteIcon, Star, LocateFixed, Footprints } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { LiveLocationInfo } from './LiveLocationInfo';
 import { AudioGuide } from './AudioGuide';
@@ -24,7 +24,8 @@ import { walkPlan } from '../lib/walk';
 import { track } from '../lib/track';
 import { matchScore, searchPlaces } from '../lib/search';
 import { formatDistance, formatDuration } from '../lib/route-format';
-import { HoursBadge, PlaceHours } from './PlaceHours';
+import { HoursBadge, PlaceHours, useNow } from './PlaceHours';
+import { NO_FILTERS, passesFilters, withoutHours, type PlaceFilters } from '../lib/place-filters';
 import { PrayerNotice } from './PrayerTimes';
 import { VisitorTips } from './VisitorTips';
 import { GlossaryText } from './GlossaryText';
@@ -38,7 +39,7 @@ import { isPlaceLink, isRouteLink, placeFromLocation, routeFromLocation } from '
 import { askForCompass } from '../lib/useWalkSensors';
 import { LazyBoundary } from './LazyBoundary';
 
-import { L, nameOf, descriptionOf, highlightsOf, currentLang, fallbackLang, LANGS, LANGUAGES } from '../i18n/lang';
+import { L, byLang, nameOf, descriptionOf, highlightsOf, currentLang, fallbackLang, LANGS, LANGUAGES } from '../i18n/lang';
 // The map (Leaflet, marker clustering and their CSS) is the largest part of the
 // app, so it's loaded only when needed: in the background once the page is idle,
 // or straight away if the map is opened first.
@@ -64,9 +65,13 @@ const iconMap: Record<string, React.ElementType> = {
 
 export const MainContent: React.FC = () => {
   // Live routes and places (admin edits), falling back to the bundled copy.
-  const { places: locations, routes } = useContent();
+  const { places: locations, routes, specialPeriods } = useContent();
   const { t, language, setLanguage, dir } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
+  // Open now and Step-free (list and map). Open now is checked against the time, refreshed every minute.
+  const [filters, setFilters] = useState<PlaceFilters>(NO_FILTERS);
+  const now = useNow();
+  const filtering = filters.openNow || filters.stepFree;
   const [selectedCategory, setSelectedCategory] = useState<Category | 'all'>('all');
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
   // Start on the route of a shared place (?loc=) or route (?route=), so the
@@ -158,16 +163,23 @@ export const MainContent: React.FC = () => {
       // Forgiving match (Arabic letter variants, vowel marks, punctuation); see lib/search.
       const matchesSearch = !searchQuery.trim() || matchScore(loc, searchQuery) > 0;
       const matchesCategory = selectedCategory === 'all' || loc.category === selectedCategory;
-      return matchesRoute && matchesSearch && matchesCategory;
+      // The open place stays, so its card doesn't vanish (e.g. when it closes while being read).
+      const matchesFilters = loc.id === selectedLocation || passesFilters(loc, filters, now, specialPeriods);
+      return matchesRoute && matchesSearch && matchesCategory && matchesFilters;
     });
-  }, [searchQuery, selectedCategory, selectedRoute, locations]);
+    // `now` only matters while Open now is on.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, selectedCategory, selectedRoute, locations, filters, filters.openNow && now, specialPeriods, selectedLocation]);
 
   // While searching, matches on the other routes too, best first.
   const otherRouteMatches = useMemo(() => {
     if (!searchQuery.trim()) return [];
-    const others = locations.filter(l => l.routeId !== selectedRoute && (selectedCategory === 'all' || l.category === selectedCategory));
+    const others = locations.filter(l => l.routeId !== selectedRoute && (selectedCategory === 'all' || l.category === selectedCategory) && passesFilters(l, filters, now, specialPeriods));
     return searchPlaces(others, searchQuery);
-  }, [searchQuery, selectedCategory, selectedRoute, locations]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, selectedCategory, selectedRoute, locations, filters, filters.openNow && now, specialPeriods]);
+  // Places on this route (in the chosen category) that Open now leaves out for having no hours listed.
+  const noHoursHidden = filters.openNow ? withoutHours(locations.filter(l => l.routeId === selectedRoute && (selectedCategory === 'all' || l.category === selectedCategory))) : 0;
 
 
   const isArabic = language === 'ar';
@@ -706,6 +718,39 @@ export const MainContent: React.FC = () => {
               );
             })}
           </div>
+
+          {/* Open now and Step-free: toggles that work with the category and search. */}
+          {viewMode !== 'near' && (
+            <div className="mt-2 flex flex-wrap items-center gap-2" role="group" aria-label={L('Filters', 'عوامل التصفية')}>
+              {([
+                { key: 'openNow', label: L('Open now', 'مفتوح الآن'), Icon: Clock },
+                { key: 'stepFree', label: L('Step-free', 'بدون درجات'), Icon: Accessibility },
+              ] as const).map(({ key, label, Icon }) => (
+                <button
+                  key={key}
+                  type="button"
+                  aria-pressed={filters[key]}
+                  onClick={() => setFilters(f => ({ ...f, [key]: !f[key] }))}
+                  className={`flex items-center gap-1.5 min-h-11 px-4 rounded-full border text-xs font-bold transition-colors ${
+                    filters[key] ? 'bg-nile/10 border-nile text-nile' : 'bg-white border-sand text-stone-600 hover:border-nile/50'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" aria-hidden="true" />
+                  {label}
+                </button>
+              ))}
+              {noHoursHidden > 0 && (
+                <span className="text-xs text-stone-500">
+                  {byLang({
+                    en: `${noHoursHidden} without listed hours not shown`,
+                    ar: `لا تظهر الأماكن التي لا مواعيد مسجلة لها (${noHoursHidden})`,
+                    fr: `${noHoursHidden} sans horaires indiqués non affichés`,
+                    es: `${noHoursHidden} sin horario indicado no se muestran`,
+                  })}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Content Area */}
@@ -872,11 +917,31 @@ export const MainContent: React.FC = () => {
             ))}
             
             {filteredLocations.length === 0 && otherRouteMatches.length === 0 && (
-              <div className="text-center py-32 bg-white rounded-[3rem] border border-dashed border-sand">
-                <Search className="w-12 h-12 text-stone-200 mx-auto mb-6" />
-                <h3 className={`text-3xl text-stone-400 ${headingFontClass}`}>
+              // Shorter with filters on, so "Clear filters" is in view on a phone.
+              <div className={`text-center ${filtering ? 'py-10' : 'py-32'} bg-white rounded-[3rem] border border-dashed border-sand`}>
+                <Search className={`${filtering ? 'w-8 h-8 mb-3' : 'w-12 h-12 mb-6'} text-stone-200 mx-auto`} />
+                <h3 className={`${filtering ? 'text-xl' : 'text-3xl'} text-stone-400 ${headingFontClass}`}>
                   {L('No explorations found', 'لم يتم العثور على نتائج')}
                 </h3>
+                {filtering && (
+                  <div className="mt-3 space-y-3 px-6">
+                    <p className="text-sm text-stone-500">
+                      {filters.openNow && filters.stepFree
+                        ? L('Nothing here is open now and step-free.', 'لا يوجد هنا مكان مفتوح الآن وبدون درجات.')
+                        : filters.openNow
+                          ? L('Nothing here is open now.', 'لا يوجد هنا مكان مفتوح الآن.')
+                          : L('Nothing here is marked step-free.', 'لا يوجد هنا مكان مسجل بدون درجات.')}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setFilters(NO_FILTERS)}
+                      className="inline-flex items-center gap-1.5 min-h-11 px-5 rounded-xl bg-nile text-white text-xs font-bold uppercase tracking-wider hover:bg-nile-light"
+                    >
+                      <X className="w-3.5 h-3.5" aria-hidden="true" />
+                      {L('Clear filters', 'إزالة عوامل التصفية')}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
             {filteredLocations.length === 0 && otherRouteMatches.length > 0 && (
