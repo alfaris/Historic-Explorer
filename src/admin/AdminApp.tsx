@@ -63,7 +63,7 @@ function Login({ onSignedIn }: { onSignedIn: () => void }) {
           }
         }}
       >
-        <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-gold-ink mb-1">Cairo Walks</p>
+        <p className="text-xs font-bold uppercase tracking-[0.25em] text-gold-ink mb-1">Cairo Walks</p>
         <h1 className="text-2xl font-serif mb-6">Admin</h1>
         <label className="block text-xs font-bold text-stone-500 mb-1" htmlFor="password">
           Password
@@ -160,18 +160,18 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
   return (
     <div className="min-h-screen">
       <header className="bg-white border-b border-sand/50 sticky top-0 z-[2000]">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-4 flex-wrap">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-x-2 gap-y-3 flex-wrap">
           <div className="me-auto">
-            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-gold-ink">Cairo Walks</p>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-gold-ink">Cairo Walks</p>
             <h1 className="text-lg font-serif leading-none">Admin</h1>
           </div>
-          <nav className="flex gap-1 bg-chalk p-1 rounded-xl order-last md:order-none w-full md:w-auto overflow-x-auto">
+          <nav className="flex gap-1 bg-chalk p-1 rounded-xl order-last w-full overflow-x-auto">
             {tabs.map(t => (
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
                 aria-current={tab === t.id ? 'page' : undefined}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest whitespace-nowrap ${
+                className={`flex items-center gap-2 px-4 min-h-11 rounded-lg text-xs font-bold uppercase tracking-widest whitespace-nowrap ${
                   tab === t.id ? 'bg-white text-nile shadow-sm' : 'text-stone-500 hover:text-stone-700'
                 }`}
               >
@@ -180,7 +180,7 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
               </button>
             ))}
           </nav>
-          <a href="/" className="text-xs text-stone-500 hover:text-nile">
+          <a href="/" className="inline-flex items-center min-h-11 px-2 text-xs text-stone-500 hover:text-nile">
             View site
           </a>
           <button
@@ -188,7 +188,7 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
               await api.logout().catch(() => {});
               onSignedOut();
             }}
-            className="flex items-center gap-1 text-xs text-stone-500 hover:text-nile"
+            className="flex items-center gap-1 min-h-11 px-2 text-xs text-stone-500 hover:text-nile"
           >
             <LogOut className="w-4 h-4" /> Sign out
           </button>
