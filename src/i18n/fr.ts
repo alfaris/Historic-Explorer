@@ -158,5 +158,14 @@ export const FR: Record<string, string> = {
   'Hide map': 'Masquer la carte',
   'Map of the walk': 'Carte du parcours',
   'Follow me': 'Me suivre',
+  // Display
+  'Language and display': 'Langue et affichage',
+  'Language': 'Langue',
+  'Text size': 'Taille du texte',
+  'Standard': 'Standard',
+  'Large': 'Grand',
+  'Larger': 'Très grand',
+  'High contrast': 'Contraste élevé',
+  'Easier to read in bright sun.': 'Plus lisible en plein soleil.',
   'Visitor tips': 'Conseils de visite',
 };

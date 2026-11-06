@@ -160,5 +160,14 @@ export const ES: Record<string, string> = {
   'Hide map': 'Ocultar el mapa',
   'Map of the walk': 'Mapa del paseo',
   'Follow me': 'Seguirme',
+  // Display
+  'Language and display': 'Idioma y pantalla',
+  'Language': 'Idioma',
+  'Text size': 'Tamaño del texto',
+  'Standard': 'Estándar',
+  'Large': 'Grande',
+  'Larger': 'Muy grande',
+  'High contrast': 'Alto contraste',
+  'Easier to read in bright sun.': 'Más fácil de leer a pleno sol.',
   'Visitor tips': 'Consejos para la visita',
 };
