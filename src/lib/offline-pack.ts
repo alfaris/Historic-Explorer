@@ -42,6 +42,10 @@ export const tileUrl = (z: number, x: number, y: number) =>
 // zoom 17 only right around each stop, and a hard cap per route.
 const AREA_ZOOMS = [14, 15, 16];
 const STOP_ZOOM = 17;
+/** The closest zoom downloaded across the whole route area (walk mode's map follows at most this). */
+export const OFFLINE_AREA_MAX_ZOOM = Math.max(...AREA_ZOOMS);
+/** The closest zoom downloaded at all (around each stop); closer zooms reuse these tiles, enlarged. */
+export const OFFLINE_MAX_ZOOM = STOP_ZOOM;
 const AREA_MARGIN = 0.004; // degrees (~400 m) around the outermost stops
 export const MAX_TILES = 400;
 

@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { lazy, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowUp, ChevronLeft, ChevronRight, CircleCheck, Footprints, Flag, LocateFixed, X } from 'lucide-react';
+import { ArrowUp, ChevronDown, ChevronLeft, ChevronRight, CircleCheck, Footprints, Flag, LocateFixed, Map as MapIcon, X } from 'lucide-react';
 import type { Location, Route } from '../data/locations';
 import { photoForPlace } from '../data/photo-resolve';
 import { distanceMeters, formatDistance, MAX_ACCURACY_METERS } from '../lib/geo';
@@ -17,6 +17,18 @@ import type { NearMeState } from './NearMe';
 import { L, nameOf, descriptionOf, currentLang, byLang, fallbackLang } from '../i18n/lang';
 import { GlossaryText } from './GlossaryText';
 import { SaveToggle } from './Saved';
+import { LazyBoundary } from './LazyBoundary';
+
+// Leaflet loads only when the map is first opened.
+const WalkMiniMap = lazy(() => import('./WalkMiniMap'));
+const MAP_KEY = 'cw:walk-map';
+const readMapOpen = () => {
+  try {
+    return window.localStorage.getItem(MAP_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
 import { minutesLabel as minutes, stopOfLabel } from './WalkInfo';
 import { ArrivalWarning, HoursBadge } from './PlaceHours';
 import { PrayerArrivalWarning, PrayerNotice } from './PrayerTimes';
@@ -47,6 +59,17 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
   const { ref, guard } = useDialog<HTMLDivElement>(onClose);
   const heading = useHeading(true);
   useWakeLock(true);
+  // The small map: closed by default, remembered on the device.
+  const [mapOpen, setMapOpen] = useState(readMapOpen);
+  const toggleMap = () =>
+    setMapOpen(open => {
+      try {
+        window.localStorage.setItem(MAP_KEY, open ? '0' : '1');
+      } catch {
+        // Not remembered; it still opens.
+      }
+      return !open;
+    });
 
   // Near me spotted an arrival: if it's one of this walk's stops, move there.
   useEffect(() => {
@@ -182,6 +205,30 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
             )}
             {nearMe.on && !fix && !nearMe.error && <p className="mt-3 text-xs text-stone-500">{L('Finding your location…', 'جارٍ تحديد موقعك…')}</p>}
             {nearMe.error && <p className="mt-3 text-xs text-red-700">{nearMe.error}</p>}
+          </section>
+
+          <section className="bg-white rounded-3xl border border-sand/50 p-3">
+            <button
+              type="button"
+              onClick={toggleMap}
+              aria-expanded={mapOpen}
+              aria-controls="walk-map"
+              className="flex w-full min-h-11 items-center gap-2 px-2 text-sm font-bold text-nile"
+            >
+              <MapIcon className="w-4 h-4" aria-hidden="true" />
+              <span className="flex-1 text-start">{mapOpen ? L('Hide map', 'إخفاء الخريطة') : L('Show map', 'إظهار الخريطة')}</span>
+              <ChevronDown className={`w-4 h-4 transition-transform ${mapOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+            </button>
+            {mapOpen && (
+              <div id="walk-map" className="mt-2">
+                <LazyBoundary
+                  loading={<div className="h-52 rounded-2xl bg-chalk animate-pulse" />}
+                  failed={<p className="px-2 py-4 text-xs text-stone-500">{L("The map couldn't load. Check your connection.", 'تعذر تحميل الخريطة. تحقق من اتصالك.')}</p>}
+                >
+                  <WalkMiniMap stops={stops} current={stop} next={next} fix={fix} />
+                </LazyBoundary>
+              </div>
+            )}
           </section>
         </main>
 
