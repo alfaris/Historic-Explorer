@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { BarChart3, History, Inbox, LogOut, MapPinned, Route as RouteIcon } from 'lucide-react';
+import { BarChart3, History, Inbox, ListChecks, LogOut, MapPinned, Route as RouteIcon } from 'lucide-react';
 import type { Content } from '../data/content';
 import { normalizeContent, validateContent, withMaxPlaceId } from '../data/content';
 import { api, ApiError } from './api';
 import { ReportsTab } from './ReportsTab';
 import { PlacesTab } from './PlacesTab';
 import { RoutesTab } from './RoutesTab';
+import { ContentTab } from './ContentTab';
+import type { PlaceSection } from './content-health';
 import { HistoryTab } from './HistoryTab';
 import { StatsTab } from './StatsTab';
 import { Button, ErrorBox } from './ui';
@@ -83,7 +85,7 @@ function Login({ onSignedIn }: { onSignedIn: () => void }) {
   );
 }
 
-type Tab = 'reports' | 'places' | 'routes' | 'stats' | 'history';
+type Tab = 'reports' | 'content' | 'places' | 'routes' | 'stats' | 'history';
 
 function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
   const [tab, setTab] = useState<Tab>('reports');
@@ -94,7 +96,8 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [editPlaceId, setEditPlaceId] = useState<number | null>(null);
   // Which part of the place editor to scroll to (a "closed" report opens the hours).
-  const [editSection, setEditSection] = useState<'hours' | null>(null);
+  const [editSection, setEditSection] = useState<PlaceSection | null>(null);
+  const [editRouteId, setEditRouteId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -145,6 +148,7 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'reports', label: 'Reports', icon: <Inbox className="w-4 h-4" /> },
+    { id: 'content', label: 'Content', icon: <ListChecks className="w-4 h-4" /> },
     { id: 'places', label: 'Places', icon: <MapPinned className="w-4 h-4" /> },
     { id: 'routes', label: 'Routes', icon: <RouteIcon className="w-4 h-4" /> },
     { id: 'stats', label: 'Stats', icon: <BarChart3 className="w-4 h-4" /> },
@@ -220,10 +224,23 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
             }}
             onSignedOut={onSignedOut}
           />
+        ) : tab === 'content' ? (
+          <ContentTab
+            content={content}
+            onEditPlace={(id, section) => {
+              setEditPlaceId(id);
+              setEditSection(section);
+              setTab('places');
+            }}
+            onEditRoute={id => {
+              setEditRouteId(id);
+              setTab('routes');
+            }}
+          />
         ) : tab === 'places' ? (
           <PlacesTab content={content} save={save} initialPlaceId={editPlaceId} initialSection={editSection} onSelected={() => { setEditPlaceId(null); setEditSection(null); }} />
         ) : tab === 'routes' ? (
-          <RoutesTab content={content} save={save} />
+          <RoutesTab content={content} save={save} initialRouteId={editRouteId} onSelected={() => setEditRouteId(null)} />
         ) : tab === 'stats' ? (
           <StatsTab content={content} onSignedOut={onSignedOut} />
         ) : (

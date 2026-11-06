@@ -3,6 +3,7 @@ import { Mail, RefreshCw } from 'lucide-react';
 import type { Content } from '../data/content';
 import { distanceMeters, formatDistance } from '../lib/geo';
 import { LANGUAGES } from '../i18n/lang';
+import type { PlaceSection } from './content-health';
 import { api, ApiError, type Report } from './api';
 import type { SaveFn } from './AdminApp';
 import { Button, ErrorBox, formatDate, MapPicker } from './ui';
@@ -19,7 +20,7 @@ type Filter = Report['status'] | 'all';
 export function ReportsTab({ content, save, onEditPlace, onSignedOut }: {
   content: Content;
   save: SaveFn;
-  onEditPlace: (placeId: number, section?: 'hours') => void;
+  onEditPlace: (placeId: number, section?: PlaceSection) => void;
   onSignedOut: () => void;
 }) {
   const [reports, setReports] = useState<Report[] | null>(null);
@@ -118,7 +119,7 @@ function ReportCard({ report, content, save, setStatus, onEditPlace }: {
   content: Content;
   save: SaveFn;
   setStatus: (r: Report, s: Report['status']) => Promise<void>;
-  onEditPlace: (id: number, section?: 'hours') => void;
+  onEditPlace: (id: number, section?: PlaceSection) => void;
 }) {
   const place = content.places.find(p => p.id === report.placeId);
   const [busy, setBusy] = useState(false);
