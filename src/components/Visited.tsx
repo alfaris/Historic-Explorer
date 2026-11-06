@@ -34,8 +34,12 @@ export function VisitedBadge({ placeId, isArabic }: { placeId: number; isArabic:
   );
 }
 
-/** "6 / 14 visited" with a progress bar, for one route. */
-export function RouteProgress({ placeIds, isArabic }: { placeIds: number[]; isArabic: boolean }) {
+/**
+ * "6 / 20 stops visited" with a progress bar, for one route. Counts the
+ * route's stops (`placeIds`); Reset clears `clearIds` (the whole route,
+ * extras included) when given.
+ */
+export function RouteProgress({ placeIds, clearIds = placeIds, isArabic }: { placeIds: number[]; clearIds?: number[]; isArabic: boolean }) {
   const visited = useVisited();
   const done = placeIds.filter(id => visited.has(id)).length;
   const total = placeIds.length;
@@ -45,13 +49,13 @@ export function RouteProgress({ placeIds, isArabic }: { placeIds: number[]; isAr
     <div className="w-full max-w-xs mb-8" dir={isArabic ? 'rtl' : 'ltr'}>
       <div className="flex items-center justify-between mb-2 text-xs font-bold uppercase tracking-widest text-nile">
         <span>
-          {byLang({ en: `${done} / ${total} visited`, ar: `زرت ${done} من ${total}`, fr: `${done} / ${total} visités`, es: `${done} / ${total} visitados` })}
+          {byLang({ en: `${done} / ${total} stops visited`, ar: `زرت ${done} من ${total} محطة`, fr: `${done} / ${total} étapes visitées`, es: `${done} / ${total} paradas visitadas` })}
         </span>
         {done > 0 && (
           <button
             onClick={() => {
               const message = L('Clear your visited places on this route?', 'مسح تقدم الزيارة لهذا المسار؟');
-              if (window.confirm(message)) clearVisited(placeIds);
+              if (window.confirm(message)) clearVisited(clearIds);
             }}
             className="flex items-center gap-1 text-stone-400 hover:text-nile transition-colors"
           >
