@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { CheckCircle, Download, HardDrive, RefreshCw, Trash2, X } from 'lucide-react';
 import { useContent } from '../data/ContentContext';
 import { routePack } from '../lib/offline-pack';
-import { missingFiles, offlineSupported, removeRoute, savedRouteKey, useOfflineRoutes } from '../lib/offline-store';
+import { filesStillCached, missingFiles, offlineSupported, removeRoute, savedRouteKey, useOfflineRoutes } from '../lib/offline-store';
 import { cancelAll, cancelDownload, downloadAll, startDownload, useDownloads } from '../lib/offline-downloads';
 import { useDialog } from '../lib/useDialog';
 import { L, byLang, currentLang, nameOf } from '../i18n/lang';
@@ -54,11 +54,25 @@ function Sheet({ onClose }: { onClose: () => void }) {
       }),
     [routes, places, lang],
   );
+  // Browsers can clear cached files while the list of saved routes stays:
+  // check each saved route's files are still there (as the route's own button does).
+  const [cleared, setCleared] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    let active = true;
+    Promise.all(Object.entries(saved).map(async ([key, r]) => [key, await filesStillCached(r)] as const)).then(results => {
+      if (active) setCleared(new Set(results.filter(([, ok]) => !ok).map(([key]) => key)));
+    });
+    return () => {
+      active = false;
+    };
+  }, [saved]);
+
   const rows = items.map(item => {
     const savedRoute = saved[item.key];
     const missing = missingFiles(savedRoute, item.needed);
-    const state = !savedRoute ? 'none' : missing.length ? 'update' : 'saved';
-    return { ...item, savedRoute, state } as const;
+    const recheck = cleared.has(item.key);
+    const state = !savedRoute ? 'none' : missing.length || recheck ? 'update' : 'saved';
+    return { ...item, savedRoute, state, recheck } as const;
   });
   const total = rows.reduce((n, r) => n + (r.savedRoute?.bytes ?? 0), 0);
   const allDone = rows.every(r => r.state === 'saved');
@@ -122,7 +136,7 @@ function Sheet({ onClose }: { onClose: () => void }) {
             </div>
           ) : (
             <button
-              onClick={() => downloadAll(items.map(({ key, needed }) => ({ key, needed })))}
+              onClick={() => downloadAll(rows.map(({ key, needed, recheck }) => ({ key, needed, recheck })))}
               disabled={!online || allDone}
               className="flex w-full items-center justify-center gap-2 min-h-12 rounded-2xl bg-nile text-white text-xs font-bold uppercase tracking-widest disabled:opacity-50"
             >
@@ -158,7 +172,7 @@ function Sheet({ onClose }: { onClose: () => void }) {
                     <>
                       {row.state !== 'saved' && (
                         <button
-                          onClick={() => startDownload(row.key, row.needed)}
+                          onClick={() => startDownload(row.key, row.needed, { recheck: row.recheck })}
                           disabled={!online || !!all}
                           className="flex items-center gap-1.5 min-h-11 px-3 rounded-xl border border-sand text-xs font-bold text-ink hover:border-nile disabled:opacity-50"
                           aria-label={`${row.state === 'update' ? L('Update', 'تحديث') : L('Download', 'تنزيل')}: ${nameOf(row.route)}`}

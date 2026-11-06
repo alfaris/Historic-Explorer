@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // A controllable saveRoute: each call waits until the test resolves it, or rejects on abort.
-const calls: { key: string; resolve: (v: unknown) => void; signal: AbortSignal; onProgress?: (p: unknown) => void }[] = [];
+const calls: { key: string; resolve: (v: unknown) => void; signal: AbortSignal; onProgress?: (p: unknown) => void; recheck?: boolean }[] = [];
 vi.mock('./offline-store', () => ({
-  saveRoute: vi.fn((key: string, _needed: unknown, opts: { signal: AbortSignal; onProgress?: (p: unknown) => void }) =>
+  saveRoute: vi.fn((key: string, _needed: unknown, opts: { signal: AbortSignal; onProgress?: (p: unknown) => void; recheck?: boolean }) =>
     new Promise((resolve, reject) => {
-      calls.push({ key, resolve, signal: opts.signal, onProgress: opts.onProgress });
+      calls.push({ key, resolve, signal: opts.signal, onProgress: opts.onProgress, recheck: opts.recheck });
       opts.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
     }),
   ),
@@ -65,5 +65,13 @@ describe('offline downloads', () => {
     await run;
     expect(calls.map(c => c.key)).toEqual(['a:en', 'b:en']); // c never started
     expect(getDownloads().all).toBeNull();
+  });
+
+  it('passes recheck through for routes whose files the browser cleared', async () => {
+    const run = downloadAll([{ key: 'x:en', needed: [file], recheck: true }]);
+    await tick();
+    expect(calls[0]).toMatchObject({ key: 'x:en', recheck: true });
+    calls[0].resolve(saved);
+    await run;
   });
 });

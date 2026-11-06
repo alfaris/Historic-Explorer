@@ -68,14 +68,15 @@ export const cancelDownload = (key: string) => jobs.get(key)?.controller.abort()
  * Saves each route in turn (skipping none: up-to-date routes finish at once,
  * since saved files aren't fetched again). Stops early when cancelled.
  */
-export async function downloadAll(items: { key: string; needed: PackFile[] }[]): Promise<void> {
+export async function downloadAll(items: { key: string; needed: PackFile[]; recheck?: boolean }[]): Promise<void> {
   if (state.all) return;
   allCancelled = false;
   try {
     for (let i = 0; i < items.length; i++) {
       if (allCancelled) break;
       set({ all: { index: i, count: items.length } });
-      await startDownload(items[i].key, items[i].needed);
+      // recheck: the browser cleared some of this route's files; fetch them all again.
+      await startDownload(items[i].key, items[i].needed, { recheck: items[i].recheck });
     }
   } finally {
     set({ all: null });
