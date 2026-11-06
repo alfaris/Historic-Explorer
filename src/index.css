@@ -21,6 +21,44 @@
   --color-stone-500: #66605a;
 }
 
+/* Reading in bright sun (lib/display.ts). Larger text scales only the text
+   sizes, not spacing, so layouts keep their shape; headings grow less. */
+:root[data-text="large"] {
+  --text-xs: 0.875rem;
+  --text-sm: 1rem;
+  --text-base: 1.125rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.625rem;
+}
+:root[data-text="larger"] {
+  --text-xs: 1rem;
+  --text-sm: 1.125rem;
+  --text-base: 1.25rem;
+  --text-lg: 1.375rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 1.75rem;
+  --text-3xl: 2rem;
+}
+:root[data-text="large"] body { font-size: 1.125rem; }
+:root[data-text="larger"] body { font-size: 1.25rem; }
+
+/* High contrast: greys and gold text at 7:1 or more on white (WCAG AAA), and
+   firmer borders. The brand green already passes. */
+:root[data-contrast="more"] {
+  --color-stone-300: #6b645e;
+  --color-stone-400: #45403b;
+  --color-stone-500: #3d3833;
+  --color-stone-600: #2f2b27;
+  --color-gold-ink: #5c4615;
+  --color-gold-soft: #5c4615;
+  --color-sand: #9c958d;
+  --color-nile-light: #1a4d3b;
+}
+:root[data-contrast="more"] .glass {
+  background: rgba(248, 247, 244, 0.97);
+}
+
 /* One visible focus outline for keyboard users everywhere. */
 :focus-visible {
   outline: 2px solid var(--color-nile);

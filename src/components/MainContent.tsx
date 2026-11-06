@@ -13,7 +13,7 @@ import { justCompleted, walkSummary } from '../lib/walk-summary';
 import { NearMeOverlay, NearMeView, useNearMe } from './NearMe';
 import { ReportProblem } from './ReportProblem';
 import { photoForPlace, photoForRoute } from '../data/photo-resolve';
-import { Search, MapPin, Globe, Navigation, Map, List, ChevronRight, Cake, Coffee, Utensils, Hammer, BookOpen, Users, Landmark, ArrowUp, Clock, Route as RouteIcon, Star, LocateFixed, Footprints } from 'lucide-react';
+import { Search, MapPin, Navigation, Map, List, ChevronRight, Cake, Coffee, Utensils, Hammer, BookOpen, Users, Landmark, ArrowUp, Clock, Route as RouteIcon, Star, LocateFixed, Footprints } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { LiveLocationInfo } from './LiveLocationInfo';
 import { AudioGuide } from './AudioGuide';
@@ -29,6 +29,7 @@ import { PrayerNotice } from './PrayerTimes';
 import { VisitorTips } from './VisitorTips';
 import { GlossaryText } from './GlossaryText';
 import { SaveToggle, SavedButton } from './Saved';
+import { DisplaySettings } from './DisplaySettings';
 import { OtherRouteResults } from './OtherRouteResults';
 import { SharePlace, ShareRoute } from './ShareRoute';
 import { PlanVisit } from './PlanVisit';
@@ -474,25 +475,8 @@ export const MainContent: React.FC = () => {
               </span>
             </div>
           </div>
-          {/* Language: every language in LANGUAGES. A native select, so it's keyboard and screen-reader friendly. */}
-          <label className="group flex flex-col items-center gap-1 cursor-pointer shrink-0">
-            <span className="relative w-12 h-12 rounded-full border border-sand group-hover:border-nile transition-all duration-500 flex items-center justify-center bg-white shadow-sm">
-              <Globe className="w-4 h-4 text-stone-400 group-hover:text-nile transition-colors" aria-hidden="true" />
-              <select
-                value={language}
-                onChange={e => setLanguage(e.target.value as typeof language)}
-                aria-label="Language / اللغة / Langue / Idioma"
-                className="absolute inset-0 opacity-0 cursor-pointer"
-              >
-                {LANGS.map(l => (
-                  <option key={l} value={l} lang={l}>{LANGUAGES[l].native}</option>
-                ))}
-              </select>
-            </span>
-            <span className="hidden sm:block text-xs font-bold text-stone-400 uppercase tracking-widest" aria-hidden="true">
-              {LANGUAGES[language].native}
-            </span>
-          </label>
+          {/* Language, text size and contrast. */}
+          <DisplaySettings />
         </div>
       </header>
 
