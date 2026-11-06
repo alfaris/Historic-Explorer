@@ -100,6 +100,8 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
   // Which part of the place editor to scroll to (a "closed" report opens the hours).
   const [editSection, setEditSection] = useState<PlaceSection | null>(null);
   const [editRouteId, setEditRouteId] = useState<string | null>(null);
+  const [editTermId, setEditTermId] = useState<string | null>(null);
+  const [editPeriodId, setEditPeriodId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -240,15 +242,23 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
               setEditRouteId(id);
               setTab('routes');
             }}
+            onEditTerm={id => {
+              setEditTermId(id);
+              setTab('glossary');
+            }}
+            onEditPeriod={id => {
+              setEditPeriodId(id);
+              setTab('special');
+            }}
           />
         ) : tab === 'places' ? (
           <PlacesTab content={content} save={save} initialPlaceId={editPlaceId} initialSection={editSection} onSelected={() => { setEditPlaceId(null); setEditSection(null); }} />
         ) : tab === 'routes' ? (
           <RoutesTab content={content} save={save} initialRouteId={editRouteId} onSelected={() => setEditRouteId(null)} />
         ) : tab === 'special' ? (
-          <SpecialHoursTab content={content} save={save} />
+          <SpecialHoursTab content={content} save={save} initialId={editPeriodId} onSelected={() => setEditPeriodId(null)} />
         ) : tab === 'glossary' ? (
-          <GlossaryTab content={content} save={save} />
+          <GlossaryTab content={content} save={save} initialId={editTermId} onSelected={() => setEditTermId(null)} />
         ) : tab === 'stats' ? (
           <StatsTab
             content={content}

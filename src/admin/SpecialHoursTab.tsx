@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { CalendarDays, Plus } from 'lucide-react';
 import type { Content } from '../data/content';
 import type { OpeningHours } from '../lib/opening-hours';
 import { periodProblems, type PeriodEntry, type SpecialPeriod } from '../lib/special-hours';
-import { LANGS, LANGUAGES } from '../i18n/lang';
+import { LANGS, LANGUAGES, OPTIONAL_LANGS } from '../i18n/lang';
 import type { SaveFn } from './AdminApp';
 import { HoursEditor } from './HoursEditor';
 import { Button, ErrorBox, Field, inputClass, sameValue } from './ui';
+import { missingText } from './content-health';
+import { fieldKey, FillMissingButton, fillEmpty } from './translations';
 
 const blank = (): SpecialPeriod => ({ id: '', nameEn: '', nameAr: '', from: '', to: '', places: {} });
 const slug = (s: string) => s.toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -21,7 +23,13 @@ const modeOf = (entry: PeriodEntry | undefined): Mode => (!entry ? 'usual' : 'cl
  * different hours or are closed. On those dates the app uses them wherever it
  * uses hours; other places keep their usual hours, with a note that they may differ.
  */
-export function SpecialHoursTab({ content, save }: { content: Content; save: SaveFn }) {
+export function SpecialHoursTab({ content, save, initialId = null, onSelected }: {
+  content: Content;
+  save: SaveFn;
+  /** Open this period on arrival (from the Content checklist). */
+  initialId?: string | null;
+  onSelected?: () => void;
+}) {
   const periods = content.specialPeriods ?? [];
   const [draft, setDraft] = useState<SpecialPeriod | null>(null);
   const [originalId, setOriginalId] = useState<string | null>(null);
@@ -32,6 +40,14 @@ export function SpecialHoursTab({ content, save }: { content: Content; save: Sav
     setDraft(p ? structuredClone(p) : blank());
     setOriginalId(p ? p.id : null);
   };
+
+  useEffect(() => {
+    if (!initialId) return;
+    const period = periods.find(p => p.id === initialId);
+    if (period) open(period);
+    onSelected?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialId]);
 
   const final = draft && { ...draft, id: draft.id || slug(`${draft.nameEn} ${draft.from.slice(0, 4)}`) };
   const original = originalId ? periods.find(p => p.id === originalId) : undefined;
@@ -127,6 +143,16 @@ export function SpecialHoursTab({ content, save }: { content: Content; save: Sav
                 </Field>
               );
             })}
+            <div className="sm:col-span-2 flex flex-wrap gap-x-6 gap-y-2">
+              {OPTIONAL_LANGS.map(lang => (
+                <FillMissingButton
+                  key={`${originalId ?? 'new'}-${lang}`}
+                  lang={lang}
+                  missing={missingText(draft, lang, ['name'])}
+                  onFilled={texts => setDraft(d => d && fillEmpty(d, texts, [fieldKey('name', lang)]))}
+                />
+              ))}
+            </div>
             <Field label="First day" hint="Cairo date.">
               <input type="date" className={inputClass} value={draft.from} onChange={e => set('from', e.target.value)} />
             </Field>

@@ -18,6 +18,19 @@ export function withOptional<T extends object, K extends keyof T>(obj: T, key: K
   return next;
 }
 
+/**
+ * `obj` with Gemini's drafts in the `keys` fields that are still empty (the
+ * admin may have typed in one while it was translating).
+ */
+export function fillEmpty<T extends object>(obj: T, texts: Record<string, string>, keys: string[]): T {
+  const next = { ...obj } as Record<string, unknown>;
+  for (const k of keys) {
+    const current = next[k];
+    if (texts[k]?.trim() && !(typeof current === 'string' && current.trim())) next[k] = texts[k];
+  }
+  return next as T;
+}
+
 /** A content field's key in a language: fieldKey('name', 'es') is 'nameEs'. */
 export const fieldKey = <Base extends string>(base: Base, lang: keyof typeof LANGUAGES) => `${base}${LANGUAGES[lang].suffix}` as const;
 

@@ -5,6 +5,8 @@ import type { Content, Location, Route } from '../data/content';
 import { photoForPlace } from '../data/photo-resolve';
 import { LANGUAGES, OPTIONAL_LANGS, type OptionalLang } from '../i18n/lang';
 import { walkPlan } from '../lib/walk';
+import type { GlossaryTerm } from '../lib/glossary';
+import type { SpecialPeriod } from '../lib/special-hours';
 
 export type Gap = 'photo' | 'hours' | OptionalLang;
 
@@ -40,6 +42,26 @@ export function placeGaps(place: Location): Gap[] {
 export function routeGaps(route: Route): OptionalLang[] {
   const fields = route.highlightsEn.length ? ['name', 'description', 'highlights'] : ['name', 'description'];
   return OPTIONAL_LANGS.filter(lang => !hasLang(route as unknown as Record<string, unknown>, lang, fields));
+}
+
+/** Languages a glossary term is missing: the term and its explanation. */
+export const glossaryGaps = (term: GlossaryTerm): OptionalLang[] =>
+  OPTIONAL_LANGS.filter(lang => !hasLang(term as unknown as Record<string, unknown>, lang, ['term', 'def']));
+
+/** Languages a special-hours period is missing its name in. */
+export const periodGaps = (period: SpecialPeriod): OptionalLang[] =>
+  OPTIONAL_LANGS.filter(lang => !hasLang(period as unknown as Record<string, unknown>, lang, ['name']));
+
+/** The empty `lang` fields of `obj` among `bases` whose English isn't empty, keyed by field (termFr, …), with the English to translate. */
+export function missingText(obj: object, lang: OptionalLang, bases: string[]): Record<string, string> {
+  const o = obj as Record<string, unknown>;
+  const missing: Record<string, string> = {};
+  for (const base of bases) {
+    const key = `${base}${LANGUAGES[lang].suffix}`;
+    const english = o[`${base}En`];
+    if (!(typeof o[key] === 'string' && (o[key] as string).trim()) && typeof english === 'string' && english.trim()) missing[key] = english;
+  }
+  return missing;
 }
 
 /** For each item: how many places have it, out of how many. */

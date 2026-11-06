@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { bundledContent } from '../data/content';
 import { walkPlan } from '../lib/walk';
-import { placeGaps, plannedKm, plannedWalk, progress, routeGaps } from './content-health';
+import { glossaryGaps, missingText, periodGaps, placeGaps, plannedKm, plannedWalk, progress, routeGaps } from './content-health';
 
 const place = bundledContent.places[0];
 
@@ -65,5 +65,23 @@ describe('plannedWalk', () => {
   it('rounds to a tenth of a kilometre', () => {
     expect(plannedKm(4_870)).toBe(4.9);
     expect(plannedKm(949)).toBe(0.9);
+  });
+});
+
+describe('glossary and special-hours gaps', () => {
+  const term = { id: 'sabil', termEn: 'Sabil', termAr: 'سبيل', defEn: 'A public water fountain.', defAr: 'سقاية', match: ['sabil'] };
+  it('lists the languages a glossary term needs, term and explanation both', () => {
+    expect(glossaryGaps(term)).toEqual(['fr', 'es']);
+    expect(glossaryGaps({ ...term, termFr: 'Sabil', defFr: 'Fontaine.', termEs: 'Sabil' })).toEqual(['es']);
+    expect(glossaryGaps({ ...term, termFr: 'Sabil', defFr: 'Fontaine.', termEs: 'Sabil', defEs: 'Fuente.' })).toEqual([]);
+  });
+  it('lists the languages a period is missing its name in', () => {
+    const period = { id: 'ramadan-2027', nameEn: 'Ramadan', nameAr: 'رمضان', from: '2027-02-08', to: '2027-03-09', places: {} };
+    expect(periodGaps(period)).toEqual(['fr', 'es']);
+    expect(periodGaps({ ...period, nameFr: 'Ramadan', nameEs: ' ' })).toEqual(['es']);
+  });
+  it('drafts only the empty fields that have English', () => {
+    expect(missingText({ ...term, termFr: 'Sabil' }, 'fr', ['term', 'def'])).toEqual({ defFr: 'A public water fountain.' });
+    expect(missingText({ ...term, defEn: '' }, 'es', ['term', 'def'])).toEqual({ termEs: 'Sabil' });
   });
 });
