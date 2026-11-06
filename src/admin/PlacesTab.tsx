@@ -10,6 +10,7 @@ import { descriptionOf, LANGS, LANGUAGES, OPTIONAL_LANGS, type Lang, type Option
 import { api } from './api';
 import { AudioPanel } from './AudioPanel';
 import { HoursEditor } from './HoursEditor';
+import { TipsEditor } from './TipsEditor';
 import { isActiveMosque } from '../lib/prayer-times';
 import type { PlaceSection } from './content-health';
 import { fieldKey, FillMissingButton, missingPlaceText, withOptional } from './translations';
@@ -260,6 +261,8 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
               </span>
             </span>
           </label>
+
+          <TipsEditor place={draft} onChange={tips => setDraft(d => (d ? withOptional(d, 'tips', tips) : d))} />
 
           <HoursEditor hours={draft.hours} onChange={hours => setDraft(d => (d ? withOptional(d, 'hours', hours) : d))} />
 

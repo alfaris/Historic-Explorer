@@ -9,6 +9,7 @@ import { categories, locations, routes, type Category, type Location, type Route
 import type { Photo } from './photos';
 import { parseDistanceKm, parseHours, routeText } from '../lib/route-format.js';
 import { hoursProblems, normalizeHours } from '../lib/opening-hours.js';
+import { normalizeTips, tipsProblems } from '../lib/visitor-tips.js';
 import { LANGS, LANGUAGES, OPTIONAL_LANGS } from '../i18n/lang.js';
 
 export type { Category, Location, Route };
@@ -127,6 +128,7 @@ export function normalizeContent(input: unknown): Content {
       descriptionAr: str(p?.descriptionAr),
       ...textFields(p, ['name', 'description'], OPTIONAL_LANGS),
       ...(typeof p?.mosque === 'boolean' ? { mosque: p.mosque } : {}),
+      ...(normalizeTips(p?.tips) ? { tips: normalizeTips(p?.tips) } : {}),
       ...(normalizeHours(p?.hours) ? { hours: normalizeHours(p?.hours) } : {}),
       ...textFields(p, ['fee'], LANGS),
       lat: Number(p?.lat),
@@ -194,6 +196,7 @@ export function validateContent(content: Content): string[] {
       if ((p[field] ?? '').length > max) problems.push(`${label}: ${field} is longer than ${max} characters.`);
     }
     if (p.hours) problems.push(...hoursProblems(p.hours).map(problem => `${label}: ${problem}`));
+    if (p.tips) problems.push(...tipsProblems(p.tips).map(problem => `${label}: ${problem}`));
     problems.push(...photoProblems(label, p.photo));
     const b = CAIRO_BOUNDS;
     if (!(p.lat >= b.minLat && p.lat <= b.maxLat && p.lng >= b.minLng && p.lng <= b.maxLng)) {

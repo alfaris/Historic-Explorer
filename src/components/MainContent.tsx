@@ -26,6 +26,7 @@ import { matchScore, searchPlaces } from '../lib/search';
 import { formatDistance, formatDuration } from '../lib/route-format';
 import { HoursBadge, PlaceHours } from './PlaceHours';
 import { PrayerNotice } from './PrayerTimes';
+import { VisitorTips } from './VisitorTips';
 import { OtherRouteResults } from './OtherRouteResults';
 import { SharePlace, ShareRoute } from './ShareRoute';
 import { isPlaceLink, isRouteLink, placeFromLocation, routeFromLocation } from '../lib/share';
@@ -418,6 +419,7 @@ export const MainContent: React.FC = () => {
                       </div>
                       
                       <PlaceHours place={loc} />
+                                  <VisitorTips place={loc} />
                       <LiveLocationInfo locationId={loc.id} />
 
                       <div className="flex flex-col sm:flex-row gap-4 mt-8">
@@ -820,6 +822,7 @@ export const MainContent: React.FC = () => {
                             </div>
                             
                             <PlaceHours place={loc} />
+                                  <VisitorTips place={loc} />
                             <LiveLocationInfo locationId={loc.id} />
                             
                             <div className="flex flex-col sm:flex-row gap-4 mt-10">

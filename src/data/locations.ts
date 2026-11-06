@@ -1,5 +1,6 @@
 import type { Photo } from './photos';
 import type { OpeningHours } from '../lib/opening-hours';
+import type { VisitorTips } from '../lib/visitor-tips';
 
 export type Category = 'monument' | 'coffee' | 'restaurant' | 'workshop' | 'stationary' | 'meeting';
 
@@ -46,6 +47,8 @@ export interface Location {
   descriptionEs?: string;
   lat: number;
   lng: number;
+  /** Practical tips: dress, shoes, photos, access, toilets, a note. Unset: defaults for an active mosque. */
+  tips?: VisitorTips;
   /** Visits pause during prayers. Unset: worked out from the name (a mosque). See isActiveMosque. */
   mosque?: boolean;
   /** Weekly opening hours, in Cairo time. Optional: without them the app shows nothing rather than a guess. */
