@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { bundledContent, normalizeContent, validateContent } from '../data/content';
 import { openStatus, statusText, weekRows } from './opening-hours';
-import { addDays, cairoDate, effectiveHours, isDate, normalizePeriods, periodName, periodProblems, weekday, type SpecialPeriod } from './special-hours';
+import { addDays, cairoDate, effectiveHours, isDate, normalizePeriods, openStatusAt, periodName, periodProblems, weekday, withoutPlace, type SpecialPeriod } from './special-hours';
 
 // Cairo is UTC+2 in winter (and in March 2026). 2026-03-02 was a Monday.
 const cairo = (date: string, hhmm: string) => {
@@ -66,7 +66,41 @@ describe('effectiveHours', () => {
   });
 });
 
+describe('openStatusAt', () => {
+  it('keeps unknown days unknown for a place with no usual hours', () => {
+    const noHours = { id: 7 };
+    const closure = [{ ...eid, from: '2026-03-06', to: '2026-03-06' }];
+    // 1 March: nothing known (the closure is on 6 March), so no status rather than "closed".
+    expect(openStatusAt(noHours, cairo('2026-03-01', '12:00'), closure)).toBeNull();
+    expect(openStatusAt(noHours, cairo('2026-03-06', '12:00'), closure)).toEqual({ open: false, opens: null });
+    expect(effectiveHours(noHours, cairo('2026-03-01', '12:00'), closure).hours).toBeUndefined();
+  });
+
+  it('carries an overnight range from the actual day before', () => {
+    const night = { id: 7, hours: { days: week('18:00', '02:00') } };
+    // A closure on Saturday 7 March doesn't affect Sunday 1 March at 01:00 (Saturday 28 Feb's evening).
+    const closure = [{ ...eid, from: '2026-03-07', to: '2026-03-07' }];
+    expect(openStatusAt(night, cairo('2026-03-01', '01:00'), closure)).toMatchObject({ open: true });
+    // But on 8 March at 01:00, the night after the closure, it's closed.
+    expect(openStatusAt(night, cairo('2026-03-08', '01:00'), closure)).toMatchObject({ open: false });
+  });
+
+  it('matches the usual status with no periods, and uses period hours on their days', () => {
+    expect(openStatusAt(place, cairo('2026-03-02', '16:00'), undefined)).toEqual(openStatus(place.hours, cairo('2026-03-02', '16:00')));
+    const s = openStatusAt(place, cairo('2026-03-02', '16:00'), [ramadan]);
+    expect(s).toEqual({ open: false, opens: { inDays: 1, minutes: 10 * 60 } });
+    // Last day of Ramadan, after hours: opens at the usual 9 am the next day.
+    expect(openStatusAt(place, cairo('2026-03-30', '16:00'), [ramadan])).toEqual({ open: false, opens: { inDays: 1, minutes: 9 * 60 } });
+  });
+});
+
 describe('periods in content', () => {
+  it('drops a deleted place from periods, and periods left empty', () => {
+    const both = { ...ramadan, places: { ...ramadan.places, '8': { closed: true as const } } };
+    expect(withoutPlace([both, eid], 7)).toEqual([{ ...both, places: { '8': { closed: true } } }]);
+    expect(withoutPlace(undefined, 7)).toBeUndefined();
+  });
+
   it('names a period in the visitor’s language, falling back to English', () => {
     expect(periodName(ramadan, 'ar')).toEqual({ text: 'رمضان', lang: 'ar' });
     expect(periodName(ramadan, 'fr')).toEqual({ text: 'Ramadan', lang: 'en' });

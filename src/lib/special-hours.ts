@@ -4,7 +4,7 @@
 // visit) on those dates only. Pure functions, shared by the app, the admin,
 // the server's validation and the tests.
 
-import { hoursProblems, isTime, type OpeningHours, type TimeRange } from './opening-hours.js';
+import { cairoTime, hoursProblems, isTime, openStatus, toMinutes, type OpenStatus, type OpeningHours, type TimeRange } from './opening-hours.js';
 import { LANGS, LANGUAGES, OPTIONAL_LANGS, type Lang } from '../i18n/lang.js';
 
 export type PeriodEntry = { closed: true } | { days: TimeRange[][] };
@@ -57,8 +57,59 @@ export function periodEntry(placeId: number, periods: SpecialPeriod[] | undefine
   return null;
 }
 
+/** A day's opening ranges: its period's where one lists the place, else the usual ones; null when unknown. */
+function dayRanges(place: { id: number; hours?: OpeningHours }, date: string, periods: SpecialPeriod[] | undefined): TimeRange[] | null {
+  const found = periodEntry(place.id, periods, date);
+  const wd = weekday(date);
+  if (found) return 'closed' in found.entry ? [] : found.entry.days[wd];
+  return place.hours ? place.hours.days[wd] : null;
+}
+
+const DAY = 24 * 60;
+
+/**
+ * Whether the place is open at `at`, and when that changes, from the real
+ * dates around it: each day takes its period's hours where one lists the
+ * place, else the usual ones, and a range past midnight is carried from the
+ * actual day before. Days with neither are unknown, never closed. Null when
+ * nothing is known about now.
+ */
+export function openStatusAt(place: { id: number; hours?: OpeningHours }, at: Date, periods: SpecialPeriod[] | undefined): OpenStatus | null {
+  if (!periods?.length) return openStatus(place.hours, at);
+  const today = cairoDate(at);
+  const dates = Array.from({ length: 9 }, (_, i) => addDays(today, i - 1)); // yesterday … a week ahead
+  if (dates.every(d => !periodEntry(place.id, periods, d))) return openStatus(place.hours, at);
+
+  const now = cairoTime(at).minutes; // minutes from today's midnight
+  const known = dates.map(d => dayRanges(place, d, periods));
+  const spans: [number, number][] = [];
+  known.forEach((ranges, i) => {
+    const base = (i - 1) * DAY;
+    for (const r of ranges ?? []) {
+      const s = base + toMinutes(r.open);
+      let e = base + toMinutes(r.close);
+      if (e <= s) e += DAY;
+      spans.push([s, e]);
+    }
+  });
+  spans.sort((a, b) => a[0] - b[0]);
+  const merged: [number, number][] = [];
+  for (const [s, e] of spans) {
+    const last = merged[merged.length - 1];
+    if (last && s <= last[1]) last[1] = Math.max(last[1], e);
+    else merged.push([s, e]);
+  }
+  const when = (t: number) => ({ inDays: Math.floor(t / DAY), minutes: ((t % DAY) + DAY) % DAY });
+  const end = 8 * DAY; // the window's end
+  const open = merged.find(([s, e]) => s <= now && now < e);
+  if (open) return { open: true, closes: open[1] >= end ? null : when(open[1]) };
+  if (known[1] === null) return null; // today unknown, and nothing carried over from yesterday
+  const next = merged.find(([s]) => s > now);
+  return { open: false, opens: next ? when(next[0]) : null };
+}
+
 export interface EffectiveHours {
-  /** The week from today as weekly hours, with special days in place of usual ones. */
+  /** The week from today as weekly hours, with special days in place of usual ones (for the week table). */
   hours?: OpeningHours;
   /** The period whose hours apply to this place today. */
   period?: SpecialPeriod;
@@ -88,21 +139,30 @@ export function effectiveHours(
   const activeToday = periods.find(p => today >= p.from && today <= p.to);
   const mayDiffer = !todayEntry && place.hours && activeToday ? activeToday : undefined;
   if (entries.every(e => !e)) return { hours: place.hours, closedToday: false, mayDiffer };
+  const period = todayEntry?.period;
+  const closedToday = !!todayEntry && 'closed' in todayEntry.entry;
+  // Without usual hours the week isn't known outside the period: no week table.
+  if (!place.hours) return { period, closedToday };
 
   const days: TimeRange[][] = Array.from({ length: 7 }, () => []);
   week.forEach((date, i) => {
     const wd = weekday(date);
     const e = entries[i]?.entry;
-    // Without usual hours, days outside a period count as closed.
-    days[wd] = e ? ('closed' in e ? [] : e.days[wd].map(r => ({ ...r }))) : (place.hours?.days[wd] ?? []).map(r => ({ ...r }));
+    days[wd] = (e ? ('closed' in e ? [] : e.days[wd]) : place.hours!.days[wd]).map(r => ({ ...r }));
   });
-  const notes = Object.fromEntries(Object.entries(place.hours ?? {}).filter(([k]) => k.startsWith('note')));
-  return {
-    hours: { ...notes, days },
-    period: todayEntry?.period,
-    closedToday: !!todayEntry && 'closed' in todayEntry.entry,
-    mayDiffer,
-  };
+  const notes = Object.fromEntries(Object.entries(place.hours).filter(([k]) => k.startsWith('note')));
+  return { hours: { ...notes, days }, period, closedToday, mayDiffer };
+}
+
+/** The periods without a place (when it's deleted); periods left with no places go too. */
+export function withoutPlace(periods: SpecialPeriod[] | undefined, placeId: number): SpecialPeriod[] | undefined {
+  if (!periods) return periods;
+  return periods
+    .map(p => {
+      const { [String(placeId)]: _gone, ...places } = p.places;
+      return { ...p, places };
+    })
+    .filter(p => Object.keys(p.places).length > 0);
 }
 
 // --- Words -----------------------------------------------------------------------

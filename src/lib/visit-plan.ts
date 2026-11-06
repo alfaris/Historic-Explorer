@@ -7,7 +7,7 @@ import type { Location } from '../data/locations.js';
 import { cairoTime, openStatus, type OpenStatus } from './opening-hours.js';
 import { isActiveMosque, pausesAround, type PrayerPause } from './prayer-times.js';
 import { walkStops, walkPlan } from './walk.js';
-import { effectiveHours, type SpecialPeriod } from './special-hours.js';
+import { openStatusAt, type SpecialPeriod } from './special-hours.js';
 
 const MIN = 60_000;
 
@@ -50,7 +50,7 @@ type Place = Pick<Location, 'id' | 'routeId' | 'category' | 'lat' | 'lng' | 'hou
 function flagsFor(place: Place, arrive: Date, leave: Date, pauses: PrayerPause[], periods?: SpecialPeriod[]): PlanFlag[] {
   const flags: PlanFlag[] = [];
   // The hours in force on the day of arrival (Ramadan, Eid… included).
-  const onArrival = openStatus(effectiveHours(place, arrive, periods).hours, arrive);
+  const onArrival = openStatusAt(place, arrive, periods);
   if (onArrival && !onArrival.open) flags.push({ kind: 'closed', status: onArrival });
   else if (onArrival?.open && onArrival.closes) {
     // When it next closes (it may reopen later, e.g. after a midday break), as an instant.

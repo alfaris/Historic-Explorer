@@ -3,7 +3,7 @@ import { CalendarDays, Clock, Ticket, TriangleAlert } from 'lucide-react';
 import type { Location } from '../data/locations';
 import { useContent } from '../data/ContentContext';
 import { cairoTime, openStatus, statusText, weekRows } from '../lib/opening-hours';
-import { effectiveHours, periodName, type SpecialPeriod } from '../lib/special-hours';
+import { effectiveHours, openStatusAt, periodName, type SpecialPeriod } from '../lib/special-hours';
 import { L, byLang, currentLang, optionalText } from '../i18n/lang';
 
 /** The current time, refreshed every minute so "Open now" stays true. */
@@ -41,7 +41,8 @@ function PeriodTag({ period }: { period: SpecialPeriod }) {
 export function HoursBadge({ place, className = '' }: { place: Location; className?: string }) {
   const now = useNow();
   const eff = useEffectiveHours(place, now);
-  const status = openStatus(eff.hours, now);
+  const { specialPeriods } = useContent();
+  const status = openStatusAt(place, now, specialPeriods);
   if (!status) return null;
   const text = statusText(status, currentLang(), now);
   const label = eff.closedToday ? L('Closed today', 'مغلق اليوم') : text.label;
@@ -127,7 +128,7 @@ export function ArrivalWarning({ place, minutes, className = '' }: { place: Loca
   const arrival = new Date(now.getTime() + minutes * 60_000);
   // The hours in force on the day of arrival.
   const { specialPeriods } = useContent();
-  const status = openStatus(effectiveHours(place, arrival, specialPeriods).hours, arrival);
+  const status = openStatusAt(place, arrival, specialPeriods);
   if (!status || status.open) return null;
   const { detail } = statusText(status, currentLang(), arrival);
   return (
