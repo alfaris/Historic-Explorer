@@ -204,4 +204,8 @@ export const FR: Record<string, string> = {
   'Thanks. What could be better? (optional)': 'Merci. Qu’est-ce qui pourrait être mieux ? (facultatif)',
   'Thanks. To tell us more, use Report a problem on the place’s card.': 'Merci. Pour nous en dire plus, utilisez « Signaler un problème » sur la fiche du lieu.',
   'Thanks for telling us.': 'Merci de nous l’avoir dit.',
+  'Print route sheet': 'Imprimer la fiche du parcours',
+  'Map of the stops': 'Carte des étapes',
+  'Scan to open this walk in the app, with audio guides that work offline.': 'Scannez pour ouvrir cette visite dans l’application, avec des guides audio qui fonctionnent hors ligne.',
+  'Hours can change on holidays and during Ramadan.': 'Les horaires peuvent changer pendant les fêtes et le Ramadan.',
 };

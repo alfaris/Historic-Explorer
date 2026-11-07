@@ -13,7 +13,7 @@ import { justCompleted, walkSummary } from '../lib/walk-summary';
 import { NearMeOverlay, NearMeView, useNearMe } from './NearMe';
 import { ReportProblem } from './ReportProblem';
 import { photoForPlace, photoForRoute } from '../data/photo-resolve';
-import { Search, MapPin, Navigation, Map, List, ChevronRight, Cake, Coffee, Utensils, Hammer, BookOpen, Users, Landmark, ArrowUp, Clock, Accessibility, X, Route as RouteIcon, Star, LocateFixed, Footprints } from 'lucide-react';
+import { Search, MapPin, Navigation, Map, List, ChevronRight, Cake, Coffee, Utensils, Hammer, BookOpen, Users, Landmark, ArrowUp, Clock, Accessibility, X, Printer, Route as RouteIcon, Star, LocateFixed, Footprints } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { LiveLocationInfo } from './LiveLocationInfo';
 import { AudioGuide } from './AudioGuide';
@@ -44,6 +44,8 @@ import { L, byLang, nameOf, descriptionOf, highlightsOf, currentLang, fallbackLa
 // app, so it's loaded only when needed: in the background once the page is idle,
 // or straight away if the map is opened first.
 const loadMapView = () => import('./MapView');
+// The printable route sheet (and its QR code library) load only when printing.
+const RouteSheet = React.lazy(() => import('./RouteSheet'));
 const MapView = lazy(() => loadMapView().then(m => ({ default: m.MapView })));
 // Loaded when a walk starts (the service worker precaches it, so it works offline).
 const WalkMode = lazy(() => import('./WalkMode').then(m => ({ default: m.WalkMode })));
@@ -78,6 +80,9 @@ export const MainContent: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   // Open now and Step-free (list and map). Open now is checked against the time, refreshed every minute.
   const [filters, setFilters] = useState<PlaceFilters>(NO_FILTERS);
+  // The printable route sheet, while the print dialog is up. Each click is a new sheet
+  // (a browser that never says the dialog closed doesn't block printing again).
+  const [printing, setPrinting] = useState(0);
   const now = useNow();
   const filtering = filters.openNow || filters.stepFree;
   const [selectedCategory, setSelectedCategory] = useState<Category | 'all'>('all');
@@ -639,6 +644,21 @@ export const MainContent: React.FC = () => {
               </div>
 
               <RouteDownload route={currentRouteData} places={routePlaces} />
+              {plan.size > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setPrinting(n => n + 1)}
+                  className="mt-1 inline-flex items-center gap-1.5 min-h-11 px-3 text-xs font-bold text-nile underline underline-offset-4 hover:no-underline"
+                >
+                  <Printer className="w-3.5 h-3.5" aria-hidden="true" />
+                  {L('Print route sheet', 'طباعة ورقة المسار')}
+                </button>
+              )}
+              {printing > 0 && (
+                <React.Suspense fallback={null}>
+                  <RouteSheet key={printing} route={currentRouteData} places={locations} onDone={() => setPrinting(0)} />
+                </React.Suspense>
+              )}
             </div>
           </motion.div>
         </div>
