@@ -232,4 +232,5 @@ export const FR: Record<string, string> = {
   'Your postcard is ready. Tap Share now to send it.': 'Votre carte est prête. Touchez « Partager maintenant » pour l’envoyer.',
   'Share now': 'Partager maintenant',
   'Save image': 'Enregistrer l’image',
+  'Alert me when the next stop is close (vibrates)': 'Me prévenir à l’approche de l’étape suivante (vibration)',
 };
