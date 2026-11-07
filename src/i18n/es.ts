@@ -198,4 +198,12 @@ export const ES: Record<string, string> = {
   'No cafés, restaurants or toilets listed nearby.': 'No hay cafés, restaurantes ni aseos indicados cerca.',
   'Back to the walk': 'Volver al paseo',
   'Here': 'Aquí',
+  'Information out of date': 'Información desactualizada',
+  'Too short': 'Demasiado corto',
+  'Hard to find': 'Difícil de encontrar',
+  'Audio problem': 'Problema de audio',
+  'Something else': 'Otra cosa',
+  'Thanks. What could be better? (optional)': 'Gracias. ¿Qué podría mejorar? (opcional)',
+  'Thanks. To tell us more, use Report a problem on the place’s card.': 'Gracias. Para contarnos más, usa «Informar de un problema» en la ficha del lugar.',
+  'Thanks for telling us.': 'Gracias por contárnoslo.',
 };

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { RefreshCw } from 'lucide-react';
 import type { Content } from '../data/content';
 import { walkStops } from '../lib/walk';
-import { helpfulness } from '../lib/stats';
+import { helpfulness, REASONS, type HelpfulRow, type Reason } from '../lib/stats';
 import { api, ApiError, type StatsResponse } from './api';
 import { ErrorBox } from './ui';
 
@@ -60,6 +60,14 @@ function Daily({ perDay, days }: { perDay: StatsResponse['perDay']; days: Days }
     </div>
   );
 }
+
+const REASON_NAMES: Record<Reason, string> = { outdated: 'out of date', short: 'too short', location: 'hard to find', audio: 'audio problem', other: 'something else' };
+/** "2 × out of date · 1 × audio problem", most picked first. */
+const reasonText = (r: HelpfulRow) =>
+  REASONS.filter(k => r.reasons[k])
+    .sort((a, b) => r.reasons[b]! - r.reasons[a]!)
+    .map(k => `${r.reasons[k]} × ${REASON_NAMES[k]}`)
+    .join(' · ');
 
 export function StatsTab({ content, onSignedOut, onEditPlace }: { content: Content; onSignedOut: () => void; onEditPlace?: (id: number) => void }) {
   const [days, setDays] = useState<Days>(30);
@@ -178,7 +186,7 @@ export function StatsTab({ content, onSignedOut, onEditPlace }: { content: Conte
                 </select>
               </label>
             </div>
-            <p className="text-[11px] text-stone-400 mb-3">Votes from the end of each place’s card, once per place per device. Many “No” votes usually mean the description or audio needs work.</p>
+            <p className="text-[11px] text-stone-400 mb-3">Votes from the end of each place’s card, once per place per device. Many “No” votes usually mean the description or audio needs work; under each place, the reasons visitors picked after “No” (optional, so fewer than the No votes).</p>
             {helpRows.length === 0 ? (
               <p className="text-sm text-stone-400">No votes in this period yet.</p>
             ) : (
@@ -195,7 +203,10 @@ export function StatsTab({ content, onSignedOut, onEditPlace }: { content: Conte
                 <tbody className="divide-y divide-sand/40">
                   {helpRows.map(r => (
                     <tr key={r.id}>
-                      <td className="py-1.5 pe-3 text-stone-700">{placeName.get(String(r.id))}</td>
+                      <td className="py-1.5 pe-3 text-stone-700">
+                        {placeName.get(String(r.id))}
+                        {reasonText(r) && <span className="block text-[11px] text-amber-800">{reasonText(r)}</span>}
+                      </td>
                       <td className="py-1.5 text-end tabular-nums text-stone-600">{fmt(r.yes)}</td>
                       <td className={`py-1.5 text-end tabular-nums ${r.no > r.yes ? 'text-red-700 font-bold' : 'text-stone-600'}`}>{fmt(r.no)}</td>
                       <td className="py-1.5 text-end tabular-nums text-stone-700">{r.pct}%</td>
