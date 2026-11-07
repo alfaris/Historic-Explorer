@@ -72,8 +72,11 @@ export function AudioGuide({ locationId, text, langCode, onNext, onPrevious }: A
   const [transcript, setTranscript] = useState<{ key: string; text: string } | null>(null);
   const [showTranscript, setShowTranscript] = useState(false);
   const transcriptId = useId();
+  // The guide this component shows now: a late answer for an earlier stop (walk mode) is ignored.
+  const currentKey = useRef('');
   const { places, routes } = useContent();
   const key = `${locationId}:${langCode}:${textHash(text)}`;
+  currentKey.current = key;
   const mine = state.key === key;
   const status = mine ? state.status : 'idle';
 
@@ -115,9 +118,14 @@ export function AudioGuide({ locationId, text, langCode, onNext, onPrevious }: A
     };
     // Straight from the tap, before any await: iOS only starts audio from a tap.
     const id = player.begin(t);
+    // What the browser voice reads if the recording can't play: the narration when there is one.
+    let spoken = text;
     try {
       const result = await loadGuideAudio(locationId, langCode, text);
-      if (result.script) setTranscript({ key, text: result.script });
+      if (result.script) {
+        spoken = result.script;
+        if (currentKey.current === key) setTranscript({ key, text: result.script });
+      }
       if (!('audio' in result)) {
         // The server could write the narration but not voice it.
         player.playSpeech(id, result.script, langCode);
@@ -126,7 +134,7 @@ export function AudioGuide({ locationId, text, langCode, onNext, onPrevious }: A
       await player.playAudio(id, result.audio);
     } catch (error) {
       console.warn('Audio guide failed, using the browser voice:', error);
-      player.playSpeech(id, text, langCode);
+      player.playSpeech(id, spoken, langCode);
     }
   };
 

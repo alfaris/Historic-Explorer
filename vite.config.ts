@@ -159,7 +159,7 @@ export default defineConfig(({mode}) => {
             },
             {
               // Audio guides. Only versioned URLs (?v=<hash of the text>) are
-              // cached, and only real recordings, not the text-only fallback.
+              // cached, and only real recordings with a transcript, not the text-only fallback.
               // An edited description gets a new URL, so old copies just age out.
               urlPattern: ({ url }) =>
                 url.origin === self.location.origin && url.pathname === '/api/audio-guide' && url.searchParams.has('v'),
@@ -168,6 +168,10 @@ export default defineConfig(({mode}) => {
                 cacheName: OFFLINE_CACHES.audio,
                 expiration: { maxEntries: 400, maxAgeSeconds: 60 * 60 * 24 * 180 },
                 cacheableResponse: { statuses: [200], headers: { 'Content-Type': 'audio/wav' } },
+                // Only recordings with their transcript: one made before
+                // transcripts keeps its URL when the admin regenerates it, so
+                // a kept copy would hide the transcript for months.
+                plugins: [{ cacheWillUpdate: async ({ response }) => (response.headers.has('X-Guide-Transcript') ? response : null) }],
               },
             },
             {

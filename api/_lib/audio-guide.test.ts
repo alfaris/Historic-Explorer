@@ -4,6 +4,7 @@ import { audioVersion } from '../../src/lib/text-hash';
 
 // Stand-ins for Blob storage, the live content and Gemini.
 const blobs = new Map<string, string | Buffer>();
+let failWav = false;
 let geminiCalls = 0;
 const SCRIPT = 'Stand here, traveller: these walls have watched Cairo for a thousand years — «ألف عام».';
 
@@ -20,6 +21,7 @@ vi.mock('@vercel/blob', () => {
       return body === undefined ? null : { stream: new Response(body).body };
     },
     put: async (path: string, body: string | Buffer) => {
+      if (failWav && path.endsWith('.wav')) throw new Error('Blob is down');
       blobs.set(path, body);
       return {};
     },
@@ -54,6 +56,7 @@ beforeEach(() => {
   process.env.GEMINI_API_KEY = 'test';
   blobs.clear();
   geminiCalls = 0;
+  failWav = false;
 });
 
 describe('audio guide transcripts', () => {
@@ -84,5 +87,16 @@ describe('audio guide transcripts', () => {
     expect(await audioStatus(place, 'en')).toBe('stored');
     const fresh = await request('1.0.0.3');
     expect(decodeURIComponent(fresh.headers.get(TRANSCRIPT_HEADER)!)).toBe(SCRIPT);
+  });
+
+  it('never leaves a script beside a recording it does not match', async () => {
+    // An old recording without a script, then a regeneration whose recording fails to save.
+    await generateAndStoreAudio(place, 'en');
+    const txt = wavPath().replace(/\.wav$/, '.txt');
+    blobs.delete(txt);
+    failWav = true;
+    await expect(generateAndStoreAudio(place, 'en')).rejects.toThrow('Storing the audio in Blob failed');
+    expect(blobs.has(txt)).toBe(false);
+    expect(await audioStatus(place, 'en')).toBe('missing');
   });
 });

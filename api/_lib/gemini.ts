@@ -124,9 +124,11 @@ const loadOrGenerateAudio = async (text: string, lang: Lang, pathname: string): 
   return { wav, script };
 };
 
-// The script first: a recording is only "stored" (audioStatus) once both are there.
+// The recording first, then its script. A failure in between leaves the new
+// recording without a script (served without a transcript, and still
+// "missing" in the admin), never a script beside a recording it doesn't match.
 const storeGuide = async (pathname: string, wav: Uint8Array, script: string) =>
-  (await storeBlob(scriptBlobPath(pathname), script, 'text/plain; charset=utf-8')) && (await storeBlob(pathname, wav, 'audio/wav'));
+  (await storeBlob(pathname, wav, 'audio/wav')) && (await storeBlob(scriptBlobPath(pathname), script, 'text/plain; charset=utf-8'));
 
 // The exact text the audio is generated from and keyed by. The request handler
 // and the pre-generation script must both use this, or their keys won't match.
