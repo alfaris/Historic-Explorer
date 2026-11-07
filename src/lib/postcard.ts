@@ -44,7 +44,13 @@ export interface PostcardText {
   /** Font families for the title and the rest (already loaded). */
   serif: string;
   sans: string;
+  /** The photo's credit, printed on the card (its license requires it), e.g. "Photo: Sailko · CC BY 3.0 · creativecommons.org/licenses/by/3.0". */
+  credit?: string;
 }
+
+/** The credit line a photo's license asks for, to print on the card. */
+export const photoCredit = (photo: { author: string; license: string; licenseUrl: string | null }, label: string) =>
+  [`${label}: ${photo.author}`, photo.license, photo.licenseUrl?.replace(/^https?:\/\//, '')].filter(Boolean).join(' · ');
 
 const loadImage = (src: string) =>
   new Promise<HTMLImageElement>((resolve, reject) => {
@@ -67,11 +73,13 @@ export async function makePostcard(text: PostcardText, photoSrc?: string): Promi
   ctx.fillStyle = '#1a4d3b';
   ctx.fillRect(0, 0, S, S);
   const photoH = Math.round(S * 0.58);
+  let photoDrawn = false;
   if (photoSrc) {
     try {
       const img = await loadImage(photoSrc);
       const c = coverCrop(img.naturalWidth, img.naturalHeight, S, photoH);
       ctx.drawImage(img, c.sx, c.sy, c.sw, c.sh, 0, 0, S, photoH);
+      photoDrawn = true;
       const fade = ctx.createLinearGradient(0, photoH * 0.55, 0, photoH);
       fade.addColorStop(0, 'rgba(26,77,59,0)');
       fade.addColorStop(1, 'rgba(26,77,59,1)');
@@ -108,10 +116,16 @@ export async function makePostcard(text: PostcardText, photoSrc?: string): Promi
   ctx.fillStyle = '#ffffff';
   ctx.fillText(text.stats, x, Math.min(y + 20, S - 130));
 
-  // Brand at the foot.
+  // Brand at the foot, and the photo's credit under it (only when the photo is on the card).
   ctx.font = `700 30px ${text.sans}`;
   ctx.fillStyle = '#c5a059';
   ctx.fillText(text.brand, x, S - pad + 10);
+  if (text.credit && photoDrawn) {
+    ctx.font = `400 20px ${text.sans}`;
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    const line = wrapLines(text.credit, S - 2 * pad, s => ctx.measureText(s).width, 1)[0];
+    ctx.fillText(line, x, S - 36);
+  }
 
   return new Promise((resolve, reject) => canvas.toBlob(b => (b ? resolve(b) : reject(new Error('blob'))), 'image/jpeg', 0.88));
 }

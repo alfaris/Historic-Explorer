@@ -230,4 +230,8 @@ export const ES: Record<string, string> = {
   "The postcard couldn't be made on this device.": "No se pudo crear la postal en este dispositivo.",
   'Making your postcard…': 'Creando tu postal…',
   'Share a postcard': 'Compartir una postal',
+  'Photo': 'Foto',
+  'Your postcard is ready. Tap Share now to send it.': 'Tu postal está lista. Toca «Compartir ahora» para enviarla.',
+  'Share now': 'Compartir ahora',
+  'Save image': 'Guardar imagen',
 };

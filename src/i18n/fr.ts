@@ -228,4 +228,8 @@ export const FR: Record<string, string> = {
   "The postcard couldn't be made on this device.": "La carte n’a pas pu être créée sur cet appareil.",
   'Making your postcard…': 'Création de votre carte…',
   'Share a postcard': 'Partager une carte',
+  'Photo': 'Photo',
+  'Your postcard is ready. Tap Share now to send it.': 'Votre carte est prête. Touchez « Partager maintenant » pour l’envoyer.',
+  'Share now': 'Partager maintenant',
+  'Save image': 'Enregistrer l’image',
 };

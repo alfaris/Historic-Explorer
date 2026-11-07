@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { coverCrop, wrapLines } from './postcard';
+import { coverCrop, photoCredit, wrapLines } from './postcard';
 
 const measure = (s: string) => s.length * 10; // 10 px a character
 
@@ -22,5 +22,12 @@ describe('coverCrop', () => {
   it('crops top and bottom of a tall photo', () => {
     const c = coverCrop(1000, 2000, 1000, 500);
     expect(c).toEqual({ sx: 0, sy: 750, sw: 1000, sh: 500 });
+  });
+});
+
+describe('photoCredit', () => {
+  it('names the author, the license and where to read it', () => {
+    expect(photoCredit({ author: 'Sailko', license: 'CC BY 3.0', licenseUrl: 'https://creativecommons.org/licenses/by/3.0' }, 'Photo')).toBe('Photo: Sailko · CC BY 3.0 · creativecommons.org/licenses/by/3.0');
+    expect(photoCredit({ author: 'Admin upload', license: 'Own work', licenseUrl: null }, 'Photo')).toBe('Photo: Admin upload · Own work');
   });
 });
