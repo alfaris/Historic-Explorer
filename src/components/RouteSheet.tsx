@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { Location, Route } from '../data/locations';
 import { weekRows } from '../lib/opening-hours';
+import { useContent } from '../data/ContentContext';
+import { addDays, cairoDate, effectiveHours, periodName } from '../lib/special-hours';
 import { formatDistance, formatDuration } from '../lib/route-format';
 import { compactWeek, oneLine, sheetMap } from '../lib/route-sheet';
 import { routeShareUrl } from '../lib/share';
@@ -22,6 +24,24 @@ export default function RouteSheet({ route, places, onDone }: { route: Route; pl
   const plan = useMemo(() => walkPlan(places, route.id), [places, route.id]);
   const map = useMemo(() => sheetMap(stops), [stops]);
   const url = routeShareUrl(window.location.origin, route.id);
+  // Hours as they stand for the coming week, special hours (Ramadan, closures) included, as on screen.
+  const { specialPeriods } = useContent();
+  const now = useMemo(() => new Date(), []);
+  const hoursLine = (stop: Location): string | null => {
+    const eff = effectiveHours(stop, now, specialPeriods);
+    const today = cairoDate(now);
+    const last = addDays(today, 6);
+    // The periods that change this stop's hours in the week shown.
+    const names = (specialPeriods ?? [])
+      .filter(p => p.places[String(stop.id)] && p.from <= last && p.to >= today)
+      .map(p => periodName(p, lang).text);
+    const week = eff.hours ? compactWeek(weekRows(eff.hours, lang)) : eff.closedToday ? L('Closed today', 'مغلق اليوم') : null;
+    if (!week) return null;
+    const parts = [week];
+    if (names.length) parts.push(`${L('Special hours', 'مواعيد خاصة')}: ${names.join(', ')}`);
+    else if (eff.mayDiffer) parts.push(`${L('Hours may differ', 'قد تختلف المواعيد')}: ${periodName(eff.mayDiffer, lang).text}`);
+    return parts.join(' · ');
+  };
   const [qr, setQr] = useState<string | null>(null);
 
   // The QR code library loads only for printing.
@@ -86,7 +106,7 @@ export default function RouteSheet({ route, places, onDone }: { route: Route; pl
                   {nameOf(stop)}
                   {walk !== undefined && <span className="font-normal text-stone-600"> · {minutesLabel(walk)}</span>}
                 </p>
-                {stop.hours && <p className="text-xs text-stone-600">{compactWeek(weekRows(stop.hours, lang), ar ? ' · ' : ' · ')}</p>}
+                {hoursLine(stop) && <p className="text-xs text-stone-600">{hoursLine(stop)}</p>}
                 {description && <p className="text-xs text-stone-700" lang={fallbackLang(stop, 'description')}>{oneLine(description)}</p>}
               </div>
             </li>

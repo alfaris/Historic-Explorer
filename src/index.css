@@ -162,8 +162,9 @@ body {
 }
 @media print {
   @page { size: A4; margin: 12mm; }
-  body > :not(#print-sheet) { display: none !important; }
-  body { background: #fff !important; }
+  /* Only while a sheet is on the page: ordinary printing (the app, the admin) stays as it was. */
+  body:has(> #print-sheet) > :not(#print-sheet) { display: none !important; }
+  body:has(> #print-sheet) { background: #fff !important; }
   #print-sheet { display: block; font-size: 11pt; }
   #print-sheet .sheet-stop { break-inside: avoid; }
   #print-sheet .print-color { -webkit-print-color-adjust: exact; print-color-adjust: exact; }

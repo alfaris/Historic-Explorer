@@ -210,4 +210,5 @@ export const ES: Record<string, string> = {
   'Map of the stops': 'Mapa de las paradas',
   'Scan to open this walk in the app, with audio guides that work offline.': 'Escanea para abrir este paseo en la app, con audioguías que funcionan sin conexión.',
   'Hours can change on holidays and during Ramadan.': 'Los horarios pueden cambiar en festivos y durante el Ramadán.',
+  'Hours may differ': 'El horario puede variar',
 };
