@@ -1,5 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { STOP_CATEGORIES } from '../lib/walk';
+import { STOP_CATEGORIES, walkPlan } from '../lib/walk';
+import { legArrows } from '../lib/map-stops';
+import { useContent } from '../data/ContentContext';
+import { stopOfLabel } from './WalkInfo';
 import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap, Polyline, ScaleControl } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import 'leaflet/dist/leaflet.css';
@@ -177,6 +180,13 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
 
   const visited = useVisited();
   const saved = useSaved();
+  // Stop numbers from the whole route's walk plan (the same as "Stop 3 of 20" in
+  // the list), so a filter or search doesn't renumber them.
+  const { places: allPlaces } = useContent();
+  const routeId = locations[0]?.routeId;
+  const plan = React.useMemo(() => (routeId ? walkPlan(allPlaces, routeId) : new Map()), [allPlaces, routeId]);
+  // Arrows along the route line, showing the walking direction.
+  const arrows = React.useMemo(() => legArrows(routePoints.map(([lat, lng]) => ({ lat, lng }))), [routePoints]);
 
   const markers = React.useMemo(() => {
     return locations.map((loc, idx) => {
@@ -187,10 +197,18 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
       const savedBadge = saved.has(loc.id)
         ? '<span class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-gold text-ink flex items-center justify-center shadow border border-white"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg></span>'
         : '';
-      // Visited places show a check instead of the pulsing dot.
-      const centre = isVisited
-        ? '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>'
-        : '<div class="w-1.5 h-1.5 bg-white rounded-full shadow-sm animate-pulse"></div>';
+      // Stops show their number in walking order; visited places get a gold check
+      // (beside the number for stops, in place of the dot for the others).
+      const stop = plan.get(loc.id);
+      const check = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+      const centre = stop
+        ? `<span class="text-sm font-bold leading-none" aria-hidden="true">${stop.number}</span>`
+        : isVisited
+          ? check
+          : '<div class="w-1.5 h-1.5 bg-white rounded-full shadow-sm animate-pulse"></div>';
+      const visitedBadge = stop && isVisited
+        ? '<span class="absolute -bottom-1.5 -left-1.5 w-5 h-5 rounded-full bg-gold text-ink flex items-center justify-center shadow border border-white"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>'
+        : '';
       
       const customIcon = L.divIcon({
         className: 'custom-leaflet-marker',
@@ -200,6 +218,7 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
                   ${centre}
                 </div>
                 ${savedBadge}
+                ${visitedBadge}
                </div>`,
         iconSize: [40, 40],
         iconAnchor: [20, 20],
@@ -210,6 +229,11 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
           key={loc.id} 
           position={[loc.lat, loc.lng]}
           icon={customIcon as L.DivIcon}
+          // Stops above the cafés and workshops near them, so their numbers stay readable.
+          zIndexOffset={stop ? 500 : 0}
+          // The marker's accessible name: "Stop 3 of 20: Al-Aqmar Mosque".
+          title={stop ? `${stopOfLabel(stop.number, stop.total)}: ${nameOf(loc)}` : nameOf(loc)}
+          alt={stop ? `${stopOfLabel(stop.number, stop.total)}: ${nameOf(loc)}` : nameOf(loc)}
           eventHandlers={{
             click: () => onSelectLocation(loc.id),
           }}
@@ -229,6 +253,7 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
                 }
               />
               <div className="text-center px-1">
+                {stop && <p className="text-[11px] font-bold text-gold-ink mb-0.5">{stopOfLabel(stop.number, stop.total)}</p>}
                 <p className="font-bold text-nile text-xs leading-tight text-balance uppercase tracking-wider">
                   {nameOf(loc)}
                 </p>
@@ -270,7 +295,7 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
         </Marker>
       );
     });
-  }, [locations, isArabic, language, onSelectLocation, selectedLocation, visited, saved]);
+  }, [locations, isArabic, language, onSelectLocation, selectedLocation, visited, saved, plan]);
 
   const userIcon = L.divIcon({
     className: 'user-location-marker',
@@ -327,6 +352,23 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
           }} 
         />
         
+        {/* Which way to walk: a small arrow at the middle of each leg (not clickable). */}
+        {arrows.map((a, i) => (
+          <Marker
+            key={`arrow-${i}`}
+            position={[a.lat, a.lng]}
+            interactive={false}
+            keyboard={false}
+            zIndexOffset={-500}
+            icon={L.divIcon({
+              className: 'route-arrow',
+              html: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" style="transform: rotate(${a.bearing}deg)" aria-hidden="true"><path d="M12 4l7 14-7-4-7 4z" fill="#a67c4e" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>`,
+              iconSize: [18, 18],
+              iconAnchor: [9, 9],
+            })}
+          />
+        ))}
+
         {/* Shadow/Glow effect for Route */}
         <Polyline 
           positions={routePoints}
@@ -346,13 +388,16 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
           </Marker>
         )}
 
+        {/* The numbered stops are never clustered, so the walk reads 1, 2, 3… at any
+            zoom; the cafés, workshops and meeting points around them are. */}
+        {markers.filter(m => plan.has(Number(m.key)))}
         <MarkerClusterGroup
           chunkedLoading
           maxClusterRadius={40}
           showCoverageOnHover={false}
           spiderfyOnMaxZoom={true}
         >
-          {markers}
+          {markers.filter(m => !plan.has(Number(m.key)))}
         </MarkerClusterGroup>
 
         <CustomZoomControl />
