@@ -10,6 +10,7 @@ import { walkSummary } from '../lib/walk-summary';
 import { L, currentLang, nameOf } from '../i18n/lang';
 import { PlacePhoto } from './PlacePhoto';
 import { ShareRoute } from './ShareRoute';
+import { PostcardButton } from './PostcardButton';
 
 /**
  * The end of a walk: stops visited, roughly how far the visitor walked (from
@@ -88,6 +89,7 @@ export function WalkFinish({ route, places, onClose }: { route: Route; places: L
             <div className="flex justify-center [&>button]:w-full [&>button]:justify-center">
               <ShareRoute route={route} />
             </div>
+            {summary.visited > 0 && <PostcardButton route={route} summary={summary} title={title} />}
             <button
               onClick={walkAgain}
               className="flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-chalk text-ink text-xs font-bold uppercase tracking-widest hover:bg-sand/40"

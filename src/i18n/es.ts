@@ -226,4 +226,8 @@ export const ES: Record<string, string> = {
   'Also good': 'También buena opción',
   'Show this walk': 'Ver este paseo',
   'Clear': 'Borrar',
+  'Postcard saved to your downloads.': 'Postal guardada en tus descargas.',
+  "The postcard couldn't be made on this device.": "No se pudo crear la postal en este dispositivo.",
+  'Making your postcard…': 'Creando tu postal…',
+  'Share a postcard': 'Compartir una postal',
 };

@@ -224,4 +224,8 @@ export const FR: Record<string, string> = {
   'Also good': 'Aussi intéressant',
   'Show this walk': 'Voir cette visite',
   'Clear': 'Effacer',
+  'Postcard saved to your downloads.': 'Carte enregistrée dans vos téléchargements.',
+  "The postcard couldn't be made on this device.": "La carte n’a pas pu être créée sur cet appareil.",
+  'Making your postcard…': 'Création de votre carte…',
+  'Share a postcard': 'Partager une carte',
 };
