@@ -19,3 +19,7 @@ export const builtInPhoto = (key: string): Photo | undefined => photos[key];
  */
 export const smallPhotoSrc = (src: string) =>
   /^\/images\/photos\/[\w-]+\.webp$/.test(src) ? src.replace(/\.webp$/, '-480.webp') : null;
+
+/** The 240px copy of a built-in photo, for list thumbnails (made by the same script). */
+export const thumbPhotoSrc = (src: string) =>
+  /^\/images\/photos\/[\w-]+\.webp$/.test(src) ? src.replace(/\.webp$/, '-240.webp') : null;

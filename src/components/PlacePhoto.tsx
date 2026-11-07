@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { Photo } from '../data/photos';
-import { smallPhotoSrc } from '../data/photo-resolve';
+import { smallPhotoSrc, thumbPhotoSrc } from '../data/photo-resolve';
 
 interface PlacePhotoProps {
   photo: Photo | undefined;
@@ -22,12 +22,13 @@ export function PlacePhoto({ photo, alt, className = '', fallback, showCredit = 
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   if (!photo || failedSrc === photo.src) return <>{fallback}</>;
   const small = smallPhotoSrc(photo.src);
+  const thumb = thumbPhotoSrc(photo.src);
 
   return (
     <div className={`relative overflow-hidden bg-sand/30 ${className}`}>
       <img
         src={photo.src}
-        srcSet={small ? `${small} 480w, ${photo.src} ${photo.width}w` : undefined}
+        srcSet={small ? `${thumb} 240w, ${small} 480w, ${photo.src} ${photo.width}w` : undefined}
         sizes={small ? sizes : undefined}
         alt={alt}
         width={photo.width}

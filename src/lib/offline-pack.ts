@@ -3,7 +3,7 @@
 // itself is in offline-store.ts.
 
 import type { Location, Route } from '../data/locations';
-import { photoForPlace, photoForRoute, smallPhotoSrc } from '../data/photo-resolve';
+import { photoForPlace, photoForRoute, smallPhotoSrc, thumbPhotoSrc } from '../data/photo-resolve';
 import { textHash } from './text-hash';
 import type { OfflineCacheKind } from './offline-caches';
 
@@ -89,11 +89,14 @@ export function routePack(route: Pick<Route, 'id' | 'photo'>, places: Location[]
     const text = audioText(p, lang);
     if (text) add(audioGuideUrl(p.id, lang, text), 'audio');
   }
-  // Both sizes of each photo: the browser may pick the small copy (srcset),
-  // and offline it won't fall back to the full one if that's all that's saved.
+  // Every size of each photo: the browser may pick the small or thumbnail copy
+  // (srcset), and offline it won't fall back to the full one if that's all that's saved.
   const addPhoto = (src: string | undefined) => {
     add(src, 'photos');
-    if (src) add(smallPhotoSrc(src) ?? undefined, 'photos');
+    if (src) {
+      add(smallPhotoSrc(src) ?? undefined, 'photos');
+      add(thumbPhotoSrc(src) ?? undefined, 'photos');
+    }
   };
   addPhoto(photoForRoute(route)?.src);
   for (const p of places) addPhoto(photoForPlace(p)?.src);
