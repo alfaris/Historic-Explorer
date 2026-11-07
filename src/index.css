@@ -155,3 +155,17 @@ body {
   background: #fdfcf8;
   border: 1px solid rgba(196, 154, 108, 0.2);
 }
+
+/* The printable route sheet (RouteSheet.tsx): only it prints, and it never shows on screen. */
+@media screen {
+  #print-sheet { display: none; }
+}
+@media print {
+  @page { size: A4; margin: 12mm; }
+  /* Only while a sheet is on the page: ordinary printing (the app, the admin) stays as it was. */
+  body:has(> #print-sheet) > :not(#print-sheet) { display: none !important; }
+  body:has(> #print-sheet) { background: #fff !important; }
+  #print-sheet { display: block; font-size: 11pt; }
+  #print-sheet .sheet-stop { break-inside: avoid; }
+  #print-sheet .print-color { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
