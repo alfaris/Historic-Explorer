@@ -35,6 +35,7 @@ import { HelpfulPrompt } from './HelpfulPrompt';
 import { OtherRouteResults } from './OtherRouteResults';
 import { SharePlace, ShareRoute } from './ShareRoute';
 import { RouteFinder } from './RouteFinder';
+import { ContinueWalk } from './ContinueWalk';
 import { PlanVisit } from './PlanVisit';
 import { isPlaceLink, isRouteLink, placeFromLocation, routeFromLocation } from '../lib/share';
 import { askForCompass } from '../lib/useWalkSensors';
@@ -534,6 +535,21 @@ export const MainContent: React.FC = () => {
             </>
           )}
         </div>
+        )}
+
+        {/* A walk left part-way: pick it up at the next stop. */}
+        {!walking && !finishedRouteData && (
+          <ContinueWalk
+            routes={routes}
+            places={locations}
+            currentRouteId={selectedRoute}
+            onContinue={id => {
+              clearSharedLink();
+              setSelectedRoute(id);
+              setSelectedLocation(null);
+              startWalk();
+            }}
+          />
         )}
 
         {/* Route Selector */}

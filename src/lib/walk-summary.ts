@@ -48,3 +48,25 @@ export function walkSummary(places: Place[], routeId: string, visited: Set<numbe
  */
 export const justCompleted = (before: number | null, now: WalkSummary) =>
   now.complete && before !== null && before < now.total;
+
+/**
+ * The walk to offer to continue: a route with some, but not all, of its stops
+ * visited. The route on screen first if it's one, else the one with the most
+ * visited, then the first. Null when there's none.
+ */
+export function routeToContinue<R extends { id: string }, P extends Place>(
+  routes: R[],
+  places: P[],
+  visited: Set<number>,
+  preferredRouteId?: string,
+): { route: R; summary: WalkSummary; next: P } | null {
+  const partial = routes
+    .map(route => ({ route, summary: walkSummary(places, route.id, visited) }))
+    .filter(({ summary }) => summary.visited > 0 && !summary.complete);
+  if (!partial.length) return null;
+  const pick =
+    partial.find(p => p.route.id === preferredRouteId) ??
+    [...partial].sort((a, b) => b.summary.visited - a.summary.visited || routes.indexOf(a.route) - routes.indexOf(b.route))[0];
+  const nextId = pick.summary.stopIds.find(id => !visited.has(id))!;
+  return { ...pick, next: places.find(p => p.id === nextId)! };
+}
