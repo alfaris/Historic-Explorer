@@ -270,7 +270,7 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
             }}
           />
         ) : (
-          <HistoryTab save={save} />
+          <HistoryTab content={content} save={save} />
         )}
       </main>
     </div>
