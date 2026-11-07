@@ -236,4 +236,9 @@ export const FR: Record<string, string> = {
   'Not now': 'Pas maintenant',
   'Continue your walk': 'Continuer votre visite',
   'Continue': 'Continuer',
+  'Auto': 'Auto',
+  'Light': 'Clair',
+  'Dark': 'Sombre',
+  'Theme': 'Thème',
+  'Auto follows your phone.': 'Auto suit votre téléphone.',
 };

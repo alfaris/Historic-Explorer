@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Globe, X } from 'lucide-react';
+import { Globe, Monitor, Moon, Sun, X } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { L, LANGS, LANGUAGES } from '../i18n/lang';
-import { TEXT_SIZES, setDisplay, useDisplay, type TextSize } from '../lib/display';
+import { TEXT_SIZES, THEMES, setDisplay, useDisplay, type TextSize, type Theme } from '../lib/display';
 import { useDialog } from '../lib/useDialog';
 
 const sizeLabel = (s: TextSize) => (s === 'standard' ? L('Standard', 'عادي') : s === 'large' ? L('Large', 'كبير') : L('Larger', 'أكبر'));
+const themeLabel = (t: Theme) => (t === 'auto' ? L('Auto', 'تلقائي') : t === 'light' ? L('Light', 'فاتح') : L('Dark', 'داكن'));
+const THEME_ICON = { auto: Monitor, light: Sun, dark: Moon } as const;
 // The sample letters in each option, at roughly the size it gives.
 const SAMPLE: Record<TextSize, string> = { standard: 'text-base', large: 'text-lg', larger: 'text-xl' };
 
@@ -67,6 +69,28 @@ function Sheet({ onClose }: { onClose: () => void }) {
               </label>
             ))}
           </div>
+        </fieldset>
+
+        <fieldset>
+          <legend className="text-xs font-bold uppercase tracking-widest text-stone-500 mb-2">{L('Theme', 'المظهر')}</legend>
+          <div className="grid grid-cols-3 gap-2">
+            {THEMES.map(theme => {
+              const Icon = THEME_ICON[theme];
+              return (
+                <label
+                  key={theme}
+                  className={`flex flex-col items-center justify-center gap-1 min-h-16 rounded-2xl border px-2 py-2 text-center cursor-pointer has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-nile ${
+                    display.theme === theme ? 'border-nile bg-nile/10 text-nile font-bold' : 'border-sand text-ink hover:border-nile/50'
+                  }`}
+                >
+                  <input type="radio" name="theme" value={theme} checked={display.theme === theme} onChange={() => setDisplay({ theme })} className="sr-only" />
+                  <Icon className="w-5 h-5" aria-hidden="true" />
+                  <span className="text-xs">{themeLabel(theme)}</span>
+                </label>
+              );
+            })}
+          </div>
+          <p className="mt-1 text-xs text-stone-500">{L('Auto follows your phone.', 'التلقائي يتبع إعداد هاتفك.')}</p>
         </fieldset>
 
         <label className="flex items-start gap-3 cursor-pointer min-h-11">
