@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { locations, routes } from '../data/locations';
 import { audioGuideUrl, latToTileY, lngToTileX, MAX_TILES, routePack, tilesForPlaces, tileUrl } from './offline-pack';
-import { textHash } from './text-hash';
+import { audioVersion } from './text-hash';
 
 describe('tile maths', () => {
   it('matches known OpenStreetMap tiles', () => {
@@ -53,7 +53,7 @@ describe('routePack', () => {
   it('includes an audio guide per place in the chosen language, versioned by its text', () => {
     const audio = routePack(route, places, 'ar').filter(f => f.kind === 'audio').map(f => f.url);
     expect(audio).toHaveLength(places.length);
-    expect(audio[0]).toBe(`/api/audio-guide?id=${places[0].id}&lang=ar&v=${textHash(places[0].descriptionAr)}`);
+    expect(audio[0]).toBe(`/api/audio-guide?id=${places[0].id}&lang=ar&v=${audioVersion(places[0].descriptionAr)}`);
     expect(audio[0]).toBe(audioGuideUrl(places[0].id, 'ar', places[0].descriptionAr));
   });
 

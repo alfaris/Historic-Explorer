@@ -4,7 +4,7 @@
 
 import type { Location, Route } from '../data/locations';
 import { photoForPlace, photoForRoute, smallPhotoSrc, thumbPhotoSrc } from '../data/photo-resolve';
-import { textHash } from './text-hash';
+import { audioVersion } from './text-hash';
 import type { OfflineCacheKind } from './offline-caches';
 
 import { descriptionOf, type Lang } from '../i18n/lang.js';
@@ -22,7 +22,7 @@ export const audioText = (place: Pick<Location, 'descriptionEn' | 'descriptionAr
  * AudioGuide and the offline download must build exactly the same URL.
  */
 export const audioGuideUrl = (id: number, lang: Lang, text: string) =>
-  `/api/audio-guide?id=${id}&lang=${lang}&v=${textHash(text)}`;
+  `/api/audio-guide?id=${id}&lang=${lang}&v=${audioVersion(text)}`;
 
 // Tile maths for the Web Mercator tiles OpenStreetMap serves.
 export const lngToTileX = (lng: number, z: number) => Math.floor(((lng + 180) / 360) * 2 ** z);
