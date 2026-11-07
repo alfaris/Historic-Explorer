@@ -1,10 +1,118 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Download, FileSpreadsheet, Upload } from 'lucide-react';
+import type { Content } from '../data/content';
 import { api, type HistoryEntry } from './api';
 import type { SaveFn } from './AdminApp';
+import { backupDiff, backupFile, describeChange, downloadFile, parseBackup, placesCsv, type BackupDiff } from './backup';
 import { Button, ErrorBox, formatDate } from './ui';
 
+type Pending = { name: string; content: Content; savedAt: string | null; diff: BackupDiff };
+
+/** Download the content as JSON or the places as CSV, and restore a JSON backup. */
+function Backup({ content, save, onRestored }: { content: Content; save: SaveFn; onRestored: () => void }) {
+  const input = useRef<HTMLInputElement>(null);
+  const [pending, setPending] = useState<Pending | null>(null);
+  const [problem, setProblem] = useState<{ message: string; problems: string[] } | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const choose = async (file: File | undefined) => {
+    setPending(null);
+    setProblem(null);
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) return setProblem({ message: 'This file is too large to be a backup.', problems: [] });
+    const parsed = parseBackup(await file.text());
+    if ('message' in parsed) return setProblem(parsed);
+    setPending({ name: file.name, content: parsed.content, savedAt: parsed.savedAt, diff: backupDiff(content, parsed.content) });
+  };
+
+  const restore = async () => {
+    if (!pending) return;
+    setBusy(true);
+    const from = pending.savedAt ? ` (made ${formatDate(pending.savedAt)})` : '';
+    const ok = await save(pending.content, `Restored from the backup file ${pending.name}${from}`);
+    setBusy(false);
+    if (ok) {
+      setPending(null);
+      onRestored();
+    }
+  };
+
+  const cancel = () => setPending(null);
+
+  return (
+    <div className="rounded-xl bg-chalk border border-sand/50 p-4 mb-6">
+      <h3 className="text-sm font-bold text-ink mb-1">Backup</h3>
+      <p className="text-xs text-stone-500 mb-3">
+        Keep a copy of the content outside the app. The JSON file can be restored here; the spreadsheet is for reading and sharing.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" variant="secondary" onClick={() => downloadFile(backupFile(content))} className="flex items-center gap-2">
+          <Download className="w-4 h-4" aria-hidden="true" /> Download backup (JSON)
+        </Button>
+        <Button type="button" variant="secondary" onClick={() => downloadFile(placesCsv(content))} className="flex items-center gap-2">
+          <FileSpreadsheet className="w-4 h-4" aria-hidden="true" /> Download places (CSV)
+        </Button>
+        <Button type="button" variant="secondary" onClick={() => input.current?.click()} disabled={busy} className="flex items-center gap-2">
+          <Upload className="w-4 h-4" aria-hidden="true" /> Restore from a backup file
+        </Button>
+        <input
+          ref={input}
+          type="file"
+          accept="application/json,.json"
+          className="sr-only"
+          tabIndex={-1}
+          aria-label="Backup file to restore"
+          onChange={e => {
+            const file = e.target.files?.[0];
+            // Cleared, so choosing the same file again (after editing it) still reads it.
+            e.target.value = '';
+            choose(file);
+          }}
+        />
+      </div>
+      {problem && (
+        <div className="mt-3">
+          <ErrorBox message={problem.message} problems={problem.problems} />
+        </div>
+      )}
+      {pending && (
+        <div className="mt-4 bg-white rounded-xl border border-sand/60 p-4" role="region" aria-label="Restore a backup">
+          <p className="text-sm text-ink mb-2">
+            <strong>{pending.name}</strong>
+            {pending.savedAt && <span className="text-stone-500"> · made {formatDate(pending.savedAt)}</span>}
+          </p>
+          {pending.diff.same ? (
+            <p className="text-sm text-stone-600">This backup is the same as the current content; there's nothing to restore.</p>
+          ) : (
+            <>
+              <p className="text-sm text-stone-600 mb-1">Restoring it would give:</p>
+              <ul className="text-sm text-stone-700 list-disc ps-5 mb-3">
+                <li>{describeChange('Places', pending.diff.places)}</li>
+                <li>{describeChange('Routes', pending.diff.routes)}</li>
+                <li>{describeChange('Glossary terms', pending.diff.glossary)}</li>
+                <li>{describeChange('Special hours', pending.diff.specialPeriods)}</li>
+              </ul>
+              <p className="text-xs text-stone-500 mb-3">It's saved as one new version, so the current one stays in the history below.</p>
+            </>
+          )}
+          <div className="flex gap-2">
+            {!pending.diff.same && (
+              <Button type="button" onClick={restore} disabled={busy}>
+                {busy ? 'Restoring…' : 'Restore this backup'}
+              </Button>
+            )}
+            <Button type="button" variant="secondary" onClick={cancel} disabled={busy}>
+              {pending.diff.same ? 'Close' : 'Cancel'}
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Every save is kept; restoring publishes an old version as a new save. */
-export function HistoryTab({ save }: { save: SaveFn }) {
+export function HistoryTab({ content, save }: { content: Content; save: SaveFn }) {
   const [history, setHistory] = useState<HistoryEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -37,6 +145,7 @@ export function HistoryTab({ save }: { save: SaveFn }) {
     <section className="bg-white rounded-2xl border border-sand/50 p-6">
       <h2 className="text-xl font-serif mb-1">History</h2>
       <p className="text-sm text-stone-500 mb-4">Each save is kept here. Restoring an old version saves it again as the current one.</p>
+      <Backup content={content} save={save} onRestored={load} />
       {error && <ErrorBox message={error} />}
       {!history ? (
         <p className="text-stone-500">Loading…</p>
