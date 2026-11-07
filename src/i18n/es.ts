@@ -235,4 +235,7 @@ export const ES: Record<string, string> = {
   'Share now': 'Compartir ahora',
   'Save image': 'Guardar imagen',
   'Alert me when the next stop is close (vibrates)': 'Avisarme cuando la siguiente parada esté cerca (vibra)',
+  'Not now': 'Ahora no',
+  'Continue your walk': 'Continúa tu paseo',
+  'Continue': 'Continuar',
 };
