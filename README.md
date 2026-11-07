@@ -88,7 +88,9 @@ Requires Node.js 20+.
    npm run dev
    ```
 
-Other scripts: `npm run build` (production build in `dist/`), `npm run preview`, `npm run lint` (type check), `npm test` (checks the routes and places in `src/data/locations.ts`), `npm run pregenerate-audio` (see [Pre-generating the audio guides](#pre-generating-the-audio-guides)), `npm run fetch-photos` (see [Photos](#photos)).
+Other scripts: `npm run build` (production build in `dist/`), `npm run preview`, `npm run lint` (type check), `npm test` (checks the routes and places in `src/data/locations.ts`), `npm run pregenerate-audio` (see [Pre-generating the audio guides](#pre-generating-the-audio-guides)), `npm run fetch-photos` (see [Photos](#photos)). `npm run check:bundle` (after a build; CI runs it) fails when the JavaScript loaded before the first paint passes its gzipped budget (215 KB; 191 KB now): load new code lazily rather than raising it.
+
+Performance (Lighthouse, mobile, simulated slow 4G, on the production build): home 91, accessibility 100. The Google Fonts stylesheet doesn't block the first paint (it swaps in when loaded), and list thumbnails use 240px copies of the built-in photos (made with the 480px ones by `scripts/photo-variants.ts` and saved with offline routes).
 
 Every pull request runs the type check, the tests and a production build on GitHub Actions (`.github/workflows/ci.yml`).
 

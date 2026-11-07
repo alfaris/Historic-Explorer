@@ -11,7 +11,8 @@
     "lint": "tsc --noEmit",
     "pregenerate-audio": "tsx scripts/pregenerate-audio.ts",
     "fetch-photos": "tsx scripts/fetch-photos.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "check:bundle": "node scripts/check-bundle.mjs"
   },
   "dependencies": {
     "@google/genai": "^1.50.1",

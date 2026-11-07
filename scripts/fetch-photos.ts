@@ -13,7 +13,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import sharp from 'sharp';
-import { makeSmallCopy, smallFileName } from './photo-variants';
+import { makeSmallCopy, smallFileName, THUMB_WIDTH, thumbFileName } from './photo-variants';
 import { photos as existingPhotos, type Photo } from '../src/data/photos.js';
 import { photoSources, type PhotoSource } from './photo-sources.js';
 import { isFreeLicense } from '../src/data/licenses.js';
@@ -198,6 +198,7 @@ for (const [s, file] of fileFor) {
       .webp({ quality: QUALITY })
       .toFile(output);
     await makeSmallCopy(output, join(OUTPUT_DIR, smallFileName(`${s.key}.webp`)));
+    await makeSmallCopy(output, join(OUTPUT_DIR, thumbFileName(`${s.key}.webp`)), THUMB_WIDTH);
     photos[s.key] = {
       src: `/images/photos/${s.key}.webp`,
       width,

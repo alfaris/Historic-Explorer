@@ -4,10 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Self-guided walking routes through historic Cairo: Ahl al-Bayt, Al-Muizz Street, Coptic Cairo, the Citadel and Fustat, with audio guides in English and Arabic that work offline." />
-    <!-- Fonts load in parallel with the app's CSS rather than after it. -->
+    <!-- Fonts never hold up the first paint: the stylesheet loads as "print"
+         (so it doesn't block) and switches to all media once it's in; text shows
+         in the fallback font meanwhile (display=swap). -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600&display=swap" media="print" onload="this.media='all'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600&display=swap" /></noscript>
     <meta name="theme-color" content="#f8f7f4" />
     <title>Cairo Historic Explorer</title>
   </head>
