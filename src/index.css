@@ -59,6 +59,96 @@
   background: rgba(248, 247, 244, 0.97);
 }
 
+/* Dark theme (lib/display.ts) for evening walks: the palette turns over, and
+   the few fixed light surfaces and tinted notes follow. Photos and map tiles
+   stay as they are. Text keeps at least 4.5:1. The admin never sets it. Screen only:
+   printing (the route sheet) keeps the light palette. */
+@media screen {
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --color-chalk: #121517;
+    --color-sand: #3b4144;
+    /* Ink stays dark: it's also the dark buttons, backdrops and photo shading.
+       Ink *text* turns light below. */
+    --ink-text: #ece7df;
+    --color-stone-50: #1d2124;
+    --color-stone-100: #22272a;
+    --color-stone-200: #3b4144;
+    --color-stone-300: #8a847d;
+    --color-stone-400: #aaa49d;
+    --color-stone-500: #b9b3ac;
+    --color-stone-600: #cbc5be;
+    --color-stone-700: #dcd7d0;
+    --color-stone-800: #e6e1da;
+    --color-gold-ink: #dcb873;
+    --color-gold-soft: #c9a968;
+    --color-nile-light: #24614a;
+    --surface: #1c2023;
+  }
+  :root[data-theme="dark"][data-contrast="more"] {
+    --color-sand: #6b7276;
+    --color-stone-300: #b9b3ac;
+    --color-stone-400: #d6d1ca;
+    --color-stone-500: #e0dbd4;
+    --color-stone-600: #ebe6df;
+    --color-gold-ink: #f0d08e;
+    --color-gold-soft: #f0d08e;
+  }
+  :root[data-theme="dark"] body {
+    background-color: var(--color-chalk) !important;
+    color: var(--ink-text) !important;
+  }
+  :root[data-theme="dark"] .text-ink,
+  :root[data-theme="dark"] .hover\:text-ink:hover {
+    color: var(--ink-text);
+  }
+  :root[data-theme="dark"] .bg-ink { background-color: #2b3135; }
+  /* Cards and sheets: white in the light theme, a raised dark surface here. */
+  :root[data-theme="dark"] .bg-white,
+  :root[data-theme="dark"] .bg-\[\#fdfcf8\],
+  :root[data-theme="dark"] .leaflet-popup-content-wrapper,
+  :root[data-theme="dark"] .leaflet-popup-tip {
+    background-color: var(--surface);
+  }
+  :root[data-theme="dark"] .bg-white\/90,
+  :root[data-theme="dark"] .bg-white\/95 {
+    background-color: rgb(28 32 35 / 0.94);
+  }
+  :root[data-theme="dark"] .glass {
+    background: rgb(18 21 23 / 0.88);
+    border-bottom-color: rgb(255 255 255 / 0.06);
+  }
+  /* Green text needs to be lighter on dark; green buttons (white text) stay dark green. */
+  :root[data-theme="dark"] .text-nile,
+  :root[data-theme="dark"] .hover\:text-nile:hover {
+    color: #86d4b0;
+  }
+  :root[data-theme="dark"] .text-nile-light { color: #9ddfc0; }
+  :root[data-theme="dark"] .bg-nile .text-nile,
+  :root[data-theme="dark"] .bg-nile.text-nile {
+    color: #ffffff;
+  }
+  /* Tinted notes: dark tints with light text. */
+  :root[data-theme="dark"] .bg-red-50 { background-color: #3a1f1f; }
+  :root[data-theme="dark"] .bg-red-50\/50 { background-color: rgb(58 31 31 / 0.6); }
+  :root[data-theme="dark"] .border-red-100\/50 { border-color: rgb(127 52 52 / 0.5); }
+  :root[data-theme="dark"] .bg-amber-50,
+  :root[data-theme="dark"] .bg-amber-100 { background-color: #3a2e14; }
+  :root[data-theme="dark"] .text-red-700,
+  :root[data-theme="dark"] .text-red-800 { color: #ffa3a3; }
+  :root[data-theme="dark"] .text-amber-700,
+  :root[data-theme="dark"] .text-amber-800,
+  :root[data-theme="dark"] .text-amber-900 { color: #f2c879; }
+  /* Dark text on gold badges stays dark. */
+  :root[data-theme="dark"] .bg-gold.text-ink { color: #1a1a1a; }
+  :root[data-theme="dark"] :focus-visible { outline-color: #86d4b0; }
+  /* Grey map markers (cafés, workshops, stationery) keep their light-theme
+     greys, so their white numbers and checkmarks stay readable. */
+  :root[data-theme="dark"] .custom-leaflet-marker .bg-stone-400 { background-color: #736c66; }
+  :root[data-theme="dark"] .custom-leaflet-marker .bg-stone-500 { background-color: #66605a; }
+  :root[data-theme="dark"] .custom-leaflet-marker .bg-stone-600 { background-color: #57534e; }
+}
+
 /* One visible focus outline for keyboard users everywhere. */
 :focus-visible {
   outline: 2px solid var(--color-nile);

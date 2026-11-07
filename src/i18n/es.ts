@@ -238,4 +238,9 @@ export const ES: Record<string, string> = {
   'Not now': 'Ahora no',
   'Continue your walk': 'Continúa tu paseo',
   'Continue': 'Continuar',
+  'Auto': 'Auto',
+  'Light': 'Claro',
+  'Dark': 'Oscuro',
+  'Theme': 'Tema',
+  'Auto follows your phone.': 'Auto sigue a tu teléfono.',
 };
