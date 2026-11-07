@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Languages, Plus, Search } from 'lucide-react';
+import { Clock, Languages, Plus, Search } from 'lucide-react';
 import { categories } from '../data/locations';
 import { nextPlaceId, type Content, type Location } from '../data/content';
 import type { SaveFn } from './AdminApp';
@@ -10,6 +10,7 @@ import { descriptionOf, LANGS, LANGUAGES, OPTIONAL_LANGS, type Lang, type Option
 import { api } from './api';
 import { AudioPanel } from './AudioPanel';
 import { HoursEditor } from './HoursEditor';
+import { BulkHours } from './BulkHours';
 import { withoutPlace } from '../lib/special-hours';
 import { TipsEditor } from './TipsEditor';
 import { isActiveMosque } from '../lib/prayer-times';
@@ -34,6 +35,12 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
   // A place added in this session gets its audio made as soon as it's saved.
   const [justAdded, setJustAdded] = useState<number | null>(null);
   const [bulk, setBulk] = useState<{ text: string; error: boolean } | null>(null);
+  // "Set hours for several places" in the editor pane, instead of one place.
+  const [bulkHours, setBulkHours] = useState(false);
+  // Opening (or adding) a place leaves it.
+  useEffect(() => {
+    if (draft) setBulkHours(false);
+  }, [draft]);
 
   // Opened from a report: select that place.
   useEffect(() => {
@@ -180,6 +187,18 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
             <Languages className="w-4 h-4" /> Fill in missing {LANGUAGES[lang].english} ({missingBy[lang].length})
           </Button>
         ))}
+        <Button
+          variant="secondary"
+          onClick={() => {
+            setBulkHours(true);
+            setDraft(null);
+          }}
+          disabled={busy || !!changed}
+          title={changed ? 'Save or discard the open place first.' : undefined}
+          className="w-full mb-3 flex items-center justify-center gap-2"
+        >
+          <Clock className="w-4 h-4" /> Set hours for several places
+        </Button>
         {bulk && <p className={`text-xs mb-3 ${bulk.error ? 'text-red-700' : 'text-stone-500'}`} role={bulk.error ? 'alert' : 'status'}>{bulk.text}</p>}
         <ul className="max-h-[60vh] overflow-y-auto -mx-2">
           {list.map(p => (
@@ -201,7 +220,9 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
         </ul>
       </div>
 
-      {!draft ? (
+      {bulkHours && !draft ? (
+        <BulkHours content={content} save={save} onClose={() => setBulkHours(false)} />
+      ) : !draft ? (
         <p className="text-stone-500 bg-white rounded-2xl border border-sand/50 p-8 text-center">Choose a place to edit, or add a new one.</p>
       ) : (
         <form
