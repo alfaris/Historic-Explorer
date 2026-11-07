@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { arrowRotation, bearingDegrees, compassPoint, startIndex } from './walk-mode';
+import { arrowRotation, bearingDegrees, compassPoint, startIndex, approachAlert } from './walk-mode';
 
 describe('bearingDegrees', () => {
   const o = { lat: 30, lng: 31 };
@@ -59,5 +59,20 @@ describe('compassPoint in Spanish', () => {
     expect(compassPoint(270, 'es')).toBe('O');
     expect(compassPoint(315, 'es')).toBe('NO');
     expect(compassPoint(45, 'es')).toBe('NE');
+  });
+});
+
+describe('approachAlert', () => {
+  const next = { id: 7 };
+  it('fires inside 60 m, before arrival', () => {
+    expect(approachAlert(next, 55, 10, new Set())).toBe(7);
+    expect(approachAlert(next, 80, 10, new Set())).toBeNull();
+    expect(approachAlert(next, 25, 10, new Set())).toBeNull(); // arrived: arrival takes over
+  });
+  it('fires once per stop', () => expect(approachAlert(next, 50, 10, new Set([7]))).toBeNull());
+  it('needs a fix precise enough to tell', () => expect(approachAlert(next, 50, 120, new Set())).toBeNull());
+  it('needs a next stop and a distance', () => {
+    expect(approachAlert(null, 50, 10, new Set())).toBeNull();
+    expect(approachAlert(next, null, null, new Set())).toBeNull();
   });
 });

@@ -1,12 +1,12 @@
 import React, { lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowUp, ChevronDown, ChevronLeft, ChevronRight, CircleCheck, Footprints, Flag, LocateFixed, Map as MapIcon, X } from 'lucide-react';
+import { ArrowUp, BellRing, ChevronDown, ChevronLeft, ChevronRight, CircleCheck, Footprints, Flag, LocateFixed, Map as MapIcon, X } from 'lucide-react';
 import type { Location, Route } from '../data/locations';
 import { photoForPlace } from '../data/photo-resolve';
-import { distanceMeters, formatDistance, MAX_ACCURACY_METERS } from '../lib/geo';
+import { ARRIVE_METERS, distanceMeters, formatDistance, MAX_ACCURACY_METERS } from '../lib/geo';
 import { markVisited, useVisited } from '../lib/visited';
 import { walkMinutes, walkPlan, walkStops } from '../lib/walk';
-import { arrowRotation, bearingDegrees, compassPoint, startIndex } from '../lib/walk-mode';
+import { approachAlert, arrowRotation, bearingDegrees, compassPoint, startIndex } from '../lib/walk-mode';
 import { useDialog } from '../lib/useDialog';
 import { useHeading, useWakeLock } from '../lib/useWalkSensors';
 import { AudioGuide } from './AudioGuide';
@@ -28,6 +28,15 @@ const readMapOpen = () => {
     return window.localStorage.getItem(MAP_KEY) === '1';
   } catch {
     return false;
+  }
+};
+// "Almost there" alerts: on unless turned off, remembered on the device.
+const APPROACH_KEY = 'cw:walk-approach';
+const readApproachOn = () => {
+  try {
+    return window.localStorage.getItem(APPROACH_KEY) !== '0';
+  } catch {
+    return true;
   }
 };
 import { minutesLabel as minutes, stopOfLabel } from './WalkInfo';
@@ -83,6 +92,21 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
       return !open;
     });
 
+  // "Almost there": once per stop, about 60 m before arriving.
+  const [approachOn, setApproachOn] = useState(readApproachOn);
+  const [approaching, setApproaching] = useState<Location | null>(null);
+  const announced = useRef(new Set<number>());
+  const toggleApproach = () =>
+    setApproachOn(on => {
+      try {
+        window.localStorage.setItem(APPROACH_KEY, on ? '0' : '1');
+      } catch {
+        // Not remembered; it still changes.
+      }
+      if (on) setApproaching(null);
+      return !on;
+    });
+
   // Near me spotted an arrival: if it's one of this walk's stops, move there.
   useEffect(() => {
     const place = nearMe.arrivedPlace;
@@ -94,6 +118,22 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
     markVisited(place.id);
     nearMe.dismissArrival();
   }, [nearMe.arrivedPlace, stops, nearMe]);
+
+  // Whenever the position or the next stop changes: announce the next stop once, when close.
+  const nextStop = stops.length ? plan.get(stops[Math.min(index, stops.length - 1)].id)?.leg?.next ?? null : null;
+  const liveFix = nearMe.fix && nearMe.fix.accuracy <= MAX_ACCURACY_METERS * 2 ? nearMe.fix : null;
+  useEffect(() => {
+    // A new next stop (or none): any banner was for the one before.
+    setApproaching(a => (a && a.id === nextStop?.id ? a : null));
+    if (!approachOn || !liveFix || !nextStop) return;
+    const id = approachAlert(nextStop, distanceMeters(liveFix, nextStop), liveFix.accuracy, announced.current, ARRIVE_METERS);
+    if (id === null) return;
+    announced.current.add(id);
+    setApproaching(nextStop);
+    // A gentle buzz for a phone in a pocket (where vibration is supported); never a sound.
+    navigator.vibrate?.([120, 80, 120]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveFix?.lat, liveFix?.lng, liveFix?.accuracy, nextStop?.id, approachOn]);
 
   if (stops.length === 0) return null;
   const stop = stops[Math.min(index, stops.length - 1)];
@@ -159,6 +199,17 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
             <BreakView place={breakPlace.place} distance={breakPlace.distance} isArabic={ar} onBack={backFromBreak} />
           ) : (
           <>
+          {approaching && approaching.id === next?.id && (
+            <p className="flex items-center gap-2 rounded-2xl bg-gold/15 text-gold-ink px-4 py-3 text-sm font-bold" role="status" aria-live="polite">
+              <BellRing className="w-5 h-5 shrink-0" aria-hidden="true" />
+              {byLang({
+                en: `Almost there: ${name(approaching)}`,
+                ar: `اقتربت من ${name(approaching)}`,
+                fr: `Presque arrivé : ${name(approaching)}`,
+                es: `Casi has llegado: ${name(approaching)}`,
+              })}
+            </p>
+          )}
           {arrivedId === stop.id && (
             <p className="flex items-center gap-2 rounded-2xl bg-nile/10 text-nile px-4 py-3 text-sm font-bold" role="status" aria-live="polite">
               <CircleCheck className="w-5 h-5 shrink-0" />
@@ -222,6 +273,12 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
             )}
             {nearMe.on && !fix && !nearMe.error && <p className="mt-3 text-xs text-stone-500">{L('Finding your location…', 'جارٍ تحديد موقعك…')}</p>}
             {nearMe.error && <p className="mt-3 text-xs text-red-700">{nearMe.error}</p>}
+            {nearMe.on && next && (
+              <label className="mt-3 flex items-center gap-2 min-h-11 text-xs text-stone-600 cursor-pointer">
+                <input type="checkbox" checked={approachOn} onChange={toggleApproach} className="w-4 h-4 accent-nile" />
+                {L('Alert me when the next stop is close (vibrates)', 'نبهني عند الاقتراب من المحطة التالية (اهتزاز)')}
+              </label>
+            )}
           </section>
 
           <section className="bg-white rounded-3xl border border-sand/50 p-3">
