@@ -34,6 +34,7 @@ import { DisplaySettings } from './DisplaySettings';
 import { HelpfulPrompt } from './HelpfulPrompt';
 import { OtherRouteResults } from './OtherRouteResults';
 import { SharePlace, ShareRoute } from './ShareRoute';
+import { RouteFinder } from './RouteFinder';
 import { PlanVisit } from './PlanVisit';
 import { isPlaceLink, isRouteLink, placeFromLocation, routeFromLocation } from '../lib/share';
 import { askForCompass } from '../lib/useWalkSensors';
@@ -583,6 +584,15 @@ export const MainContent: React.FC = () => {
               </div>
             ))}
           </div>
+          <RouteFinder
+            routes={routes}
+            places={locations}
+            onPick={id => {
+              clearSharedLink();
+              setSelectedRoute(id);
+              setSelectedLocation(null);
+            }}
+          />
         </div>
 
         {/* Current Route Meta */}
