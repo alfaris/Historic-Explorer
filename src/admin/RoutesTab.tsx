@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, Plus } from 'lucide-react';
 import type { Content, Route } from '../data/content';
 import type { SaveFn } from './AdminApp';
@@ -48,6 +48,9 @@ export function RoutesTab({ content, save, initialRouteId = null, onSelected, on
   // Highlights are edited as raw text (one per line) and split only when saving,
   // so spaces and new lines aren't trimmed away while typing.
   const [highlights, setHighlights] = useState<Record<Lang, string>>({ en: '', ar: '', fr: '', es: '' });
+  // The latest highlights, for a translation that comes back after the admin typed some.
+  const highlightsNow = useRef(highlights);
+  highlightsNow.current = highlights;
   // The stops' walking order, as place IDs. Applied to the places when saving.
   const [order, setOrder] = useState<number[]>([]);
 
@@ -120,8 +123,10 @@ export function RoutesTab({ content, save, initialRouteId = null, onSelected, on
   const applyDrafts = (lang: OptionalLang, texts: Record<string, string>) => {
     setDraft(d => d && fillEmpty(d, texts, [fieldKey('name', lang), fieldKey('description', lang), fieldKey('metro', lang), fieldKey('gettingThere', lang)]));
     const drafted = lines(highlights.en).map((_, i) => texts[`h${i}`]).filter(Boolean);
-    if (drafted.length && !lines(highlights[lang]).length) {
-      setHighlights(h => (lines(h[lang]).length ? h : { ...h, [lang]: drafted.join('\n') }));
+    // The highlights as they are now (the admin may have typed some while
+    // Gemini was translating): the drafts, and their mark, go in only if still empty.
+    if (drafted.length && !lines(highlightsNow.current[lang]).length) {
+      setHighlights(h => ({ ...h, [lang]: drafted.join('\n') }));
       setDraft(d => d && withDrafted(d, [fieldKey('highlights', lang)]));
     }
   };
