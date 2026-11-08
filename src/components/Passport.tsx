@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Binoculars, Image as ImageIcon, Stamp as StampIcon, X } from 'lucide-react';
 import type { Route } from '../data/locations';
-import { makePassportImage } from '../lib/passport-image';
 import { stampCount, stampDate, useStamps, type Stamp } from '../lib/passport';
 import { useDialog } from '../lib/useDialog';
 import { L, byLang, currentLang, nameOf } from '../i18n/lang';
@@ -131,6 +130,8 @@ function SharePassport({ routes }: { routes: Route[] }) {
       const families = ar ? [ARABIC] : [SERIF, SANS];
       await Promise.race([Promise.all(families.map(f => document.fonts.load(`700 48px ${f}`).catch(() => []))), new Promise(r => setTimeout(r, 1500))]);
     }
+    // The drawing code loads only when the passport is opened with stamps to share.
+    const { makePassportImage } = await import('../lib/passport-image');
     const blob = await makePassportImage({
       title: L('My Cairo passport', 'جواز سفري في القاهرة'),
       count: walksLabel(stampCount(stamps, routes), routes.length),
