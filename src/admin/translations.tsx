@@ -11,16 +11,21 @@ import { api } from './api';
 import { withDrafted, withoutDrafted } from '../lib/drafted';
 import { Button } from './ui';
 
-/**
- * Copy of `obj` with `key` set, or removed when the value is empty ('', [], undefined).
- * Typed by hand, so no longer a Gemini draft to review.
- */
+/** Copy of `obj` with `key` set, or removed when the value is empty ('', [], undefined). */
 export function withOptional<T extends object, K extends keyof T>(obj: T, key: K, value: T[K] | string | undefined): T {
-  const next = withoutDrafted({ ...obj }, [String(key)]);
+  const next = { ...obj };
   if (Array.isArray(value) ? value.length : value) (next as Record<keyof T, unknown>)[key] = value;
   else delete next[key];
   return next;
 }
+
+/**
+ * A field typed by hand in an editor: set as withOptional does, and no longer
+ * a Gemini draft to review. (Not for building the item to save, which must
+ * keep the marks.)
+ */
+export const typedField = <T extends object, K extends keyof T>(obj: T, key: K, value: T[K] | string | undefined): T =>
+  withoutDrafted(withOptional(obj, key, value), [String(key)]);
 
 /**
  * `obj` with Gemini's drafts in the `keys` fields that are still empty (the

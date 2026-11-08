@@ -20,7 +20,7 @@ import { DraftReview } from './DraftReview';
 import { isActiveMosque } from '../lib/prayer-times';
 import { builtProblems, eraById, eraForYear, ERAS, isEraId, YEAR_MAX, YEAR_MIN } from '../lib/eras';
 import type { PlaceSection } from './content-health';
-import { fieldKey, FillMissingButton, missingPlaceText, withOptional, fillEmpty } from './translations';
+import { fieldKey, FillMissingButton, missingPlaceText, withOptional, fillEmpty, typedField } from './translations';
 
 const CAIRO_CENTRE = { lat: 30.0444, lng: 31.2357 };
 
@@ -117,7 +117,7 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
 
   const set = <K extends keyof Location>(key: K, value: Location[K]) => setDraft(d => (d ? { ...d, [key]: value } : d));
   // Optional per-language text fields (nameFr, feeAr, …): empty ones are left out of the draft.
-  const setField = (key: keyof Location, value: string) => setDraft(d => (d ? withOptional(d, key, value) : d));
+  const setField = (key: keyof Location, value: string) => setDraft(d => (d ? typedField(d, key, value) : d));
 
   // Places still missing each optional language (the app shows their English meanwhile).
   const missingBy = Object.fromEntries(
@@ -446,7 +446,7 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
             item={draft}
             src={(draft.photo ?? builtInPhoto(`place-${draft.id}`))?.src}
             name={draft.nameEn}
-            onChange={(key, value) => setDraft(d => (d ? withOptional(d, key, value) : d))}
+            onChange={(key, value) => setDraft(d => (d ? typedField(d, key, value) : d))}
             onDraft={texts => setDraft(d => (d ? fillEmpty(d, texts, PHOTO_ALT_KEYS) : d))}
           />
 

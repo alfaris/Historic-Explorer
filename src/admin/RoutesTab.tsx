@@ -10,7 +10,7 @@ import { applyStopOrder, walkPlan, walkStops } from '../lib/walk';
 import { RouteQr } from './RouteQr';
 import { RouteAudio } from './RouteAudio';
 import { DraftReview } from './DraftReview';
-import { fieldKey, FillMissingButton, withOptional, fillEmpty } from './translations';
+import { fieldKey, FillMissingButton, withOptional, fillEmpty, typedField } from './translations';
 import { LANGS, LANGUAGES, OPTIONAL_LANGS, type Lang, type OptionalLang } from '../i18n/lang';
 import { routeText } from '../lib/route-format';
 import { plannedKm, plannedWalk, type PlaceSection } from './content-health';
@@ -99,7 +99,7 @@ export function RoutesTab({ content, save, initialRouteId = null, onSelected, on
       return { ...next, ...routeText(next) };
     });
   const numberValue = (n: number) => (Number.isFinite(n) ? String(n) : '');
-  const setField = (key: keyof Route, value: string) => setDraft(d => (d ? withOptional(d, key, value) : d));
+  const setField = (key: keyof Route, value: string) => setDraft(d => (d ? typedField(d, key, value) : d));
 
   // Empty fields in an optional language, with the English to draft them from. Highlights go line by line.
   const missingIn = (lang: OptionalLang): Record<string, string> => {
@@ -341,7 +341,7 @@ export function RoutesTab({ content, save, initialRouteId = null, onSelected, on
             item={draft}
             src={(draft.photo ?? (draft.id ? builtInPhoto(`route-${draft.id}`) : undefined))?.src}
             name={draft.nameEn}
-            onChange={(key, value) => setDraft(d => (d ? withOptional(d, key, value) : d))}
+            onChange={(key, value) => setDraft(d => (d ? typedField(d, key, value) : d))}
             onDraft={texts => setDraft(d => (d ? fillEmpty(d, texts, PHOTO_ALT_KEYS) : d))}
           />
           {!isNew && original && <RouteQr route={original} />}

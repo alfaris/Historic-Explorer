@@ -37,13 +37,16 @@ describe('saved with the content', () => {
 
 describe('in the admin', () => {
   it('Gemini drafts are marked; typing in a field clears its mark', async () => {
-    const { fillEmpty, withOptional } = await import('../admin/translations');
+    const { fillEmpty, typedField, withOptional } = await import('../admin/translations');
     const place = { ...bundledContent.places[0], nameFr: 'Déjà écrit' };
     const filled = fillEmpty(place, { nameFr: 'Brouillon', descriptionFr: 'Une description.' }, ['nameFr', 'descriptionFr']);
     // Only the field that was empty is filled, and marked.
     expect(filled.nameFr).toBe('Déjà écrit');
     expect(draftedOf(filled)).toEqual(['descriptionFr']);
-    expect(draftedOf(withOptional(filled, 'descriptionFr', 'Corrigée.'))).toEqual([]);
+    expect(draftedOf(typedField(filled, 'descriptionFr', 'Corrigée.'))).toEqual([]);
+    // Building the item to save (withOptional) keeps the marks, e.g. a route's drafted highlights.
+    const route = withOptional({ ...bundledContent.routes[0], highlightsFr: ['Une'], drafted: ['highlightsFr'] }, 'highlightsFr', ['Une']);
+    expect(draftedOf(route)).toEqual(['highlightsFr']);
   });
   it('the checklist lists drafts by item and language', async () => {
     const { draftsToReview, draftSection } = await import('../admin/content-health');
