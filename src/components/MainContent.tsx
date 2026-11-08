@@ -32,6 +32,10 @@ import { breakCount } from '../lib/weather';
 import { nextQuarter } from '../lib/visit-plan';
 import { PrayerNotice } from './PrayerTimes';
 import { SaveToggle, SavedButton } from './Saved';
+import { PassportButton, PassportSheet } from './Passport';
+import { stampRoute } from '../lib/passport';
+import { cairoDate } from '../lib/special-hours';
+import { spotCount, spotted } from '../lib/spot-it';
 import { DisplaySettings } from './DisplaySettings';
 import { HelpfulPrompt } from './HelpfulPrompt';
 import { OtherRouteResults } from './OtherRouteResults';
@@ -264,6 +268,8 @@ export const MainContent: React.FC = () => {
   // completed during the walk waits for the walk to end, so the walk (with the
   // last stop's audio guide) and the summary are never open at once.
   const [finishedRoute, setFinishedRoute] = useState<string | null>(null);
+  // The passport, opened from the finish screen's "See my passport".
+  const [passportOpen, setPassportOpen] = useState(false);
   const finishAfterWalk = React.useRef<string | null>(null);
   const walkingRef = React.useRef(false);
   walkingRef.current = walking;
@@ -285,6 +291,9 @@ export const MainContent: React.FC = () => {
       const summary = walkSummary(locations, r.id, visited);
       counts.set(r.id, summary.visited);
       if (!fresh && justCompleted(visitedBefore.current!.counts.get(r.id) ?? null, summary)) {
+        // The stamp goes in the passport now, with today's date, even if the
+        // finish screen waits for the walk to end (and the page is closed first).
+        stampRoute(r.id, cairoDate(new Date()), spotCount(locations, r.id, spotted.get()));
         if (walkingRef.current) finishAfterWalk.current = r.id;
         else setFinishedRoute(r.id);
       }
@@ -554,6 +563,7 @@ export const MainContent: React.FC = () => {
               {t('routes')}
             </h2>
             <div className="h-px flex-1 bg-sand/50"></div>
+            <PassportButton routes={routes} />
             <SavedButton places={locations} routes={routes} onOpen={openPlace} />
           </div>
           <div className="flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
@@ -1020,7 +1030,18 @@ export const MainContent: React.FC = () => {
       {viewMode !== 'near' && !walking && (
         <NearMeOverlay nearMe={nearMe} isArabic={isArabic} onOpenPlace={openPlace} onShowTab={() => setViewMode('near')} />
       )}
-      {finishedRouteData && <WalkFinish route={finishedRouteData} places={locations} onClose={() => setFinishedRoute(null)} />}
+      {finishedRouteData && (
+        <WalkFinish
+          route={finishedRouteData}
+          places={locations}
+          onClose={() => setFinishedRoute(null)}
+          onShowPassport={() => {
+            setFinishedRoute(null);
+            setPassportOpen(true);
+          }}
+        />
+      )}
+      {passportOpen && <PassportSheet routes={routes} onClose={() => setPassportOpen(false)} />}
       {walking && (
         <LazyBoundary
           key={walkAttempt}
