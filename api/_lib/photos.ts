@@ -66,3 +66,11 @@ export async function handlePhotoServe(request: Request): Promise<Response> {
     },
   });
 }
+
+/** The bytes of an uploaded photo (for the admin's description draft), or null. */
+export async function readUploadedPhoto(id: string): Promise<Uint8Array | null> {
+  if (!/^[0-9a-f]{64}$/.test(id) || !hasBlobStore()) return null;
+  const result = await get(`${PREFIX}${id}`, { access: 'private' }).catch(() => null);
+  if (!result?.stream) return null;
+  return new Uint8Array(await new Response(result.stream).arrayBuffer());
+}

@@ -4,11 +4,12 @@ import type { Content, Route } from '../data/content';
 import type { SaveFn } from './AdminApp';
 import { Button, Field, inputClass, sameValue } from './ui';
 import { PhotoField } from './PhotoField';
+import { PHOTO_ALT_KEYS, PhotoAltFields, withoutPhotoAlts } from './PhotoAltFields';
 import { builtInPhoto } from '../data/photo-resolve';
 import { applyStopOrder, walkPlan, walkStops } from '../lib/walk';
 import { RouteQr } from './RouteQr';
 import { RouteAudio } from './RouteAudio';
-import { fieldKey, FillMissingButton, withOptional } from './translations';
+import { fieldKey, FillMissingButton, withOptional, fillEmpty } from './translations';
 import { LANGS, LANGUAGES, OPTIONAL_LANGS, type Lang, type OptionalLang } from '../i18n/lang';
 import { routeText } from '../lib/route-format';
 import { plannedKm, plannedWalk } from './content-health';
@@ -248,9 +249,18 @@ export function RoutesTab({ content, save, initialRouteId = null, onSelected }: 
             builtIn={draft.id ? builtInPhoto(`route-${draft.id}`) : undefined}
             onChange={photo => setDraft(d => {
               if (!d) return d;
-              const { photo: _old, ...rest } = d;
+              const { photo: old, ...kept } = d;
+              // A different photo: the descriptions were of the old one.
+              const rest = old?.src === photo?.src ? kept : withoutPhotoAlts(kept);
               return photo ? { ...rest, photo } : rest;
             })}
+          />
+          <PhotoAltFields
+            item={draft}
+            src={(draft.photo ?? (draft.id ? builtInPhoto(`route-${draft.id}`) : undefined))?.src}
+            name={draft.nameEn}
+            onChange={(key, value) => setDraft(d => (d ? withOptional(d, key, value) : d))}
+            onDraft={texts => setDraft(d => (d ? fillEmpty(d, texts, PHOTO_ALT_KEYS) : d))}
           />
           {!isNew && original && <RouteQr route={original} />}
           {!isNew && original && placeCount(original.id) > 0 && <RouteAudio key={original.id} places={content.places.filter(p => p.routeId === original.id)} />}

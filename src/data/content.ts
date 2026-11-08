@@ -39,7 +39,7 @@ export const CATEGORY_IDS = categories.map(c => c.id) as Category[];
 // Roughly Greater Cairo. Generous, but catches swapped lat/lng and typos.
 export const CAIRO_BOUNDS = { minLat: 29.9, maxLat: 30.15, minLng: 31.1, maxLng: 31.4 };
 
-const LIMITS = { name: 120, description: 2000, highlights: 8, fee: 120 };
+const LIMITS = { name: 120, description: 2000, highlights: 8, fee: 120, photoAlt: 250 };
 
 const hasArabic = (value: string) => /[؀-ۿ]/.test(value);
 const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
@@ -72,6 +72,12 @@ function photoProblems(label: string, photo: Photo | undefined): string[] {
   if (!httpsUrl(photo.licenseUrl) || !httpsUrl(photo.sourceUrl)) problems.push(`${label}: photo links must be https:// addresses.`);
   return problems;
 }
+
+/** Photo descriptions (photoAltEn, …) longer than a screen reader should read out. */
+const photoAltProblems = (label: string, o: object) =>
+  LANGS.map(l => `photoAlt${LANGUAGES[l].suffix}`)
+    .filter(k => String((o as Record<string, unknown>)[k] ?? '').length > LIMITS.photoAlt)
+    .map(k => `${label}: ${k} (photo description) is longer than ${LIMITS.photoAlt} characters.`);
 
 const finite = (v: unknown) => (v === null || v === '' || v === undefined ? NaN : Number(v));
 
@@ -132,6 +138,7 @@ export function normalizeContent(input: unknown): Content {
       ...listFields(r, 'highlights'),
       ...routeNumbers(r),
       ...(normalizePhoto(r?.photo) ? { photo: normalizePhoto(r?.photo) } : {}),
+      ...textFields(r, ['photoAlt'], LANGS),
     })),
     places: placesIn.map((p: any): Location => ({
       id: Number(p?.id),
@@ -150,6 +157,7 @@ export function normalizeContent(input: unknown): Content {
       lat: Number(p?.lat),
       lng: Number(p?.lng),
       ...(normalizePhoto(p?.photo) ? { photo: normalizePhoto(p?.photo) } : {}),
+      ...textFields(p, ['photoAlt'], LANGS),
     })),
   };
 }
@@ -189,7 +197,7 @@ export function validateContent(content: Content): string[] {
     for (const [field, max] of [['nameEn', LIMITS.name], ['nameAr', LIMITS.name], ['descriptionEn', LIMITS.description], ['descriptionAr', LIMITS.description]] as const) {
       if (r[field].length > max) problems.push(`${label}: ${field} is longer than ${max} characters.`);
     }
-    problems.push(...photoProblems(label, r.photo));
+    problems.push(...photoProblems(label, r.photo), ...photoAltProblems(label, r));
   }
 
   const placeIds = new Set<number>();
@@ -214,7 +222,7 @@ export function validateContent(content: Content): string[] {
     if (p.hours) problems.push(...hoursProblems(p.hours).map(problem => `${label}: ${problem}`));
     if (p.tips) problems.push(...tipsProblems(p.tips).map(problem => `${label}: ${problem}`));
     problems.push(...builtProblems(p).map(problem => `${label}: ${problem}`));
-    problems.push(...photoProblems(label, p.photo));
+    problems.push(...photoProblems(label, p.photo), ...photoAltProblems(label, p));
     const b = CAIRO_BOUNDS;
     if (!(p.lat >= b.minLat && p.lat <= b.maxLat && p.lng >= b.minLng && p.lng <= b.maxLng)) {
       problems.push(`${label}: coordinates are outside Cairo (check latitude and longitude aren't swapped).`);

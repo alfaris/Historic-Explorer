@@ -9,11 +9,12 @@ import type { GlossaryTerm } from '../lib/glossary';
 import type { SpecialPeriod } from '../lib/special-hours';
 import { eraOf } from '../lib/eras';
 
-export type Gap = 'photo' | 'hours' | 'era' | OptionalLang;
+export type Gap = 'photo' | 'photoAlt' | 'hours' | 'era' | OptionalLang;
 
 /** Each item the checklist tracks, with the place editor section that fixes it. */
 export const GAPS: { id: Gap; label: string; section: PlaceSection }[] = [
   { id: 'photo', label: 'Photo', section: 'photo' },
+  { id: 'photoAlt', label: 'Photo description', section: 'photo' },
   { id: 'hours', label: 'Opening hours', section: 'hours' },
   { id: 'era', label: 'Build date or era', section: 'built' },
   ...OPTIONAL_LANGS.map(lang => ({ id: lang, label: LANGUAGES[lang].english, section: `lang-${lang}` as const })),
@@ -31,10 +32,12 @@ const hasLang = (o: Record<string, unknown>, lang: OptionalLang, bases: string[]
 /** Only monuments need a build date or era (not cafés, workshops and the like). */
 const needsEra = (place: Location) => place.category === 'monument';
 
-/** What a place is missing: a photo (uploaded or built in), opening hours, a build date or era (monuments), or a language (name and description). */
+/** What a place is missing: a photo (uploaded or built in) or its description, opening hours, a build date or era (monuments), or a language (name and description). */
 export function placeGaps(place: Location): Gap[] {
   const gaps: Gap[] = [];
   if (!photoForPlace(place)) gaps.push('photo');
+  // A photo screen readers only know by the place's name.
+  else if (!place.photoAltEn?.trim()) gaps.push('photoAlt');
   if (!place.hours) gaps.push('hours');
   if (needsEra(place) && !eraOf(place)) gaps.push('era');
   for (const lang of OPTIONAL_LANGS) {

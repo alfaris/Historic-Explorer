@@ -15,7 +15,7 @@ import { Location, categories } from '../data/locations';
 import { useLanguage } from '../i18n/LanguageContext';
 import { HistoricPlaceholder } from './HistoricPlaceholder';
 import { PlacePhoto } from './PlacePhoto';
-import { photoForPlace } from '../data/photo-resolve';
+import { photoForPlace, photoAltOf } from '../data/photo-resolve';
 import { useVisited } from '../lib/visited';
 import { useSaved } from '../lib/saved';
 
@@ -242,7 +242,7 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
             <div className="flex flex-col items-center gap-3 p-3 bg-white rounded-2xl shadow-2xl border border-sand/50 max-w-[160px]">
               <PlacePhoto
                 photo={photoForPlace(loc)}
-                alt={nameOf(loc)}
+                alt={photoAltOf(loc)}
                 className="w-full h-12 rounded-xl shadow-md"
                 fallback={
                   <HistoricPlaceholder 
@@ -264,7 +264,7 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
             <div className="p-4 bg-[#fdfcf8] min-w-[240px]">
               <PlacePhoto
                 photo={photoForPlace(loc)}
-                alt={nameOf(loc)}
+                alt={photoAltOf(loc)}
                 className="w-full h-40 rounded-xl mb-4 shadow-sm border border-sand/30"
                 showCredit
                 fallback={

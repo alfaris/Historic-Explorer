@@ -2,7 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { Clock, Flag, Footprints, RotateCcw, X } from 'lucide-react';
 import type { Location, Route } from '../data/locations';
-import { photoForRoute } from '../data/photo-resolve';
+import { photoForRoute, photoAltOf } from '../data/photo-resolve';
 import { formatDistance } from '../lib/geo';
 import { useDialog } from '../lib/useDialog';
 import { clearVisited, useVisited } from '../lib/visited';
@@ -51,7 +51,7 @@ export function WalkFinish({ route, places, onClose }: { route: Route; places: L
         >
           <X className="w-5 h-5" />
         </button>
-        <PlacePhoto photo={photo} alt={nameOf(route)} className="w-full h-44" sizes="(min-width: 448px) 448px, 100vw" fallback={<div className="h-20 bg-nile/10" />} />
+        <PlacePhoto photo={photo} alt={photoAltOf(route)} className="w-full h-44" sizes="(min-width: 448px) 448px, 100vw" fallback={<div className="h-20 bg-nile/10" />} />
         <div className="p-6 text-center">
           <Flag className="w-8 h-8 text-gold mx-auto mb-2" aria-hidden="true" />
           <h2 id="walk-finish-title" className={`text-3xl text-ink mb-1 ${ar ? 'font-arabic font-bold' : 'font-serif'}`}>{title}</h2>

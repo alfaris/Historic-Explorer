@@ -12,7 +12,7 @@ import { useVisited } from '../lib/visited';
 import { justCompleted, walkSummary } from '../lib/walk-summary';
 import { NearMeOverlay, NearMeView, useNearMe } from './NearMe';
 import { ReportProblem } from './ReportProblem';
-import { photoForPlace, photoForRoute } from '../data/photo-resolve';
+import { photoForPlace, photoForRoute, photoAltOf } from '../data/photo-resolve';
 import { Search, MapPin, Navigation, Map, List, ChevronRight, Cake, Coffee, Utensils, Hammer, BookOpen, Users, Landmark, ArrowUp, Clock, Accessibility, X, Printer, Route as RouteIcon, Star, LocateFixed, Footprints } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { LiveLocationInfo } from './LiveLocationInfo';
@@ -396,7 +396,7 @@ export const MainContent: React.FC = () => {
             <div className="md:w-1/3 h-56 md:h-auto overflow-hidden">
               <PlacePhoto
                 photo={photoForPlace(loc)}
-                alt={nameOf(loc)}
+                alt={photoAltOf(loc)}
                 sizes="(min-width: 768px) 33vw, 100vw"
                 className="w-full h-full min-h-56"
                 showCredit={isSelected}
@@ -873,7 +873,7 @@ export const MainContent: React.FC = () => {
                         <div className="md:col-span-1">
                           <PlacePhoto
                             photo={photoForPlace(loc)}
-                            alt={nameOf(loc)}
+                            alt={photoAltOf(loc)}
                             className="w-full h-80 rounded-3xl shadow-xl"
                             showCredit
                             fallback={
