@@ -23,8 +23,12 @@ export function PlaceBadges({ place }: { place: Location }) {
   );
 }
 
-/** The open card's body: the description with its glossary links, the audio guide, hours and fee, visitor tips and Spot it. */
-export function PlaceDetails({ place }: { place: Location }) {
+/**
+ * The open card's body: the description with its glossary links, the audio
+ * guide, hours and fee, visitor tips and Spot it. `audioNote` shows instead of
+ * the audio guide (the admin's preview of a description not yet recorded).
+ */
+export function PlaceDetails({ place, audioNote }: { place: Location; audioNote?: string }) {
   const description = descriptionOf(place);
   return (
     <>
@@ -32,7 +36,11 @@ export function PlaceDetails({ place }: { place: Location }) {
         <p className="text-stone-600 text-lg leading-relaxed mb-4 font-serif italic" lang={fallbackLang(place, 'description')}>
           {description ? <GlossaryText text={description} /> : L('No description available for this location at the moment.', 'لا يوجد وصف متاح حالياً لهذا الموقع.')}
         </p>
-        <AudioGuide locationId={place.id} text={description} langCode={currentLang()} />
+        {audioNote ? (
+          <p className="text-xs text-stone-500 rounded-xl border border-dashed border-sand p-3" lang="en" dir="ltr">{audioNote}</p>
+        ) : (
+          <AudioGuide locationId={place.id} text={description} langCode={currentLang()} />
+        )}
       </div>
       <PlaceHours place={place} />
       <VisitorTips place={place} />

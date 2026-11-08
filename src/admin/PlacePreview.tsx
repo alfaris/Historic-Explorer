@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { categories } from '../data/locations';
 import type { Content, Location } from '../data/content';
 import { ContentValue } from '../data/ContentContext';
 import { photoAltOf, photoForPlace } from '../data/photo-resolve';
-import { LANGS, LANGUAGES, fallbackLang, nameOf, setCurrentLang, type Lang } from '../i18n/lang';
+import { LANGS, LANGUAGES, descriptionOf, fallbackLang, nameOf, setCurrentLang, type Lang } from '../i18n/lang';
 import { useDialog } from '../lib/useDialog';
 import { HistoricPlaceholder } from '../components/HistoricPlaceholder';
 import { PlacePhoto } from '../components/PlacePhoto';
@@ -38,8 +39,16 @@ export function PlacePreview({ place, content, onClose }: { place: Location; con
   const category = categories.find(c => c.id === place.category);
   const ar = lang === 'ar';
   const photo = photoForPlace(place);
+  // The recording is made from the saved description: an edited one isn't recorded yet.
+  const saved = content.places.find(p => p.id === place.id);
+  const audioNote = !saved
+    ? 'The audio guide is recorded once the place is saved.'
+    : descriptionOf(saved, lang) !== descriptionOf(place, lang)
+      ? 'The description has changed: its audio guide is recorded again after saving, so the old recording isn’t played here.'
+      : undefined;
 
-  return (
+  // On the page's body, outside the editor's form, so no button in the card can submit (save) the draft.
+  return createPortal(
     <div className="fixed inset-0 z-[3000] bg-ink/50 overflow-y-auto p-4 sm:p-8" onClick={onClose}>
       <span {...guard('start')} />
       <div
@@ -47,6 +56,7 @@ export function PlacePreview({ place, content, onClose }: { place: Location; con
         role="dialog"
         aria-modal="true"
         aria-labelledby="preview-title"
+        data-portal-host
         className="max-w-4xl mx-auto"
         onClick={e => e.stopPropagation()}
       >
@@ -94,7 +104,7 @@ export function PlacePreview({ place, content, onClose }: { place: Location; con
                 </h3>
                 <PlaceBadges place={place} />
                 <div className="pt-8 mt-8 border-t border-chalk">
-                  <PlaceDetails place={place} />
+                  <PlaceDetails place={place} audioNote={audioNote} />
                 </div>
               </div>
             </div>
@@ -102,6 +112,7 @@ export function PlacePreview({ place, content, onClose }: { place: Location; con
         </ContentValue>
       </div>
       <span {...guard('end')} />
-    </div>
+    </div>,
+    document.body,
   );
 }
