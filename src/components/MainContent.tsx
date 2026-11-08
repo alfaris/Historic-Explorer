@@ -16,7 +16,6 @@ import { photoForPlace, photoForRoute, photoAltOf } from '../data/photo-resolve'
 import { Search, MapPin, Navigation, Map, List, ChevronRight, Cake, Coffee, Utensils, Hammer, BookOpen, Users, Landmark, ArrowUp, Clock, Accessibility, X, Printer, Route as RouteIcon, Star, LocateFixed, Footprints } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { LiveLocationInfo } from './LiveLocationInfo';
-import { AudioGuide } from './AudioGuide';
 import { Logo } from './Logo';
 import { RouteDownload } from './RouteDownload';
 import { NextStop, StopNumber, stopOfLabel } from './WalkInfo';
@@ -24,16 +23,14 @@ import { walkPlan } from '../lib/walk';
 import { track } from '../lib/track';
 import { matchScore, searchPlaces } from '../lib/search';
 import { formatDistance, formatDuration } from '../lib/route-format';
-import { HoursBadge, PlaceHours, useNow } from './PlaceHours';
+import { HoursBadge, useNow } from './PlaceHours';
 import { anyFilter, NO_FILTERS, passesFilters, withoutHours, type PlaceFilters } from '../lib/place-filters';
-import { BuiltBadge, EraFilter, ThroughTheAgesButton } from './PlaceEra';
+import { EraFilter, ThroughTheAgesButton } from './PlaceEra';
 import { WeatherAdvice } from './WeatherAdvice';
-import { SpotIt } from './SpotIt';
+import { PlaceBadges, PlaceDetails } from './PlaceDetails';
 import { breakCount } from '../lib/weather';
 import { nextQuarter } from '../lib/visit-plan';
 import { PrayerNotice } from './PrayerTimes';
-import { VisitorTips } from './VisitorTips';
-import { GlossaryText } from './GlossaryText';
 import { SaveToggle, SavedButton } from './Saved';
 import { DisplaySettings } from './DisplaySettings';
 import { HelpfulPrompt } from './HelpfulPrompt';
@@ -431,9 +428,7 @@ export const MainContent: React.FC = () => {
                     {nameOf(loc)}
                   </h3>
                   {plan.get(loc.id) && <div className="mt-2"><StopNumber info={plan.get(loc.id)!} isArabic={isArabic} /></div>}
-                    <BuiltBadge place={loc} className="mt-2" />
-                    <HoursBadge place={loc} className="mt-2" />
-                    <PrayerNotice place={loc} className="mt-1.5" />
+                    <PlaceBadges place={loc} />
                 </div>
                 {plan.get(loc.id) && (
                   <div className="text-3xl font-serif text-gold-soft italic" aria-hidden="true">
@@ -456,20 +451,7 @@ export const MainContent: React.FC = () => {
                     onClick={(e) => e.stopPropagation()}
                   >
                     <div className="pt-8 mt-8 border-t border-chalk">
-                      <div className="mb-8">
-                        <p className="text-stone-600 text-lg leading-relaxed mb-4 font-serif italic" lang={fallbackLang(loc, 'description')}>
-                          {descriptionOf(loc) ? <GlossaryText text={descriptionOf(loc)} /> : L('No description available for this location at the moment.', 'لا يوجد وصف متاح حالياً لهذا الموقع.')}
-                        </p>
-                        <AudioGuide 
-                          locationId={loc.id}
-                          text={descriptionOf(loc)}
-                          langCode={currentLang()} 
-                        />
-                      </div>
-                      
-                      <PlaceHours place={loc} />
-                                  <VisitorTips place={loc} />
-                                  <SpotIt place={loc} className="mt-4" />
+                      <PlaceDetails place={loc} />
                       <LiveLocationInfo locationId={loc.id} />
                       <HelpfulPrompt placeId={loc.id} className="mt-6" />
 
@@ -920,9 +902,7 @@ export const MainContent: React.FC = () => {
                                   {(category ? nameOf(category) : undefined)}
                                 </p>
                                 {plan.get(loc.id) && <div className="mt-2"><StopNumber info={plan.get(loc.id)!} isArabic={isArabic} /></div>}
-                                <BuiltBadge place={loc} className="mt-2" />
-                                <HoursBadge place={loc} className="mt-2" />
-                    <PrayerNotice place={loc} className="mt-1.5" />
+                                <PlaceBadges place={loc} />
                               </div>
                               <button 
                                 onClick={() => setSelectedLocation(null)}
@@ -937,20 +917,7 @@ export const MainContent: React.FC = () => {
                               </div>
                             )}
                             
-                            <div className="mb-8">
-                              <p className="text-stone-600 text-lg leading-relaxed mb-4 font-serif italic" lang={fallbackLang(loc, 'description')}>
-                                {descriptionOf(loc) ? <GlossaryText text={descriptionOf(loc)} /> : L('No description available for this location at the moment.', 'لا يوجد وصف متاح حالياً لهذا الموقع.')}
-                              </p>
-                              <AudioGuide 
-                                locationId={loc.id}
-                                text={descriptionOf(loc)}
-                                langCode={currentLang()} 
-                              />
-                            </div>
-                            
-                            <PlaceHours place={loc} />
-                                  <VisitorTips place={loc} />
-                                  <SpotIt place={loc} className="mt-4" />
+                            <PlaceDetails place={loc} />
                             <LiveLocationInfo locationId={loc.id} />
                             <HelpfulPrompt placeId={loc.id} className="mt-6" />
                             

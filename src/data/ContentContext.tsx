@@ -31,3 +31,8 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
 }
 
 export const useContent = () => useContext(ContentContext);
+
+/** Serves the given content instead: the admin's place preview, with the unsaved draft in it. */
+export function ContentValue({ value, children }: { value: Content; children: React.ReactNode }) {
+  return <ContentContext.Provider value={value}>{children}</ContentContext.Provider>;
+}
