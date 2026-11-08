@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Binoculars, Clock, Flag, Footprints, RotateCcw, X } from 'lucide-react';
 import { spotCount, spotted } from '../lib/spot-it';
@@ -13,6 +13,9 @@ import { PlacePhoto } from './PlacePhoto';
 import { ShareRoute } from './ShareRoute';
 import { PostcardButton } from './PostcardButton';
 import { RouteRating } from './RouteRating';
+import { StampBadge } from './Passport';
+import { stampRoute, useStamps } from '../lib/passport';
+import { cairoDate } from '../lib/special-hours';
 
 /**
  * The end of a walk: stops visited, roughly how far the visitor walked (from
@@ -20,7 +23,7 @@ import { RouteRating } from './RouteRating';
  * "Walk again". The rating is sent with the anonymous usage counts; nothing
  * else here leaves the device.
  */
-export function WalkFinish({ route, places, onClose }: { route: Route; places: Location[]; onClose: () => void }) {
+export function WalkFinish({ route, places, onClose, onShowPassport }: { route: Route; places: Location[]; onClose: () => void; onShowPassport?: () => void }) {
   const visited = useVisited();
   const summary = walkSummary(places, route.id, visited);
   const { ref, guard } = useDialog<HTMLDivElement>(onClose);
@@ -28,6 +31,11 @@ export function WalkFinish({ route, places, onClose }: { route: Route; places: L
   const photo = photoForRoute(route);
   // "Spot it" challenges found on this route.
   const spots = spotCount(places, route.id, spotted.useIds());
+  // Every stop visited: the route's stamp in the passport (the first finish keeps its date).
+  useEffect(() => {
+    if (summary.complete) stampRoute(route.id, cairoDate(new Date()), spots);
+  }, [summary.complete, route.id, spots.found, spots.total]); // eslint-disable-line react-hooks/exhaustive-deps
+  const stamp = useStamps()[route.id];
 
   const walkAgain = () => {
     if (!window.confirm(L('Start this route again? Your visited marks on it will be cleared.', 'هل تريد بدء هذا المسار من جديد؟ سيتم مسح علامات الزيارة الخاصة به.'))) return;
@@ -100,6 +108,18 @@ export function WalkFinish({ route, places, onClose }: { route: Route; places: L
                 es: `Has encontrado ${spots.found} de ${spots.total}`,
               })}
             </p>
+          )}
+
+          {summary.complete && stamp && (
+            <div className="mb-5 flex flex-col items-center gap-2">
+              <p className="text-sm font-bold text-ink">{L('A new stamp in your passport', 'ختم جديد في جواز سفرك')}</p>
+              <StampBadge route={route} stamp={stamp} size="lg" />
+              {onShowPassport && (
+                <button type="button" onClick={onShowPassport} className="min-h-11 px-3 text-xs font-bold text-nile underline underline-offset-4 hover:no-underline">
+                  {L('See my passport', 'اعرض جواز سفري')}
+                </button>
+              )}
+            </div>
           )}
 
           {summary.visited > 0 && <RouteRating routeId={route.id} className="mb-5" />}
