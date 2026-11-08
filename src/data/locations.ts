@@ -36,6 +36,19 @@ export interface Route {
   photoAltAr?: string;
   photoAltFr?: string;
   photoAltEs?: string;
+  /** Getting there (optional): the place the walk starts from, when not the first stop (a meeting point, say). */
+  startId?: number;
+  /** The nearest metro station to the start, in each language, and the walk from it in minutes. */
+  metroEn?: string;
+  metroAr?: string;
+  metroFr?: string;
+  metroEs?: string;
+  metroMinutes?: number;
+  /** A note on getting to the start, in each language ("Ask for Bab Zuweila: cars can't enter the street"). */
+  gettingThereEn?: string;
+  gettingThereAr?: string;
+  gettingThereFr?: string;
+  gettingThereEs?: string;
 }
 
 export interface Location {

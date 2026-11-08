@@ -39,7 +39,7 @@ export const CATEGORY_IDS = categories.map(c => c.id) as Category[];
 // Roughly Greater Cairo. Generous, but catches swapped lat/lng and typos.
 export const CAIRO_BOUNDS = { minLat: 29.9, maxLat: 30.15, minLng: 31.1, maxLng: 31.4 };
 
-const LIMITS = { name: 120, description: 2000, highlights: 8, fee: 120, photoAlt: 250, spot: 200, spotAnswer: 120 };
+const LIMITS = { name: 120, description: 2000, highlights: 8, fee: 120, photoAlt: 250, spot: 200, spotAnswer: 120, metro: 80, gettingThere: 300 };
 
 const hasArabic = (value: string) => /[؀-ۿ]/.test(value);
 const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
@@ -138,7 +138,10 @@ export function normalizeContent(input: unknown): Content {
       ...listFields(r, 'highlights'),
       ...routeNumbers(r),
       ...(normalizePhoto(r?.photo) ? { photo: normalizePhoto(r?.photo) } : {}),
-      ...textFields(r, ['photoAlt'], LANGS),
+      ...textFields(r, ['photoAlt', 'metro', 'gettingThere'], LANGS),
+      // A start point that's no longer on the route (deleted or moved) is dropped: the first stop applies.
+      ...(placesIn.some((p: any) => Number(p?.id) === Number(r?.startId) && str(p?.routeId) === str(r?.id)) ? { startId: Number(r.startId) } : {}),
+      ...(Number.isInteger(Number(r?.metroMinutes)) && Number(r?.metroMinutes) > 0 ? { metroMinutes: Number(r.metroMinutes) } : {}),
     })),
     places: placesIn.map((p: any): Location => ({
       id: Number(p?.id),
@@ -198,6 +201,15 @@ export function validateContent(content: Content): string[] {
       if (r[field].length > max) problems.push(`${label}: ${field} is longer than ${max} characters.`);
     }
     problems.push(...photoProblems(label, r.photo), ...photoAltProblems(label, r));
+    for (const l of LANGS) {
+      for (const base of ['metro', 'gettingThere'] as const) {
+        const field = `${base}${LANGUAGES[l].suffix}` as const;
+        if ((r[field] ?? '').length > LIMITS[base]) problems.push(`${label}: ${field} is longer than ${LIMITS[base]} characters.`);
+      }
+    }
+    if (r.metroMinutes !== undefined && !(Number.isInteger(r.metroMinutes) && r.metroMinutes >= 1 && r.metroMinutes <= 60)) {
+      problems.push(`${label}: the walk from the metro must be whole minutes, from 1 to 60.`);
+    }
   }
 
   const placeIds = new Set<number>();

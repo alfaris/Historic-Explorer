@@ -37,6 +37,7 @@ import { HelpfulPrompt } from './HelpfulPrompt';
 import { OtherRouteResults } from './OtherRouteResults';
 import { SharePlace, ShareRoute } from './ShareRoute';
 import { RouteFinder } from './RouteFinder';
+import { GettingThere } from './GettingThere';
 import { accessSummary, hasAccessInfo, routeAccess } from '../lib/step-free';
 import { ContinueWalk } from './ContinueWalk';
 import { PlanVisit } from './PlanVisit';
@@ -679,6 +680,7 @@ export const MainContent: React.FC = () => {
                   className="mb-3 max-w-md"
                 />
               )}
+              <GettingThere route={currentRouteData} places={locations} className="mb-3" />
               <RouteDownload route={currentRouteData} places={routePlaces} />
               {plan.size > 0 && (
                 <button
