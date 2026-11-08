@@ -67,3 +67,26 @@ describe('stampRoute', () => {
     vi.unstubAllGlobals();
   });
 });
+
+describe('mergeStamps and a full storage', () => {
+  it('merges two sets of stamps, keeping the earlier date and the most found', async () => {
+    const { mergeStamps } = await import('./passport');
+    expect(mergeStamps({ a: { date: '2026-11-09', found: 2, spots: 3 } }, { a: { date: '2026-11-08', found: 1, spots: 3 }, b: { date: '2026-11-10', found: 0, spots: 0 } })).toEqual({
+      a: { date: '2026-11-08', found: 2, spots: 3 },
+      b: { date: '2026-11-10', found: 0, spots: 0 },
+    });
+  });
+  it("keeps stamps this tab couldn't save", async () => {
+    vi.stubGlobal('window', {
+      localStorage: { getItem: () => null, setItem: () => { throw new DOMException('full', 'QuotaExceededError'); } },
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    });
+    vi.resetModules();
+    const { stampRoute, stampsNow } = await import('./passport');
+    stampRoute('al-muizz', '2026-11-08', { found: 0, total: 0 });
+    stampRoute('coptic-cairo', '2026-11-08', { found: 0, total: 0 });
+    expect(Object.keys(stampsNow()).sort()).toEqual(['al-muizz', 'coptic-cairo']);
+    vi.unstubAllGlobals();
+  });
+});

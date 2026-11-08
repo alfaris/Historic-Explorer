@@ -71,17 +71,23 @@ const read = (): Stamps => {
 };
 const current = () => (stamps ??= typeof window === 'undefined' ? {} : read());
 
-// Changes start from the latest saved stamps, not this tab's copy, so a stamp
-// another tab added moments earlier isn't overwritten (as for visited places).
-// Without storage, the in-memory stamps.
-const latest = (): Stamps => {
-  try {
-    if (typeof window !== 'undefined' && window.localStorage.getItem(KEY) !== undefined) return read();
-  } catch {
-    // No storage: below.
+/**
+ * Both sets of stamps together: stamps are never taken away, so a route
+ * stamped in either is stamped, with the earlier date and the most challenges.
+ */
+export function mergeStamps(a: Stamps, b: Stamps): Stamps {
+  const out: Stamps = { ...a };
+  for (const [id, s] of Object.entries(b)) {
+    const o = out[id];
+    out[id] = o ? { date: o.date < s.date ? o.date : s.date, found: Math.max(o.found, s.found), spots: Math.max(o.spots, s.spots) } : s;
   }
-  return current();
-};
+  return out;
+}
+
+// Changes start from this tab's stamps together with the latest saved ones,
+// so a stamp another tab added moments earlier isn't overwritten, and one this
+// tab couldn't save (storage full or blocked) isn't dropped.
+const latest = (): Stamps => (typeof window === 'undefined' ? current() : mergeStamps(current(), read()));
 
 /** Adds (or updates) a route's stamp. */
 export function stampRoute(routeId: string, date: string, spot: { found: number; total: number }) {
@@ -89,7 +95,7 @@ export function stampRoute(routeId: string, date: string, spot: { found: number;
   const next = withStamp(base, routeId, date, spot);
   if (next === base) {
     // Nothing new here, but another tab's stamps may be newer than this tab's copy.
-    if (base !== stamps) {
+    if (JSON.stringify(base) !== JSON.stringify(current())) {
       stamps = base;
       listeners.forEach(l => l());
     }
@@ -108,7 +114,7 @@ const subscribe = (listener: () => void) => {
   listeners.add(listener);
   const onStorage = (e: StorageEvent) => {
     if (e.key === KEY || e.key === null) {
-      stamps = read();
+      stamps = mergeStamps(current(), read());
       listener();
     }
   };
@@ -118,5 +124,8 @@ const subscribe = (listener: () => void) => {
     window.removeEventListener('storage', onStorage);
   };
 };
+
+/** The stamps now, outside React. */
+export const stampsNow = () => current();
 
 export const useStamps = () => useSyncExternalStore(subscribe, current, () => ({}) as Stamps);
