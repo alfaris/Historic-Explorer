@@ -51,16 +51,35 @@ export function loadForecast(now = Date.now()): Promise<Forecast | null> {
   return pending;
 }
 
-/** The forecast for heat advice: the kept one straight away, then a fresh one when it's due. */
+/** How often an open page checks whether its forecast is due (cheap: loadForecast uses the kept one while it's fresh). */
+const CHECK_MS = 15 * 60 * 1000;
+
+/**
+ * The forecast for heat advice: the kept one straight away, then a fresh one
+ * when it's due, while the page stays open, when the connection comes back
+ * and when the app is shown again.
+ */
 export function useForecast(): Forecast | null {
   const [forecast, setForecast] = useState(readCachedForecast);
   useEffect(() => {
     let active = true;
-    loadForecast().then(f => {
-      if (active && f) setForecast(f);
-    });
+    const refresh = () => {
+      loadForecast().then(f => {
+        if (active && f) setForecast(prev => (prev && prev.fetchedAt === f.fetchedAt ? prev : f));
+      });
+    };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+    refresh();
+    const timer = setInterval(refresh, CHECK_MS);
+    window.addEventListener('online', refresh);
+    document.addEventListener('visibilitychange', onVisible);
     return () => {
       active = false;
+      clearInterval(timer);
+      window.removeEventListener('online', refresh);
+      document.removeEventListener('visibilitychange', onVisible);
     };
   }, []);
   return forecast;
