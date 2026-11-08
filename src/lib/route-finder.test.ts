@@ -52,4 +52,20 @@ describe('suggestRoutes', () => {
     const ps = [place('has-food', 'coffee'), place('has-food', 'restaurant'), place('fits-time', 'monument')];
     expect(suggestRoutes(rs, ps, 'short', ['food'])[0].route.id).toBe('has-food');
   });
+  it('asked for step-free access, puts the most step-free route first', () => {
+    const access = (routeId: string, wheelchair?: 'yes' | 'partial' | 'no') => ({ ...place(routeId, 'monument'), ...(wheelchair ? { tips: { wheelchair } } : {}) });
+    const ps = [
+      ...places,
+      access('short-food', 'yes'), // 2 stops, 1 step-free
+      access('medium-crafts', 'yes'), access('medium-crafts', 'partial'), // 2 stops, 1.5
+      access('long-mosques', 'no'),
+    ];
+    // Without the question, food decides; with it, the most step-free walk comes first.
+    expect(suggestRoutes(routes, ps, 'short', ['food'])[0].route.id).toBe('short-food');
+    const s = suggestRoutes(routes, ps, 'short', ['food'], true);
+    expect(s.map(x => x.route.id)).toEqual(['medium-crafts']);
+    expect(s[0].stepFree).toBe(0.75);
+    // The question alone is enough for a suggestion.
+    expect(suggestRoutes(routes, ps, null, [], true)[0].route.id).toBe('medium-crafts');
+  });
 });

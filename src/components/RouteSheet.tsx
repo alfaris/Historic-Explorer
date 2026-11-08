@@ -10,6 +10,8 @@ import { routeShareUrl } from '../lib/share';
 import { walkPlan, walkStops } from '../lib/walk';
 import { L, LANGUAGES, currentLang, descriptionOf, fallbackLang, nameOf } from '../i18n/lang';
 import { minutesLabel } from './WalkInfo';
+import { accessSummary, hasAccessInfo, routeAccess } from '../lib/step-free';
+import { accessText } from '../lib/visitor-tips';
 
 /**
  * The printable route sheet (A4): the route, a schematic map of the stops,
@@ -71,6 +73,8 @@ export default function RouteSheet({ route, places, onDone }: { route: Route; pl
   }, [qr]);
 
   const meta = [formatDistance(route.distanceKm, lang), formatDuration(route.hoursMin, route.hoursMax, lang)].filter(Boolean).join(' · ');
+  const access = routeAccess(places, route.id);
+  const showAccess = hasAccessInfo(access);
 
   return createPortal(
     <div id="print-sheet" dir={LANGUAGES[lang].dir} lang={lang} className="text-ink bg-white">
@@ -78,6 +82,7 @@ export default function RouteSheet({ route, places, onDone }: { route: Route; pl
         <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-gold-ink">Cairo Walks</p>
         <h1 className={`text-3xl leading-tight ${ar ? 'font-arabic font-bold' : 'font-serif'}`}>{nameOf(route)}</h1>
         {meta && <p className="text-sm text-stone-600">{meta}</p>}
+        {showAccess && <p className="text-sm text-stone-600">{accessSummary(access)}</p>}
         {descriptionOf(route) && <p className="mt-1 text-sm text-stone-700" lang={fallbackLang(route, 'description')}>{descriptionOf(route)}</p>}
       </header>
 
@@ -107,6 +112,9 @@ export default function RouteSheet({ route, places, onDone }: { route: Route; pl
                   {walk !== undefined && <span className="font-normal text-stone-600"> · {minutesLabel(walk)}</span>}
                 </p>
                 {hoursLine(stop) && <p className="text-xs text-stone-600">{hoursLine(stop)}</p>}
+                {showAccess && (
+                  <p className="text-xs text-stone-600">{stop.tips?.wheelchair ? accessText(stop.tips.wheelchair, lang) : L('Access not yet checked', 'لم يُتحقق من الدخول بعد')}</p>
+                )}
                 {description && <p className="text-xs text-stone-700" lang={fallbackLang(stop, 'description')}>{oneLine(description)}</p>}
               </div>
             </li>

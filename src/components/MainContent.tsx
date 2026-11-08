@@ -40,6 +40,7 @@ import { HelpfulPrompt } from './HelpfulPrompt';
 import { OtherRouteResults } from './OtherRouteResults';
 import { SharePlace, ShareRoute } from './ShareRoute';
 import { RouteFinder } from './RouteFinder';
+import { accessSummary, hasAccessInfo, routeAccess } from '../lib/step-free';
 import { ContinueWalk } from './ContinueWalk';
 import { PlanVisit } from './PlanVisit';
 import { isPlaceLink, isRouteLink, placeFromLocation, routeFromLocation } from '../lib/share';
@@ -213,6 +214,7 @@ export const MainContent: React.FC = () => {
   const currentRouteData = routes.find(r => r.id === selectedRoute) || routes[0];
   // Memoized so "Near me" only resets its arrival state when the route changes.
   const routePlaces = useMemo(() => locations.filter(l => l.routeId === selectedRoute), [selectedRoute, locations]);
+  const access = useMemo(() => routeAccess(locations, selectedRoute), [locations, selectedRoute]);
   // Anonymous count of which routes are opened (once per route per visit).
   // Choosing a route drops a shared link that never resolved (e.g. to a place
   // since deleted), so route opens are counted again from here on.
@@ -650,6 +652,12 @@ export const MainContent: React.FC = () => {
                 <span>{formatDuration(currentRouteData.hoursMin, currentRouteData.hoursMax, currentLang())}</span>
               </div>
             </div>
+            {hasAccessInfo(access) && (
+              <p className="order-2 -mt-3 sm:-mt-4 mb-5 sm:mb-6 flex items-center gap-1.5 text-xs text-stone-600">
+                <Accessibility className="w-3.5 h-3.5 shrink-0 text-gold-ink" aria-hidden="true" />
+                {accessSummary(access)}
+              </p>
+            )}
 
             <p className="order-4 sm:order-3 text-stone-500 italic text-base md:text-lg leading-relaxed font-serif mb-6 sm:mb-8 line-clamp-3 sm:line-clamp-none">
               "{descriptionOf(currentRouteData)}"

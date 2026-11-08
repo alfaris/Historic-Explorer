@@ -254,7 +254,17 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
         ) : tab === 'places' ? (
           <PlacesTab content={content} save={save} initialPlaceId={editPlaceId} initialSection={editSection} onSelected={() => { setEditPlaceId(null); setEditSection(null); }} />
         ) : tab === 'routes' ? (
-          <RoutesTab content={content} save={save} initialRouteId={editRouteId} onSelected={() => setEditRouteId(null)} />
+          <RoutesTab
+            content={content}
+            save={save}
+            initialRouteId={editRouteId}
+            onSelected={() => setEditRouteId(null)}
+            onEditPlace={(id, section) => {
+              setEditPlaceId(id);
+              setEditSection(section);
+              setTab('places');
+            }}
+          />
         ) : tab === 'special' ? (
           <SpecialHoursTab content={content} save={save} initialId={editPeriodId} onSelected={() => setEditPeriodId(null)} />
         ) : tab === 'glossary' ? (
