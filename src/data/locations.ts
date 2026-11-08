@@ -57,6 +57,15 @@ export interface Location {
   tips?: VisitorTips;
   /** Visits pause during prayers. Unset: worked out from the name (a mosque). See isActiveMosque. */
   mosque?: boolean;
+  /** "Spot it": a small find-this challenge for families, and its answer (optional, per language). See lib/spot-it. */
+  spotEn?: string;
+  spotAr?: string;
+  spotFr?: string;
+  spotEs?: string;
+  spotAnswerEn?: string;
+  spotAnswerAr?: string;
+  spotAnswerFr?: string;
+  spotAnswerEs?: string;
   /** When it was built and in which era (Through the ages); all optional. See lib/eras. */
   era?: EraId;
   builtFrom?: number;

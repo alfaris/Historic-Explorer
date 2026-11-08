@@ -12,6 +12,7 @@ import { useDialog } from '../lib/useDialog';
 import { useHeading, useWakeLock } from '../lib/useWalkSensors';
 import { AudioGuide } from './AudioGuide';
 import { BuiltBadge } from './PlaceEra';
+import { SpotIt } from './SpotIt';
 import { HistoricPlaceholder } from './HistoricPlaceholder';
 import { PlacePhoto } from './PlacePhoto';
 import type { NearMeState } from './NearMe';
@@ -269,6 +270,7 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
               <PrayerNotice place={stop} className="mb-3" />
               <p className="text-stone-600 leading-relaxed mb-4" lang={fallbackLang(stop, 'description')}><GlossaryText text={descriptionOf(stop)} /></p>
               <VisitorTips place={stop} className="mb-4" />
+              <SpotIt place={stop} className="mb-4" />
               <div className="flex flex-wrap items-center gap-3">
                 <AudioGuide
                   locationId={stop.id}

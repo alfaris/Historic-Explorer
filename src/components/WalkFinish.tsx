@@ -1,13 +1,14 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { Clock, Flag, Footprints, RotateCcw, X } from 'lucide-react';
+import { Binoculars, Clock, Flag, Footprints, RotateCcw, X } from 'lucide-react';
+import { spotCount, spotted } from '../lib/spot-it';
 import type { Location, Route } from '../data/locations';
 import { photoForRoute, photoAltOf } from '../data/photo-resolve';
 import { formatDistance } from '../lib/geo';
 import { useDialog } from '../lib/useDialog';
 import { clearVisited, useVisited } from '../lib/visited';
 import { walkSummary } from '../lib/walk-summary';
-import { L, currentLang, nameOf } from '../i18n/lang';
+import { L, byLang, currentLang, nameOf } from '../i18n/lang';
 import { PlacePhoto } from './PlacePhoto';
 import { ShareRoute } from './ShareRoute';
 import { PostcardButton } from './PostcardButton';
@@ -25,6 +26,8 @@ export function WalkFinish({ route, places, onClose }: { route: Route; places: L
   const { ref, guard } = useDialog<HTMLDivElement>(onClose);
   const ar = currentLang() === 'ar';
   const photo = photoForRoute(route);
+  // "Spot it" challenges found on this route.
+  const spots = spotCount(places, route.id, spotted.useIds());
 
   const walkAgain = () => {
     if (!window.confirm(L('Start this route again? Your visited marks on it will be cleared.', 'هل تريد بدء هذا المسار من جديد؟ سيتم مسح علامات الزيارة الخاصة به.'))) return;
@@ -86,6 +89,18 @@ export function WalkFinish({ route, places, onClose }: { route: Route; places: L
             </div>
           </dl>
           <p className="text-xs text-stone-400 mb-5">{L('Estimated from the walk between the stops you visited.', 'تقدير من المسافة بين المحطات التي زرتها.')}</p>
+
+          {spots.total > 0 && (
+            <p className="flex items-center justify-center gap-2 text-sm font-bold text-ink mb-5">
+              <Binoculars className="w-4 h-4 text-gold-ink" aria-hidden="true" />
+              {byLang({
+                en: `You spotted ${spots.found} of ${spots.total}`,
+                ar: `وجدت ${spots.found} من ${spots.total}`,
+                fr: `Vous avez repéré ${spots.found} sur ${spots.total}`,
+                es: `Has encontrado ${spots.found} de ${spots.total}`,
+              })}
+            </p>
+          )}
 
           {summary.visited > 0 && <RouteRating routeId={route.id} className="mb-5" />}
 

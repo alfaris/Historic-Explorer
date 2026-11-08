@@ -8,7 +8,7 @@ const place = bundledContent.places[0];
 describe('placeGaps', () => {
   it('lists what a bundled place is missing', () => {
     // Place 1 (a monument) has a built-in photo, but no description of it, hours, build date or era, French or Spanish yet.
-    expect(placeGaps(place)).toEqual(['photoAlt', 'hours', 'era', 'fr', 'es']);
+    expect(placeGaps(place)).toEqual(['photoAlt', 'hours', 'era', 'spot', 'fr', 'es']);
   });
   it('clears each gap once it is filled', () => {
     const full = {
@@ -16,6 +16,7 @@ describe('placeGaps', () => {
       hours: { days: Array.from({ length: 7 }, () => []) },
       builtFrom: 879,
       photoAltEn: 'The open courtyard.',
+      spotEn: 'Find the spiral minaret.',
       nameFr: 'Mosquée', descriptionFr: 'Description.',
       nameEs: 'Mezquita', descriptionEs: 'Descripción.',
     };
