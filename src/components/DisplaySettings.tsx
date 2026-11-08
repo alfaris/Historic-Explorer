@@ -100,6 +100,19 @@ function Sheet({ onClose }: { onClose: () => void }) {
             <span className="block text-xs text-stone-500">{L('Easier to read in bright sun.', 'أسهل للقراءة تحت الشمس الساطعة.')}</span>
           </span>
         </label>
+
+        <label className="flex items-start gap-3 cursor-pointer min-h-11">
+          <input type="checkbox" checked={display.dataSaver} onChange={e => setDisplay({ dataSaver: e.target.checked })} className="mt-1 w-5 h-5 accent-nile" />
+          <span>
+            <span className="block text-sm font-bold text-ink">{L('Data saver', 'توفير البيانات')}</span>
+            <span className="block text-xs text-stone-500">
+              {L(
+                'Photos load when you tap them, and audio guides when you play them. Routes saved offline show everything.',
+                'تظهر الصور عند الضغط عليها، وتُحمَّل الأدلة الصوتية عند تشغيلها. المسارات المحفوظة دون اتصال تظهر كاملة.',
+              )}
+            </span>
+          </span>
+        </label>
       </div>
       <span {...guard('end')} />
     </div>,
@@ -108,7 +121,7 @@ function Sheet({ onClose }: { onClose: () => void }) {
 }
 
 /**
- * The header's globe: language, text size and high contrast in one small
+ * The header's globe: language, text size, theme, high contrast and the data saver in one small
  * sheet (the header has room for one control on a 360px phone).
  */
 export function DisplaySettings() {
