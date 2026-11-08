@@ -3,6 +3,7 @@ import { ChevronDown, Compass } from 'lucide-react';
 import type { Location, Route } from '../data/locations';
 import { formatDuration } from '../lib/route-format';
 import { INTERESTS, suggestRoutes, type Interest, type TimeChoice } from '../lib/route-finder';
+import { hasAccessInfo, routeAccess, stepFreeText } from '../lib/step-free';
 import { L, byLang, currentLang, nameOf } from '../i18n/lang';
 
 const TIMES: TimeChoice[] = ['short', 'medium', 'long'];
@@ -22,21 +23,25 @@ const countText = (i: Interest, n: number) => {
 };
 
 /**
- * "Help me choose": two quick questions (time and interests) and the one or
- * two routes that fit best, with why. Works offline, from the routes' times
+ * "Help me choose": three quick questions (time, interests and step-free
+ * access) and the one or two routes that fit best, with why. Works offline, from the routes' times
  * and their places.
  */
 export function RouteFinder({ routes, places, onPick }: { routes: Route[]; places: Location[]; onPick: (routeId: string) => void }) {
   const [open, setOpen] = useState(false);
   const [time, setTime] = useState<TimeChoice | null>(null);
   const [interests, setInterests] = useState<Interest[]>([]);
-  const suggestions = useMemo(() => suggestRoutes(routes, places, time, interests), [routes, places, time, interests]);
+  const [stepFree, setStepFree] = useState(false);
+  const suggestions = useMemo(() => suggestRoutes(routes, places, time, interests, stepFree), [routes, places, time, interests, stepFree]);
   const lang = currentLang();
 
   const reason = (s: (typeof suggestions)[number]) => {
     // The chosen interests, or (with none chosen) what the route has most of.
     const shown = (interests.length ? interests : [...INTERESTS].sort((a, b) => s.profile[b] - s.profile[a]).slice(0, 2)).filter(i => s.profile[i] > 0);
-    return [formatDuration(s.route.hoursMin, s.route.hoursMax, lang), ...shown.map(i => countText(i, s.profile[i]))].filter(Boolean).join(' · ');
+    const access = routeAccess(places, s.route.id);
+    // Asked for step-free access: how much of the walk is, or that it isn't known yet.
+    const accessText = stepFree ? (hasAccessInfo(access) ? stepFreeText(access) : L('Step-free access not yet checked', 'لم يُتحقق بعد من الدخول بدون درجات')) : '';
+    return [formatDuration(s.route.hoursMin, s.route.hoursMax, lang), accessText, ...shown.map(i => countText(i, s.profile[i]))].filter(Boolean).join(' · ');
   };
 
   const chip = (active: boolean) =>
@@ -77,10 +82,16 @@ export function RouteFinder({ routes, places, onPick }: { routes: Route[]; place
               ))}
             </div>
           </fieldset>
+          <fieldset>
+            <legend className="text-xs font-bold uppercase tracking-widest text-stone-500 mb-2">{L('Do you need step-free access?', 'هل تحتاج إلى دخول بدون درجات؟')}</legend>
+            <button type="button" aria-pressed={stepFree} onClick={() => setStepFree(v => !v)} className={chip(stepFree)}>
+              {L('Yes, step-free', 'نعم، بدون درجات')}
+            </button>
+          </fieldset>
 
           <div aria-live="polite">
             {suggestions.length === 0 ? (
-              <p className="text-sm text-stone-500">{L('Pick a time or an interest to see a suggestion.', 'اختر وقتًا أو اهتمامًا لترى اقتراحًا.')}</p>
+              <p className="text-sm text-stone-500">{L('Answer a question to see a suggestion.', 'أجب عن سؤال لترى اقتراحًا.')}</p>
             ) : (
               <ul className="space-y-2">
                 {suggestions.map((s, i) => (
@@ -105,8 +116,8 @@ export function RouteFinder({ routes, places, onPick }: { routes: Route[]; place
               </ul>
             )}
           </div>
-          {(time || interests.length > 0) && (
-            <button type="button" onClick={() => { setTime(null); setInterests([]); }} className="min-h-11 text-xs font-bold text-stone-500 underline underline-offset-4">
+          {(time || interests.length > 0 || stepFree) && (
+            <button type="button" onClick={() => { setTime(null); setInterests([]); setStepFree(false); }} className="min-h-11 text-xs font-bold text-stone-500 underline underline-offset-4">
               {L('Clear', 'مسح')}
             </button>
           )}

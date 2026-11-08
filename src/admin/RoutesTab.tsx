@@ -12,7 +12,8 @@ import { RouteAudio } from './RouteAudio';
 import { fieldKey, FillMissingButton, withOptional, fillEmpty } from './translations';
 import { LANGS, LANGUAGES, OPTIONAL_LANGS, type Lang, type OptionalLang } from '../i18n/lang';
 import { routeText } from '../lib/route-format';
-import { plannedKm, plannedWalk } from './content-health';
+import { plannedKm, plannedWalk, type PlaceSection } from './content-health';
+import { routeAccess } from '../lib/step-free';
 
 const blankRoute = (): Route => ({
   id: '',
@@ -30,12 +31,14 @@ const blankRoute = (): Route => ({
   duration: '',
 });
 
-export function RoutesTab({ content, save, initialRouteId = null, onSelected }: {
+export function RoutesTab({ content, save, initialRouteId = null, onSelected, onEditPlace }: {
   content: Content;
   save: SaveFn;
   /** Open this route on arrival (from the Content checklist). */
   initialRouteId?: string | null;
   onSelected?: () => void;
+  /** Open a place in the Places tab, at a section (the stops not yet checked for access). */
+  onEditPlace?: (placeId: number, section: PlaceSection) => void;
 }) {
   const [draft, setDraft] = useState<Route | null>(null);
   const [isNew, setIsNew] = useState(false);
@@ -264,6 +267,7 @@ export function RoutesTab({ content, save, initialRouteId = null, onSelected }: 
           />
           {!isNew && original && <RouteQr route={original} />}
           {!isNew && original && placeCount(original.id) > 0 && <RouteAudio key={original.id} places={content.places.filter(p => p.routeId === original.id)} />}
+          {!isNew && order.length > 0 && <StepFreeSummary places={orderedPlaces} routeId={draft.id} unsaved={!!changed} onEditPlace={onEditPlace} />}
           {!isNew && order.length > 0 && (
             <div>
               <p className="text-xs font-bold text-stone-600 mb-1">Walking order</p>
@@ -313,5 +317,45 @@ export function RoutesTab({ content, save, initialRouteId = null, onSelected }: 
         </form>
       )}
     </section>
+  );
+}
+
+/** "Step-free: 12 of 20 stops", as visitors see it, with links to the stops whose access isn't set yet. */
+function StepFreeSummary({ places, routeId, unsaved, onEditPlace }: {
+  places: Content['places'];
+  routeId: string;
+  unsaved: boolean;
+  onEditPlace?: (placeId: number, section: PlaceSection) => void;
+}) {
+  const a = routeAccess(places, routeId);
+  return (
+    <div className="rounded-xl border border-sand/60 p-4">
+      <p className="text-xs font-bold text-stone-600">Step-free access</p>
+      <p className="mt-1 text-sm">
+        Step-free: {a.yes} of {a.total} stops{a.partial > 0 && ` · ${a.partial} partly`}{a.no > 0 && ` · ${a.no} not step-free`}
+      </p>
+      {a.unchecked.length === a.total ? (
+        <p className="mt-1 text-[11px] text-stone-400">No stop has its access set yet, so visitors don't see a summary. Set it in each place's visitor tips.</p>
+      ) : (
+        a.unchecked.length > 0 && <p className="mt-1 text-[11px] text-stone-400">Visitors also see "{a.unchecked.length} not yet checked".</p>
+      )}
+      {a.unchecked.length > 0 && (
+        <>
+          <p className="mt-2 text-xs font-bold text-stone-600">Not yet checked</p>
+          <ul className="mt-1 flex flex-wrap gap-x-1">
+            {a.unchecked.map(p => (
+              <li key={p.id}>
+                <button type="button" onClick={() => {
+                    if (unsaved && !window.confirm('Leave this route without saving your changes?')) return;
+                    onEditPlace?.(p.id, 'tips');
+                  }} className="min-h-11 px-2 text-xs font-bold text-nile hover:underline">
+                  {p.nameEn}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
   );
 }

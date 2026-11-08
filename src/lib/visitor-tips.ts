@@ -75,13 +75,16 @@ const T: Record<string, Record<Lang, string>> = {
   toilets: { en: 'Toilets on site', ar: 'توجد دورات مياه', fr: 'Toilettes sur place', es: 'Aseos en el lugar' },
 };
 
+/** "Step-free access", "Partly step-free" or "Not step-free", in the given language. */
+export const accessText = (access: Access, lang: Lang) => T[`wheelchair.${access}`][lang];
+
 /** The tips as lines to show, in order, in the given language. */
 export function tipLines(tips: VisitorTips, lang: Lang): TipLine[] {
   const lines: TipLine[] = [];
   if (tips.dress) lines.push({ icon: 'dress', text: T.dress[lang] });
   if (tips.shoesOff) lines.push({ icon: 'shoes', text: T.shoesOff[lang] });
   if (tips.photos) lines.push({ icon: tips.photos === 'no' ? 'cameraOff' : 'camera', text: T[`photos.${tips.photos}`][lang] });
-  if (tips.wheelchair) lines.push({ icon: 'access', text: T[`wheelchair.${tips.wheelchair}`][lang] });
+  if (tips.wheelchair) lines.push({ icon: 'access', text: accessText(tips.wheelchair, lang) });
   if (tips.toilets) lines.push({ icon: 'toilet', text: T.toilets[lang] });
   const own = tips[`note${LANGUAGES[lang].suffix}`];
   if (own) lines.push({ icon: 'note', text: own });

@@ -4,6 +4,7 @@
 
 import type { Location, Route } from '../data/locations';
 import { isActiveMosque } from './prayer-times';
+import { routeAccess, stepFreeShare } from './step-free';
 
 export type TimeChoice = 'short' | 'medium' | 'long';
 export type Interest = 'mosques' | 'museums' | 'food' | 'crafts';
@@ -14,7 +15,7 @@ const TIME_RANGE: Record<TimeChoice, [number, number]> = { short: [0.5, 1.5], me
 
 const SHRINE = /\b(mausoleum|shrine|tomb)\b|ضريح|مقام|قبة|مشهد/i;
 
-type Place = Pick<Location, 'routeId' | 'category' | 'nameEn' | 'nameAr' | 'mosque'>;
+type Place = Pick<Location, 'routeId' | 'category' | 'nameEn' | 'nameAr' | 'mosque'> & Partial<Pick<Location, 'tips'>>;
 
 /** How many of a route's places suit each interest. */
 export function routeProfile(places: Place[], routeId: string): Record<Interest, number> {
@@ -40,20 +41,22 @@ export function timeFit(route: Pick<Route, 'hoursMin' | 'hoursMax'>, time: TimeC
   return 1 / (1 + 2 * gap);
 }
 
-export type Suggestion<R> = { route: R; profile: Record<Interest, number>; score: number };
+export type Suggestion<R> = { route: R; profile: Record<Interest, number>; score: number; stepFree: number };
 
 /**
  * The best one or two routes, by how well the time fits and the chosen
  * interests (each route's count relative to the route with the most). A second
- * suggestion only when it's close to the first.
+ * suggestion only when it's close to the first. Asked for step-free access,
+ * the routes with more step-free stops come first, then the best fit among them.
  */
 export function suggestRoutes<R extends Pick<Route, 'id' | 'hoursMin' | 'hoursMax'>>(
   routes: R[],
   places: Place[],
   time: TimeChoice | null,
   interests: Interest[],
+  stepFree = false,
 ): Suggestion<R>[] {
-  if (!time && interests.length === 0) return [];
+  if (!time && interests.length === 0 && !stepFree) return [];
   const profiles = routes.map(r => routeProfile(places, r.id));
   const most = Object.fromEntries(INTERESTS.map(i => [i, Math.max(1, ...profiles.map(p => p[i]))])) as Record<Interest, number>;
   const ranked = routes
@@ -61,8 +64,10 @@ export function suggestRoutes<R extends Pick<Route, 'id' | 'hoursMin' | 'hoursMa
       // Time matters most, but not so much that a walk with none of what was asked for wins.
       const fit = time ? timeFit(route, time) * 2 : 0;
       const liking = interests.reduce((s, k) => s + (1.5 * profiles[i][k]) / most[k], 0);
-      return { route, profile: profiles[i], score: fit + liking };
+      return { route, profile: profiles[i], score: fit + liking, stepFree: stepFreeShare(routeAccess(places, route.id)) };
     })
-    .sort((a, b) => b.score - a.score || routes.indexOf(a.route) - routes.indexOf(b.route));
-  return ranked.slice(0, 2).filter((s, i) => i === 0 || s.score >= ranked[0].score * 0.8);
+    .sort((a, b) => (stepFree ? b.stepFree - a.stepFree : 0) || b.score - a.score || routes.indexOf(a.route) - routes.indexOf(b.route));
+  const [first] = ranked;
+  // The second is as step-free (to within a stop in ten) and fits nearly as well.
+  return ranked.slice(0, 2).filter((s, i) => i === 0 || (s.score >= first.score * 0.8 && (!stepFree || s.stepFree >= first.stepFree - 0.1)));
 }
