@@ -20,12 +20,17 @@ export function withoutPhotoAlts<T extends WithAlts>(item: T): T {
  * photo in the place and route editors. Draft with Gemini looks at the photo
  * and fills the empty ones, for the admin to check before saving.
  */
-export function PhotoAltFields({ item, src, name, onChange }: {
+export function PhotoAltFields({ item, src, name, onChange, onDraft }: {
   item: WithAlts;
   /** The photo shown (uploaded or built in); nothing to describe without one. */
   src: string | undefined;
   name: string;
   onChange: (key: PhotoAltKey, value: string) => void;
+  /**
+   * Gemini's drafts. The editor fills only the fields that are still empty
+   * when they arrive (the admin may have typed in one meanwhile): see fillEmpty.
+   */
+  onDraft: (texts: Partial<Record<PhotoAltKey, string>>) => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +38,11 @@ export function PhotoAltFields({ item, src, name, onChange }: {
   const current = useRef(src);
   current.current = src;
   const mounted = useRef(true);
-  useEffect(() => () => { mounted.current = false; }, []);
+  useEffect(() => {
+    // Set here too: StrictMode runs the cleanup and setup again on mount.
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
   if (!src) return null;
 
   const empty = PHOTO_ALT_KEYS.filter(k => !item[k]?.trim());
@@ -43,7 +52,7 @@ export function PhotoAltFields({ item, src, name, onChange }: {
     try {
       const { texts } = await api.describePhoto(src, name);
       if (!mounted.current || current.current !== src) return;
-      for (const key of PHOTO_ALT_KEYS) if (texts[key] && !item[key]?.trim()) onChange(key, texts[key]);
+      onDraft(Object.fromEntries(PHOTO_ALT_KEYS.filter(k => texts[k]).map(k => [k, texts[k]])));
     } catch (err) {
       if (mounted.current) setError((err as Error).message);
     } finally {

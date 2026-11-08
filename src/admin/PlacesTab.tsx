@@ -5,7 +5,7 @@ import { nextPlaceId, type Content, type Location } from '../data/content';
 import type { SaveFn } from './AdminApp';
 import { Button, Field, inputClass, MapPicker, sameValue } from './ui';
 import { PhotoField } from './PhotoField';
-import { PhotoAltFields, withoutPhotoAlts } from './PhotoAltFields';
+import { PHOTO_ALT_KEYS, PhotoAltFields, withoutPhotoAlts } from './PhotoAltFields';
 import { builtInPhoto } from '../data/photo-resolve';
 import { descriptionOf, LANGS, LANGUAGES, OPTIONAL_LANGS, type Lang, type OptionalLang } from '../i18n/lang';
 import { api } from './api';
@@ -17,7 +17,7 @@ import { TipsEditor } from './TipsEditor';
 import { isActiveMosque } from '../lib/prayer-times';
 import { builtProblems, eraById, eraForYear, ERAS, isEraId, YEAR_MAX, YEAR_MIN } from '../lib/eras';
 import type { PlaceSection } from './content-health';
-import { fieldKey, FillMissingButton, missingPlaceText, withOptional } from './translations';
+import { fieldKey, FillMissingButton, missingPlaceText, withOptional, fillEmpty } from './translations';
 
 const CAIRO_CENTRE = { lat: 30.0444, lng: 31.2357 };
 
@@ -412,6 +412,7 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
             src={(draft.photo ?? builtInPhoto(`place-${draft.id}`))?.src}
             name={draft.nameEn}
             onChange={(key, value) => setDraft(d => (d ? withOptional(d, key, value) : d))}
+            onDraft={texts => setDraft(d => (d ? fillEmpty(d, texts, PHOTO_ALT_KEYS) : d))}
           />
 
           <div>

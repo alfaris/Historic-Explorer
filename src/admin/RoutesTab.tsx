@@ -4,12 +4,12 @@ import type { Content, Route } from '../data/content';
 import type { SaveFn } from './AdminApp';
 import { Button, Field, inputClass, sameValue } from './ui';
 import { PhotoField } from './PhotoField';
-import { PhotoAltFields, withoutPhotoAlts } from './PhotoAltFields';
+import { PHOTO_ALT_KEYS, PhotoAltFields, withoutPhotoAlts } from './PhotoAltFields';
 import { builtInPhoto } from '../data/photo-resolve';
 import { applyStopOrder, walkPlan, walkStops } from '../lib/walk';
 import { RouteQr } from './RouteQr';
 import { RouteAudio } from './RouteAudio';
-import { fieldKey, FillMissingButton, withOptional } from './translations';
+import { fieldKey, FillMissingButton, withOptional, fillEmpty } from './translations';
 import { LANGS, LANGUAGES, OPTIONAL_LANGS, type Lang, type OptionalLang } from '../i18n/lang';
 import { routeText } from '../lib/route-format';
 import { plannedKm, plannedWalk } from './content-health';
@@ -260,6 +260,7 @@ export function RoutesTab({ content, save, initialRouteId = null, onSelected }: 
             src={(draft.photo ?? (draft.id ? builtInPhoto(`route-${draft.id}`) : undefined))?.src}
             name={draft.nameEn}
             onChange={(key, value) => setDraft(d => (d ? withOptional(d, key, value) : d))}
+            onDraft={texts => setDraft(d => (d ? fillEmpty(d, texts, PHOTO_ALT_KEYS) : d))}
           />
           {!isNew && original && <RouteQr route={original} />}
           {!isNew && original && placeCount(original.id) > 0 && <RouteAudio key={original.id} places={content.places.filter(p => p.routeId === original.id)} />}

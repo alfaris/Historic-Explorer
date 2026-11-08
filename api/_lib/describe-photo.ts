@@ -44,8 +44,12 @@ Reply with only a JSON object with these keys: "en" (English), "ar" (Arabic), "f
 async function loadImage(src: string, origin: string): Promise<Uint8Array | null> {
   const upload = /^\/api\/photo\?id=([0-9a-f]{64})$/.exec(src);
   if (upload) return readUploadedPhoto(upload[1]);
-  const res = await fetch(new URL(src.replace(/\.webp$/, '-480.webp'), origin)).catch(() => null);
-  const fallback = res?.ok ? res : await fetch(new URL(src, origin)).catch(() => null);
+  // A preview behind Vercel Authentication answers with its login page unless
+  // the protection-bypass secret is sent (as share.ts does).
+  const bypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+  const init: RequestInit = bypass ? { headers: { 'x-vercel-protection-bypass': bypass } } : {};
+  const res = await fetch(new URL(src.replace(/\.webp$/, '-480.webp'), origin), init).catch(() => null);
+  const fallback = res?.ok ? res : await fetch(new URL(src, origin), init).catch(() => null);
   if (!fallback?.ok) return null;
   return new Uint8Array(await fallback.arrayBuffer());
 }

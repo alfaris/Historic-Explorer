@@ -6,6 +6,7 @@ const UPLOAD_ID = 'a'.repeat(64);
 let reply = '';
 const calls: { model: string; mimeType: string; prompt: string }[] = [];
 const fetched: string[] = [];
+const headersSent: (string | null)[] = [];
 
 vi.mock('@vercel/blob', () => ({
   get: async (path: string) => (path === `photos/${UPLOAD_ID}` ? { stream: new Response(WEBP).body, blob: { contentType: 'image/webp' } } : null),
@@ -34,9 +35,12 @@ beforeEach(() => {
   process.env.BLOB_READ_WRITE_TOKEN = 'test';
   calls.length = 0;
   fetched.length = 0;
+  headersSent.length = 0;
+  delete process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
   reply = JSON.stringify({ en: ' The carved stone façade. ', ar: 'الواجهة الحجرية المنحوتة.', fr: 'La façade de pierre sculptée.', es: 'La fachada de piedra tallada.' });
-  vi.stubGlobal('fetch', async (url: URL) => {
+  vi.stubGlobal('fetch', async (url: URL, init?: RequestInit) => {
     fetched.push(String(url));
+    headersSent.push((init?.headers as Record<string, string> | undefined)?.['x-vercel-protection-bypass'] ?? null);
     return String(url).endsWith('-480.webp') ? new Response(WEBP) : new Response('no', { status: 404 });
   });
 });
@@ -71,6 +75,12 @@ describe('handleDescribePhoto', () => {
     expect(fetched).toEqual(['https://cairo.example/images/photos/place-1-480.webp']);
     expect(calls[0]).toMatchObject({ mimeType: 'image/webp' });
     expect(calls[0].prompt).toContain('"Ibn Tulun"');
+  });
+
+  it('sends the protection-bypass secret on a protected preview', async () => {
+    process.env.VERCEL_AUTOMATION_BYPASS_SECRET = 'shh';
+    expect((await post({ src: '/images/photos/place-1.webp' }, '2.0.0.7')).status).toBe(200);
+    expect(headersSent).toEqual(['shh']);
   });
 
   it('reads an uploaded photo from Blob', async () => {
