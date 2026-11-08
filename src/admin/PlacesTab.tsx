@@ -14,6 +14,7 @@ import { BulkHours } from './BulkHours';
 import { withoutPlace } from '../lib/special-hours';
 import { TipsEditor } from './TipsEditor';
 import { isActiveMosque } from '../lib/prayer-times';
+import { builtProblems, eraById, eraForYear, ERAS, isEraId, YEAR_MAX, YEAR_MIN } from '../lib/eras';
 import type { PlaceSection } from './content-health';
 import { fieldKey, FillMissingButton, missingPlaceText, withOptional } from './translations';
 
@@ -286,6 +287,55 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
               </span>
             </span>
           </label>
+
+          <div id="built" className="rounded-xl border border-sand/60 p-4 space-y-3 scroll-mt-24">
+            <p className="text-xs font-bold text-stone-600">When it was built (optional)</p>
+            <p className="text-[11px] text-stone-400">
+              Shown on the card ("Built 1356–1363 · Mamluk") and in Through the ages. Years are CE. Leave "until" empty for a single year.
+            </p>
+            <div className="grid sm:grid-cols-3 gap-3">
+              <Field label="Built in (year)">
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={YEAR_MIN}
+                  max={YEAR_MAX}
+                  value={draft.builtFrom ?? ''}
+                  onChange={e => setDraft(d => (d ? withOptional(d, 'builtFrom', e.target.value === '' ? undefined : Number(e.target.value)) : d))}
+                  className={inputClass}
+                />
+              </Field>
+              <Field label="Until (year)">
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={YEAR_MIN}
+                  max={YEAR_MAX}
+                  value={draft.builtTo ?? ''}
+                  onChange={e => setDraft(d => (d ? withOptional(d, 'builtTo', e.target.value === '' ? undefined : Number(e.target.value)) : d))}
+                  className={inputClass}
+                />
+              </Field>
+              <Field
+                label="Era"
+                hint={!draft.era && draft.builtFrom ? `From the year: ${eraById(eraForYear(draft.builtFrom)).names.en}` : undefined}
+              >
+                <select
+                  value={draft.era ?? ''}
+                  onChange={e => setDraft(d => (d ? withOptional(d, 'era', isEraId(e.target.value) ? e.target.value : undefined) : d))}
+                  className={inputClass}
+                >
+                  <option value="">{draft.builtFrom ? 'From the year' : '—'}</option>
+                  {ERAS.map(era => (
+                    <option key={era.id} value={era.id}>{era.names.en}</option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+            {builtProblems(draft).map(problem => (
+              <p key={problem} className="text-xs text-red-700">Check: {problem}</p>
+            ))}
+          </div>
 
           <TipsEditor place={draft} onChange={tips => setDraft(d => (d ? withOptional(d, 'tips', tips) : d))} />
 

@@ -11,6 +11,7 @@ import { guidePlayer } from '../lib/guide-player';
 import { useDialog } from '../lib/useDialog';
 import { useHeading, useWakeLock } from '../lib/useWalkSensors';
 import { AudioGuide } from './AudioGuide';
+import { BuiltBadge } from './PlaceEra';
 import { HistoricPlaceholder } from './HistoricPlaceholder';
 import { PlacePhoto } from './PlacePhoto';
 import type { NearMeState } from './NearMe';
@@ -263,6 +264,7 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
             />
             <div className="p-5">
               <h2 className={`text-2xl text-ink leading-tight mb-2 ${ar ? 'font-arabic font-bold' : 'font-serif'}`}>{name(stop)}</h2>
+              <BuiltBadge place={stop} className="mb-2" />
               <HoursBadge place={stop} className="mb-3" />
               <PrayerNotice place={stop} className="mb-3" />
               <p className="text-stone-600 leading-relaxed mb-4" lang={fallbackLang(stop, 'description')}><GlossaryText text={descriptionOf(stop)} /></p>

@@ -7,18 +7,24 @@ const place = bundledContent.places[0];
 
 describe('placeGaps', () => {
   it('lists what a bundled place is missing', () => {
-    // Place 1 has a built-in photo, but no hours and no French or Spanish yet.
-    expect(placeGaps(place)).toEqual(['hours', 'fr', 'es']);
+    // Place 1 (a monument) has a built-in photo, but no hours, build date or era, French or Spanish yet.
+    expect(placeGaps(place)).toEqual(['hours', 'era', 'fr', 'es']);
   });
   it('clears each gap once it is filled', () => {
     const full = {
       ...place,
       hours: { days: Array.from({ length: 7 }, () => []) },
+      builtFrom: 879,
       nameFr: 'Mosquée', descriptionFr: 'Description.',
       nameEs: 'Mezquita', descriptionEs: 'Descripción.',
     };
     expect(placeGaps(full)).toEqual([]);
     expect(placeGaps({ ...full, descriptionEs: '  ' })).toEqual(['es']);
+  });
+  it('takes a build year or an era, and asks only monuments for one', () => {
+    expect(placeGaps({ ...place, era: 'tulunid' })).not.toContain('era');
+    expect(placeGaps({ ...place, builtFrom: 879 })).not.toContain('era');
+    expect(placeGaps({ ...place, category: 'coffee' })).not.toContain('era');
   });
   it('needs a photo when there is neither an upload nor a built-in one', () => {
     expect(placeGaps({ ...place, id: 999_998 })).toContain('photo');
@@ -48,6 +54,8 @@ describe('progress', () => {
     expect(p.find(x => x.id === 'es')!.done).toBe(0);
     const photos = p.find(x => x.id === 'photo')!;
     expect(photos.done).toBe(bundledContent.places.filter(pl => !placeGaps(pl).includes('photo')).length);
+    // Only monuments count towards the build date or era.
+    expect(p.find(x => x.id === 'era')!.total).toBe(bundledContent.places.filter(pl => pl.category === 'monument').length);
   });
 });
 

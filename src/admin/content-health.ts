@@ -7,18 +7,20 @@ import { LANGUAGES, OPTIONAL_LANGS, type OptionalLang } from '../i18n/lang';
 import { walkPlan } from '../lib/walk';
 import type { GlossaryTerm } from '../lib/glossary';
 import type { SpecialPeriod } from '../lib/special-hours';
+import { eraOf } from '../lib/eras';
 
-export type Gap = 'photo' | 'hours' | OptionalLang;
+export type Gap = 'photo' | 'hours' | 'era' | OptionalLang;
 
 /** Each item the checklist tracks, with the place editor section that fixes it. */
 export const GAPS: { id: Gap; label: string; section: PlaceSection }[] = [
   { id: 'photo', label: 'Photo', section: 'photo' },
   { id: 'hours', label: 'Opening hours', section: 'hours' },
+  { id: 'era', label: 'Build date or era', section: 'built' },
   ...OPTIONAL_LANGS.map(lang => ({ id: lang, label: LANGUAGES[lang].english, section: `lang-${lang}` as const })),
 ];
 
 /** Sections of the place editor that can be scrolled to (element ids). */
-export type PlaceSection = 'photo' | 'hours' | `lang-${OptionalLang}`;
+export type PlaceSection = 'photo' | 'hours' | 'built' | `lang-${OptionalLang}`;
 
 const hasLang = (o: Record<string, unknown>, lang: OptionalLang, bases: string[]) =>
   bases.every(b => {
@@ -26,11 +28,15 @@ const hasLang = (o: Record<string, unknown>, lang: OptionalLang, bases: string[]
     return Array.isArray(v) ? v.length > 0 : typeof v === 'string' && v.trim() !== '';
   });
 
-/** What a place is missing: a photo (uploaded or built in), opening hours, or a language (name and description). */
+/** Only monuments need a build date or era (not cafés, workshops and the like). */
+const needsEra = (place: Location) => place.category === 'monument';
+
+/** What a place is missing: a photo (uploaded or built in), opening hours, a build date or era (monuments), or a language (name and description). */
 export function placeGaps(place: Location): Gap[] {
   const gaps: Gap[] = [];
   if (!photoForPlace(place)) gaps.push('photo');
   if (!place.hours) gaps.push('hours');
+  if (needsEra(place) && !eraOf(place)) gaps.push('era');
   for (const lang of OPTIONAL_LANGS) {
     const needsDescription = !!place.descriptionEn?.trim();
     if (!hasLang(place as unknown as Record<string, unknown>, lang, needsDescription ? ['name', 'description'] : ['name'])) gaps.push(lang);
@@ -67,7 +73,16 @@ export function missingText(obj: object, lang: OptionalLang, bases: string[]): R
 /** For each item: how many places have it, out of how many. */
 export function progress(content: Content): { id: Gap; label: string; done: number; total: number }[] {
   const gaps = content.places.map(placeGaps);
-  return GAPS.map(g => ({ id: g.id, label: g.label, done: gaps.filter(list => !list.includes(g.id)).length, total: content.places.length }));
+  return GAPS.map(g => {
+    // The era counts only the places that need one.
+    const applies = content.places.map(p => g.id !== 'era' || needsEra(p));
+    return {
+      id: g.id,
+      label: g.label,
+      done: gaps.filter((list, i) => applies[i] && !list.includes(g.id)).length,
+      total: applies.filter(Boolean).length,
+    };
+  });
 }
 
 /** The walk between a route's stops, in order (straight lines × the detour factor), as the walk plan has it. */
