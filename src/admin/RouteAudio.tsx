@@ -75,7 +75,7 @@ export function RouteAudio({ places }: { places: Location[] }) {
         <Volume2 className="w-4 h-4 text-gold" aria-hidden="true" /> Audio guides on this route
       </p>
       <p className="text-[11px] text-stone-500 mb-3">
-        Places without audio make the first visitor wait while it’s generated. Generate missing makes them one after another (10–20 s each, at most 30 per 10 minutes).
+        Places without audio make the first visitor wait while it’s generated. Audio made before transcripts counts as missing, so generating it again adds its transcript. Generate missing makes them one after another (10–20 s each, at most 30 per 10 minutes).
       </p>
       {loadError ? (
         <p className="text-xs text-red-700" role="alert">{loadError}</p>

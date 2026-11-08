@@ -4,7 +4,7 @@ import { BlobNotFoundError, get, head, put } from '@vercel/blob';
 import type { Location } from '../../src/data/locations.js';
 import { getContent } from './content.js';
 import { parseCanonicalQuery, rateLimit } from './guard.js';
-import { textHash } from '../../src/lib/text-hash.js';
+import { audioVersion } from '../../src/lib/text-hash.js';
 import { descriptionOf, LANGUAGES, nameOf, type Lang } from '../../src/i18n/lang.js';
 
 // Server-only: the key is read at request time and never shipped to the browser.
@@ -70,7 +70,9 @@ const memoize = <T>(
   return entry.promise;
 };
 
-const audioCache = new Map<string, CacheEntry<Uint8Array>>();
+/** A recording and the narration script it speaks (null for audio made before scripts were kept). */
+type GuideAudio = { wav: Uint8Array; script: string | null };
+const audioCache = new Map<string, CacheEntry<GuideAudio>>();
 
 // Bump when the narration prompt, models or voices change, so stored audio is regenerated.
 const AUDIO_VERSION = 'v1';
@@ -82,6 +84,8 @@ const hasBlobStore = () => Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.
 // Keyed by content, so editing a description (in locations.ts or the admin dashboard) produces fresh audio.
 const audioBlobPath = (text: string, lang: Lang) =>
   `audio-guide/${createHash('sha256').update(`${AUDIO_VERSION}|${lang}|${text}`).digest('hex').slice(0, 32)}.wav`;
+/** The narration script, next to the recording under the same key. */
+export const scriptBlobPath = (audioPath: string) => audioPath.replace(/\.wav$/, '.txt');
 
 const readStoredBlob = async (pathname: string, useCache = true) => {
   if (!hasBlobStore()) return null;
@@ -112,26 +116,37 @@ const storeBlob = async (pathname: string, body: Uint8Array | string, contentTyp
   }
 };
 
-const loadOrGenerateAudio = async (text: string, lang: Lang, pathname: string) => {
-  const stored = await readStoredBlob(pathname);
-  if (stored) return stored;
-  const wav = await generateAudio(text, lang);
-  await storeBlob(pathname, wav, 'audio/wav');
-  return wav;
+const loadOrGenerateAudio = async (text: string, lang: Lang, pathname: string): Promise<GuideAudio> => {
+  const [stored, storedScript] = await Promise.all([readStoredBlob(pathname), readStoredBlob(scriptBlobPath(pathname))]);
+  if (stored) return { wav: stored, script: storedScript ? new TextDecoder().decode(storedScript) : null };
+  const { wav, script } = await generateAudio(text, lang);
+  await storeGuide(pathname, wav, script);
+  return { wav, script };
 };
+
+// The recording first, then its script. A failure in between leaves the new
+// recording without a script (served without a transcript, and still
+// "missing" in the admin), never a script beside a recording it doesn't match.
+const storeGuide = async (pathname: string, wav: Uint8Array, script: string) =>
+  (await storeBlob(pathname, wav, 'audio/wav')) && (await storeBlob(scriptBlobPath(pathname), script, 'text/plain; charset=utf-8'));
 
 // The exact text the audio is generated from and keyed by. The request handler
 // and the pre-generation script must both use this, or their keys won't match.
 const audioText = (location: Location, lang: Lang) =>
   descriptionOf(location, lang) || null; // French and Spanish fall back to the English text, narrated in that language
 
-/** Whether this place's audio is already in Blob for the current description and AUDIO_VERSION. */
+/**
+ * Whether this place's audio and its script are already in Blob for the
+ * current description and AUDIO_VERSION. Audio made before scripts were kept
+ * counts as missing, so generating it again adds the transcript.
+ */
 export async function audioStatus(location: Location, lang: Lang): Promise<'stored' | 'missing' | 'no-text'> {
   if (!hasBlobStore()) throw new Error('BLOB_READ_WRITE_TOKEN is not set');
   const text = audioText(location, lang);
   if (!text) return 'no-text';
+  const pathname = audioBlobPath(text, lang);
   try {
-    await head(audioBlobPath(text, lang));
+    await Promise.all([head(pathname), head(scriptBlobPath(pathname))]);
     return 'stored';
   } catch (err) {
     if (err instanceof BlobNotFoundError) return 'missing';
@@ -143,14 +158,17 @@ export async function audioStatus(location: Location, lang: Lang): Promise<'stor
 export async function generateAndStoreAudio(location: Location, lang: Lang): Promise<void> {
   const text = audioText(location, lang);
   if (!text) throw new Error('Place has no description in this language');
-  let wav: Uint8Array;
+  let guide: { wav: Uint8Array; script: string };
   try {
-    wav = await generateAudio(text, lang);
+    guide = await generateAudio(text, lang);
   } catch (err) {
     if (err instanceof ScriptOnlyError) throw new Error('Text-to-speech failed (the app would fall back to the browser voice)');
     throw err;
   }
-  if (!(await storeBlob(audioBlobPath(text, lang), wav, 'audio/wav'))) throw new Error('Storing the audio in Blob failed');
+  const pathname = audioBlobPath(text, lang);
+  if (!(await storeGuide(pathname, guide.wav, guide.script))) throw new Error('Storing the audio in Blob failed');
+  // This instance may hold the old recording (without a script) in memory.
+  audioCache.delete(pathname);
 }
 
 // Live info is regenerated at most once a day per place and language, however
@@ -239,7 +257,7 @@ const generateAudio = async (text: string, lang: Lang) => {
     });
     const base64Audio = ttsResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
     if (!base64Audio) throw new Error('No audio returned');
-    return pcmToWav(new Uint8Array(Buffer.from(base64Audio, 'base64')));
+    return { wav: pcmToWav(new Uint8Array(Buffer.from(base64Audio, 'base64'))), script };
   } catch (err) {
     console.warn('Gemini TTS failed, returning script only:', err);
     throw new ScriptOnlyError(script);
@@ -251,7 +269,17 @@ const generateAudio = async (text: string, lang: Lang) => {
  * it matches the current text: an edited description then gets a fresh URL,
  * and old or made-up versions can't fill caches with the wrong audio.
  */
-export const audioCacheControl = (version: string | null, text: string) => (version === textHash(text) ? AUDIO_CACHE : 'no-store');
+export const audioCacheControl = (version: string | null, text: string, hasScript = true) =>
+  version !== audioVersion(text) ? 'no-store' : hasScript ? AUDIO_CACHE : AUDIO_NO_SCRIPT_CACHE;
+
+// Audio made before scripts were kept: cached for an hour only, so a version
+// regenerated in the admin (with its transcript) reaches visitors soon.
+const AUDIO_NO_SCRIPT_CACHE = 'public, max-age=3600, s-maxage=3600';
+
+/** The response header carrying the narration script (URI-encoded, so any language fits in a header). */
+export const TRANSCRIPT_HEADER = 'X-Guide-Transcript';
+/** Header values have limits; a ~90-word script is far below this. */
+const MAX_TRANSCRIPT = 3000;
 
 export async function handleAudioGuide(request: Request): Promise<Response> {
   const checked = await checkRequest(request, true);
@@ -259,13 +287,15 @@ export async function handleAudioGuide(request: Request): Promise<Response> {
   const { location, lang, version } = checked;
   const text = audioText(location, lang);
   if (!text) return json({ error: 'Unknown location' }, 404);
-  const cacheControl = audioCacheControl(version, text);
-
   const key = audioBlobPath(text, lang);
   try {
-    const wav = await memoize(audioCache, key, () => loadOrGenerateAudio(text, lang, key), () => Infinity);
+    // Without a script, look again later: the admin may regenerate it with one.
+    const { wav, script } = await memoize(audioCache, key, () => loadOrGenerateAudio(text, lang, key), g =>
+      g.script ? Infinity : Date.now() + 10 * 60_000,
+    );
+    const transcript = script && script.length <= MAX_TRANSCRIPT ? { [TRANSCRIPT_HEADER]: encodeURIComponent(script) } : {};
     return new Response(wav, {
-      headers: { 'Content-Type': 'audio/wav', 'Cache-Control': cacheControl },
+      headers: { 'Content-Type': 'audio/wav', 'Cache-Control': audioCacheControl(version, text, Boolean(script)), ...transcript },
     });
   } catch (err) {
     // The client reads the script aloud with the browser voice instead.

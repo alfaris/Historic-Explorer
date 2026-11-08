@@ -15,6 +15,8 @@ export const FR: Record<string, string> = {
   'Try again': 'Réessayer',
   'Reset': 'Réinitialiser',
   'Playback speed': 'Vitesse de lecture',
+  'Read the transcript': 'Lire la transcription',
+  'Hide the transcript': 'Masquer la transcription',
   'Resume': 'Reprendre',
   'Stop': 'Arrêter',
   // Places and audio
