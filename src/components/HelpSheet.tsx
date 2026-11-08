@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowLeft, Copy, LocateFixed, MapPin, Phone, X } from 'lucide-react';
 import type { Location, Route } from '../data/locations';
@@ -34,6 +34,17 @@ export default function HelpSheet({ route, places, onClose }: { route?: Route; p
   const [copied, setCopied] = useState(false);
   // A phrase shown large, in place of the sheet (one dialog, so focus stays in it).
   const [shown, setShown] = useState<Phrase | null>(null);
+  // Focus follows the switch: to Back when a phrase opens, and back to that phrase's button on return.
+  const backButton = useRef<HTMLButtonElement>(null);
+  const lastPhrase = useRef<string | null>(null);
+  useEffect(() => {
+    if (shown) {
+      lastPhrase.current = shown.id;
+      backButton.current?.focus();
+    } else if (lastPhrase.current) {
+      ref.current?.querySelector<HTMLElement>(`[data-phrase="${lastPhrase.current}"]`)?.focus();
+    }
+  }, [shown, ref]);
   const start = route ? startPlace(route, places) : undefined;
   const near = where.state === 'found' && route ? nearest(where.at, walkStops(places, route.id)) : null;
 
@@ -71,7 +82,7 @@ export default function HelpSheet({ route, places, onClose }: { route?: Route; p
         {shown ? (
           <div className="min-h-[70vh] flex flex-col p-6">
             <div className="flex items-center justify-between gap-3">
-              <button type="button" onClick={() => setShown(null)} className="flex items-center gap-1.5 min-h-11 px-2 text-sm font-bold text-nile">
+              <button ref={backButton} type="button" onClick={() => setShown(null)} className="flex items-center gap-1.5 min-h-11 px-2 text-sm font-bold text-nile">
                 <ArrowLeft className={`w-4 h-4 ${ar ? 'rotate-180' : ''}`} aria-hidden="true" /> {L('Back', 'رجوع')}
               </button>
               <p id="help-title" className="text-sm text-stone-500">{L('Show this to someone', 'اعرض هذه الشاشة على أحد')}</p>
@@ -144,7 +155,7 @@ export default function HelpSheet({ route, places, onClose }: { route?: Route; p
               <ul className="space-y-2">
                 {phrases(start?.nameAr).map(p => (
                   <li key={p.id}>
-                    <button type="button" onClick={() => setShown(p)} className="w-full text-start rounded-2xl border border-sand p-3 hover:border-nile">
+                    <button type="button" data-phrase={p.id} onClick={() => setShown(p)} className="w-full text-start rounded-2xl border border-sand p-3 hover:border-nile">
                       {!ar && <span className="block text-sm text-ink">{phraseMeaning(p.id)}</span>}
                       <span lang="ar" dir="rtl" className="block font-arabic text-base text-stone-700">{p.ar}</span>
                     </button>

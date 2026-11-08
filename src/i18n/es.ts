@@ -306,6 +306,7 @@ export const ES: Record<string, string> = {
   'In mosques, cover shoulders and knees; women cover their hair. Shoes come off at the door.': 'En las mezquitas, cubre hombros y rodillas; las mujeres se cubren el pelo. Los zapatos se quitan en la puerta.',
   'Keep small change for tips, toilets and the shoe keeper.': 'Lleva cambio para propinas, aseos y el guardián de los zapatos.',
   'Agree on a taxi fare before you set off, or use a ride-hailing app.': 'Acuerda la tarifa del taxi antes de salir, o usa una aplicación de transporte.',
+  "Help couldn't load. Check your connection. Emergency numbers:": 'No se pudo cargar la ayuda. Comprueba tu conexión. Números de emergencia:',
   'Through the ages': 'A través de los siglos',
   'Places on every route, from the oldest.': 'Los lugares de todas las rutas, del más antiguo al más reciente.',
   'Era': 'Época',
