@@ -91,8 +91,14 @@ export function sendPending() {
 }
 
 /** Counts an event, once per visit. */
+let off = false;
+/** Counts nothing from now on: for the admin, where the place preview plays audio guides. */
+export const stopTracking = () => {
+  off = true;
+};
+
 export function track(event: StatEvent) {
-  if (optedOut()) return;
+  if (off || optedOut()) return;
   const key = `${event.t}:${event.id}`;
   if (seen.has(key)) return;
   seen.add(key);
@@ -103,6 +109,7 @@ export function track(event: StatEvent) {
 
 /** For tests. */
 export const resetTrackingForTest = () => {
+  off = false;
   queue = [];
   seen.clear();
   if (timer) clearTimeout(timer);

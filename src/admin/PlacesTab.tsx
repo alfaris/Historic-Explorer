@@ -14,6 +14,7 @@ import { HoursEditor } from './HoursEditor';
 import { BulkHours } from './BulkHours';
 import { withoutPlace } from '../lib/special-hours';
 import { TipsEditor } from './TipsEditor';
+import { PlacePreview } from './PlacePreview';
 import { isActiveMosque } from '../lib/prayer-times';
 import { builtProblems, eraById, eraForYear, ERAS, isEraId, YEAR_MAX, YEAR_MIN } from '../lib/eras';
 import type { PlaceSection } from './content-health';
@@ -39,6 +40,8 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
   const [bulk, setBulk] = useState<{ text: string; error: boolean } | null>(null);
   // "Set hours for several places" in the editor pane, instead of one place.
   const [bulkHours, setBulkHours] = useState(false);
+  // The visitor card for the draft, before saving.
+  const [previewing, setPreviewing] = useState(false);
   // Opening (or adding) a place leaves it.
   useEffect(() => {
     if (draft) setBulkHours(false);
@@ -466,6 +469,9 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
             <Button type="submit" disabled={busy || !changed}>
               {busy ? 'Saving…' : isNew ? 'Add place' : 'Save changes'}
             </Button>
+            <Button type="button" variant="secondary" onClick={() => setPreviewing(true)} title="See the card as visitors will, in each language, before saving">
+              Preview
+            </Button>
             {changed && !isNew && original && (
               <Button type="button" variant="secondary" onClick={() => setDraft({ ...original })}>
                 Discard changes
@@ -475,6 +481,7 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
               {isNew ? 'Cancel' : 'Delete place'}
             </Button>
           </div>
+          {previewing && <PlacePreview place={draft} content={content} onClose={() => setPreviewing(false)} />}
         </form>
       )}
     </section>

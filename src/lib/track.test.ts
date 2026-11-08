@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { PENDING_KEY, flush, resetTrackingForTest, sendPending, track } from './track';
+import { PENDING_KEY, flush, resetTrackingForTest, sendPending, stopTracking, track } from './track';
 
 let beacons: string[];
 let nav: Record<string, unknown>;
@@ -38,6 +38,13 @@ describe('track', () => {
     track({ t: 'route', id: 'ahl-al-bayt' });
     expect(beacons).toEqual([]); // not sent straight away
     expect(await sent()).toEqual([[{ t: 'play', id: 1 }, { t: 'route', id: 'ahl-al-bayt' }]]);
+  });
+
+  it('sends nothing once stopped (the admin, whose previews play audio guides)', async () => {
+    stopTracking();
+    track({ t: 'play', id: 1 });
+    flush();
+    expect(await sent()).toEqual([]);
   });
 
   it('sends nothing for visitors who opt out', async () => {
