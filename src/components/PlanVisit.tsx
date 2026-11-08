@@ -11,6 +11,8 @@ import {
 import { L, byLang, currentLang, nameOf, type Lang } from '../i18n/lang';
 import { minutesLabel } from './WalkInfo';
 import { useContent } from '../data/ContentContext';
+import { WeatherAdvice } from './WeatherAdvice';
+import { breakCount } from '../lib/weather';
 
 const clock = (d: Date, lang: Lang) => formatTime(cairoTime(d).minutes, lang);
 // Spanish says "a las 9:00" but "a la 1:00".
@@ -157,6 +159,14 @@ function PlanDialog({ route, places, onClose, onOpenPlace }: {
                 <Clock className="w-4 h-4 shrink-0 text-gold" aria-hidden="true" />
                 {startFinish(start, plan.finish, lang)}
               </p>
+            )}
+            {plan.finish && (
+              <WeatherAdvice
+                start={start}
+                minutes={Math.max(15, Math.round((plan.finish.getTime() - start.getTime()) / 60_000))}
+                breaks={breakCount(places, route.id)}
+                onStartAt={at => setTime(cairoHHMM(at))}
+              />
             )}
             {plan.flagged === 0 ? (
               <p className="flex items-center gap-2 text-sm text-nile">

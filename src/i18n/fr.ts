@@ -235,6 +235,8 @@ export const FR: Record<string, string> = {
   'Share now': 'Partager maintenant',
   'Save image': 'Enregistrer l’image',
   'Alert me when the next stop is close (vibrates)': 'Me prévenir à l’approche de l’étape suivante (vibration)',
+  'Hot for walking': 'Chaleur forte pour marcher',
+  'Carry water, cover your head and rest in the shade.': 'Emportez de l’eau, couvrez-vous la tête et reposez-vous à l’ombre.',
   'Through the ages': 'À travers les âges',
   'Places on every route, from the oldest.': 'Les lieux de tous les parcours, du plus ancien au plus récent.',
   'Era': 'Époque',
