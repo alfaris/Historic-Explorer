@@ -27,6 +27,9 @@ import { formatDistance, formatDuration } from '../lib/route-format';
 import { HoursBadge, PlaceHours, useNow } from './PlaceHours';
 import { anyFilter, NO_FILTERS, passesFilters, withoutHours, type PlaceFilters } from '../lib/place-filters';
 import { BuiltBadge, EraFilter, ThroughTheAgesButton } from './PlaceEra';
+import { WeatherAdvice } from './WeatherAdvice';
+import { breakCount } from '../lib/weather';
+import { nextQuarter } from '../lib/visit-plan';
 import { PrayerNotice } from './PrayerTimes';
 import { VisitorTips } from './VisitorTips';
 import { GlossaryText } from './GlossaryText';
@@ -87,6 +90,8 @@ export const MainContent: React.FC = () => {
   // (a browser that never says the dialog closed doesn't block printing again).
   const [printing, setPrinting] = useState(0);
   const now = useNow();
+  // Heat advice on the route: for a walk starting now (refreshed with the minute clock).
+  const walkNow = useMemo(() => nextQuarter(now), [now]);
   const filtering = anyFilter(filters);
   const [selectedCategory, setSelectedCategory] = useState<Category | 'all'>('all');
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
@@ -672,6 +677,14 @@ export const MainContent: React.FC = () => {
               <ShareRoute route={currentRouteData} isArabic={isArabic} compactOnPhone />
               </div>
 
+              {plan.size > 0 && (
+                <WeatherAdvice
+                  start={walkNow}
+                  minutes={Math.round(currentRouteData.hoursMax * 60)}
+                  breaks={breakCount(locations, currentRouteData.id)}
+                  className="mb-3 max-w-md"
+                />
+              )}
               <RouteDownload route={currentRouteData} places={routePlaces} />
               {plan.size > 0 && (
                 <button
