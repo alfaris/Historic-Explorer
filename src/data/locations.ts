@@ -1,6 +1,7 @@
 import type { Photo } from './photos';
 import type { OpeningHours } from '../lib/opening-hours';
 import type { VisitorTips } from '../lib/visitor-tips';
+import type { EraId } from '../lib/eras';
 
 export type Category = 'monument' | 'coffee' | 'restaurant' | 'workshop' | 'stationary' | 'meeting';
 
@@ -51,6 +52,10 @@ export interface Location {
   tips?: VisitorTips;
   /** Visits pause during prayers. Unset: worked out from the name (a mosque). See isActiveMosque. */
   mosque?: boolean;
+  /** When it was built and in which era (Through the ages); all optional. See lib/eras. */
+  era?: EraId;
+  builtFrom?: number;
+  builtTo?: number;
   /** Weekly opening hours, in Cairo time. Optional: without them the app shows nothing rather than a guess. */
   hours?: OpeningHours;
   /** Entry fee as written for visitors, e.g. "EGP 60 · students EGP 30". Other languages fall back to English. */

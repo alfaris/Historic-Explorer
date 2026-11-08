@@ -25,7 +25,8 @@ import { track } from '../lib/track';
 import { matchScore, searchPlaces } from '../lib/search';
 import { formatDistance, formatDuration } from '../lib/route-format';
 import { HoursBadge, PlaceHours, useNow } from './PlaceHours';
-import { NO_FILTERS, passesFilters, withoutHours, type PlaceFilters } from '../lib/place-filters';
+import { anyFilter, NO_FILTERS, passesFilters, withoutHours, type PlaceFilters } from '../lib/place-filters';
+import { BuiltBadge, EraFilter, ThroughTheAgesButton } from './PlaceEra';
 import { PrayerNotice } from './PrayerTimes';
 import { VisitorTips } from './VisitorTips';
 import { GlossaryText } from './GlossaryText';
@@ -86,7 +87,7 @@ export const MainContent: React.FC = () => {
   // (a browser that never says the dialog closed doesn't block printing again).
   const [printing, setPrinting] = useState(0);
   const now = useNow();
-  const filtering = filters.openNow || filters.stepFree;
+  const filtering = anyFilter(filters);
   const [selectedCategory, setSelectedCategory] = useState<Category | 'all'>('all');
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
   // Start on the route of a shared place (?loc=) or route (?route=), so the
@@ -421,6 +422,7 @@ export const MainContent: React.FC = () => {
                     {nameOf(loc)}
                   </h3>
                   {plan.get(loc.id) && <div className="mt-2"><StopNumber info={plan.get(loc.id)!} isArabic={isArabic} /></div>}
+                    <BuiltBadge place={loc} className="mt-2" />
                     <HoursBadge place={loc} className="mt-2" />
                     <PrayerNotice place={loc} className="mt-1.5" />
                 </div>
@@ -609,6 +611,7 @@ export const MainContent: React.FC = () => {
               setSelectedLocation(null);
             }}
           />
+          <ThroughTheAgesButton places={locations} routes={routes} onOpen={openPlace} />
         </div>
 
         {/* Current Route Meta */}
@@ -796,6 +799,7 @@ export const MainContent: React.FC = () => {
                   {label}
                 </button>
               ))}
+              <EraFilter places={locations} value={filters.era} onChange={era => setFilters(f => ({ ...f, era }))} />
               {noHoursHidden > 0 && (
                 <span className="text-xs text-stone-500">
                   {byLang({
@@ -891,6 +895,7 @@ export const MainContent: React.FC = () => {
                                   {(category ? nameOf(category) : undefined)}
                                 </p>
                                 {plan.get(loc.id) && <div className="mt-2"><StopNumber info={plan.get(loc.id)!} isArabic={isArabic} /></div>}
+                                <BuiltBadge place={loc} className="mt-2" />
                                 <HoursBadge place={loc} className="mt-2" />
                     <PrayerNotice place={loc} className="mt-1.5" />
                               </div>
@@ -983,11 +988,15 @@ export const MainContent: React.FC = () => {
                 {filtering && (
                   <div className="mt-3 space-y-3 px-6">
                     <p className="text-sm text-stone-500">
-                      {filters.openNow && filters.stepFree
-                        ? L('Nothing here is open now and step-free.', 'لا يوجد هنا مكان مفتوح الآن وبدون درجات.')
-                        : filters.openNow
-                          ? L('Nothing here is open now.', 'لا يوجد هنا مكان مفتوح الآن.')
-                          : L('Nothing here is marked step-free.', 'لا يوجد هنا مكان مسجل بدون درجات.')}
+                      {filters.era && (filters.openNow || filters.stepFree)
+                        ? L('Nothing here matches these filters.', 'لا يوجد هنا مكان يطابق عوامل التصفية هذه.')
+                        : filters.era
+                          ? L('Nothing here from that era.', 'لا يوجد هنا مكان من هذا العصر.')
+                          : filters.openNow && filters.stepFree
+                            ? L('Nothing here is open now and step-free.', 'لا يوجد هنا مكان مفتوح الآن وبدون درجات.')
+                            : filters.openNow
+                              ? L('Nothing here is open now.', 'لا يوجد هنا مكان مفتوح الآن.')
+                              : L('Nothing here is marked step-free.', 'لا يوجد هنا مكان مسجل بدون درجات.')}
                     </p>
                     <button
                       type="button"
