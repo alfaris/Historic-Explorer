@@ -130,6 +130,8 @@ export function AudioGuide({ locationId, text, langCode, onNext, onPrevious, aut
     const id = player.begin(t);
     // What the browser voice reads if the recording can't play: the narration when there is one.
     let spoken = text;
+    // Started without a tap and the browser said no: ask for one rather than fail silently.
+    const onBlocked = auto ? () => { if (currentKey.current === key) setBlocked(key); } : undefined;
     try {
       const result = await loadGuideAudio(locationId, langCode, text);
       if (result.script) {
@@ -138,19 +140,18 @@ export function AudioGuide({ locationId, text, langCode, onNext, onPrevious, aut
       }
       if (!('audio' in result)) {
         // The server could write the narration but not voice it.
-        player.playSpeech(id, result.script, langCode);
+        player.playSpeech(id, result.script, langCode, onBlocked);
         return;
       }
       await player.playAudio(id, result.audio);
     } catch (error) {
-      // Started without a tap and the browser said no: ask for one rather than fail silently.
-      if (auto && (error as Error)?.name === 'NotAllowedError') {
+      if (onBlocked && (error as Error)?.name === 'NotAllowedError') {
         player.stop(key);
-        if (currentKey.current === key) setBlocked(key);
+        onBlocked();
         return;
       }
       console.warn('Audio guide failed, using the browser voice:', error);
-      player.playSpeech(id, spoken, langCode);
+      player.playSpeech(id, spoken, langCode, onBlocked);
     }
   };
 

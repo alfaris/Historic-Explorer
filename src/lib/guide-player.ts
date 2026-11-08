@@ -140,7 +140,7 @@ export function createGuidePlayer(env: PlayerEnv) {
   // When the lock screen's next or previous button was pressed (the next guide shown plays on).
   let autoplayAt = 0;
   // Browser voice: what's being read, from where, and the utterance that counts.
-  let speech: { text: string; offset: number; lang: Lang; utterance: UtteranceLike | null } | null = null;
+  let speech: { text: string; offset: number; lang: Lang; utterance: UtteranceLike | null; onBlocked?: () => void } | null = null;
 
   const releaseUrl = () => {
     if (url) env.revokeObjectURL(url);
@@ -229,7 +229,13 @@ export function createGuidePlayer(env: PlayerEnv) {
     u.onboundary = e => { if (speech?.utterance === u) speech.offset = offset + e.charIndex; };
     u.onend = () => { if (speech?.utterance === u) stop(); };
     // Some browsers report "interrupted" though speech carries on; only a real error stops.
-    u.onerror = e => { if (speech?.utterance === u && e.error !== 'interrupted' && e.error !== 'canceled') stop(); };
+    u.onerror = e => {
+      if (speech?.utterance !== u || e.error === 'interrupted' || e.error === 'canceled') return;
+      // The browser refused to speak without a tap: say so, for a "Tap to play".
+      const blocked = e.error === 'not-allowed' ? speech.onBlocked : undefined;
+      stop();
+      blocked?.();
+    };
     env.speech.cancel();
     // Cancelling doesn't lift a pause: resume, or the new utterance waits silently.
     env.speech.resume();
@@ -324,8 +330,12 @@ export function createGuidePlayer(env: PlayerEnv) {
       }
     },
 
-    /** Reads the text with the browser's voice, if start `id` is still the current one. */
-    playSpeech(id: number, text: string, lang: Lang) {
+    /**
+     * Reads the text with the browser's voice, if start `id` is still the
+     * current one. `onBlocked` is called if the browser refuses to speak
+     * without a tap (it stops first).
+     */
+    playSpeech(id: number, text: string, lang: Lang, onBlocked?: () => void) {
       if (id !== attempt) return;
       if (!env.speech || !env.createUtterance) {
         stop();
@@ -333,7 +343,7 @@ export function createGuidePlayer(env: PlayerEnv) {
       }
       if (audio && state.mode !== 'audio') audio.pause();
       cancelSpeech();
-      speech = { text, offset: 0, lang, utterance: null };
+      speech = { text, offset: 0, lang, utterance: null, onBlocked };
       set({ mode: 'speech', status: 'playing' });
       speakFrom(0);
     },

@@ -176,6 +176,29 @@ describe('guide player', () => {
     expect(player.getState().status).toBe('idle');
   });
 
+  it('reports a voice the browser refused without a tap, and stops', () => {
+    const { player, spoken } = setup();
+    const onBlocked = vi.fn();
+    const id = player.begin(track('a'));
+    player.playSpeech(id, 'One two three four', 'en', onBlocked);
+    spoken[0].onerror!({ error: 'interrupted' });
+    expect(onBlocked).not.toHaveBeenCalled();
+    expect(player.getState().status).toBe('playing');
+    spoken[0].onerror!({ error: 'not-allowed' });
+    expect(onBlocked).toHaveBeenCalledOnce();
+    expect(player.getState().status).toBe('idle');
+  });
+
+  it('stops without reporting a block for other voice errors', () => {
+    const { player, spoken } = setup();
+    const onBlocked = vi.fn();
+    const id = player.begin(track('a'));
+    player.playSpeech(id, 'One two', 'en', onBlocked);
+    spoken[0].onerror!({ error: 'synthesis-failed' });
+    expect(onBlocked).not.toHaveBeenCalled();
+    expect(player.getState().status).toBe('idle');
+  });
+
   it('resumes the voice when the speed changes while it is paused', () => {
     const { player, speech, spoken, actions } = setup();
     const id = player.begin(track('a'));
