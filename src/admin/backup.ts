@@ -10,7 +10,7 @@ import { sameValue } from './ui';
 const KIND = 'cairo-walks-content';
 
 /** A file name with the date, e.g. cairo-walks-backup-2026-11-07.json. */
-const dated = (base: string, ext: string, now: Date) => `cairo-walks-${base}-${now.toISOString().slice(0, 10)}.${ext}`;
+export const dated = (base: string, ext: string, now: Date) => `cairo-walks-${base}-${now.toISOString().slice(0, 10)}.${ext}`;
 
 /** The whole content as a JSON backup file. */
 export function backupFile(content: Content, now = new Date()) {
@@ -105,6 +105,14 @@ export function csvCell(value: unknown): string {
   return `"${s.replace(/"/g, '""')}"`;
 }
 
+export const CSV_TYPE = 'text/csv;charset=utf-8';
+
+/**
+ * Rows as CSV text. It starts with a byte-order mark and uses CRLF line ends,
+ * so Excel reads non-Latin text (Arabic) as UTF-8; Google Sheets does too.
+ */
+export const csvText = (rows: unknown[][]) => `\uFEFF${rows.map(r => r.map(csvCell).join(',')).join('\r\n')}\r\n`;
+
 /**
  * The places as a CSV spreadsheet. It starts with a byte-order mark and uses
  * CRLF line ends, so Excel reads the Arabic as UTF-8; Google Sheets does too.
@@ -139,8 +147,7 @@ export function placesCsv(content: Content, now = new Date()) {
       photo ? `${photo.author} (${photo.license})` : '',
     ];
   });
-  const text = `﻿${[header, ...rows].map(r => r.map(csvCell).join(',')).join('\r\n')}\r\n`;
-  return { name: dated('places', 'csv', now), type: 'text/csv;charset=utf-8', text };
+  return { name: dated('places', 'csv', now), type: CSV_TYPE, text: csvText([header, ...rows]) };
 }
 
 /** Saves a file made above to the admin's computer. */
