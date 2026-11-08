@@ -8,13 +8,17 @@ import { L } from '../i18n/lang';
 // Photos the visitor chose to see with the data saver on, for the rest of the visit.
 const revealed = new Set<string>();
 
-/** Whether any size of a photo is already on the device (a route saved offline, or seen before). */
-const isCached = async (src: string) => {
-  if (typeof caches === 'undefined') return false;
+/**
+ * The largest size of a photo already on the device (a route saved offline,
+ * or seen before), or null. With the data saver on, only that size is shown
+ * without a tap: letting the browser pick from every size could download one.
+ */
+const cachedSize = async (src: string): Promise<string | null> => {
+  if (typeof caches === 'undefined') return null;
   for (const url of [src, smallPhotoSrc(src), thumbPhotoSrc(src)]) {
-    if (url && (await caches.match(url).catch(() => undefined))) return true;
+    if (url && (await caches.match(url).catch(() => undefined))) return url;
   }
-  return false;
+  return null;
 };
 
 interface PlacePhotoProps {
@@ -43,20 +47,22 @@ export function PlacePhoto({ photo, alt, className = '', fallback, showCredit = 
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const { dataSaver } = useDisplay();
   const src = photo?.src;
-  // Data saver: which photo was let through (tapped, or already on the device).
-  const [allowed, setAllowed] = useState<string | null>(null);
+  // Data saver: the photo let through by a tap (every size), or the one size already on the device.
+  const [allowed, setAllowed] = useState<{ src: string; only: string | null } | null>(null);
   useEffect(() => {
     if (!dataSaver || !src || revealed.has(src)) return;
     let active = true;
-    isCached(src).then(hit => {
-      if (active && hit) setAllowed(src);
+    cachedSize(src).then(url => {
+      if (active && url) setAllowed({ src, only: url });
     });
     return () => {
       active = false;
     };
   }, [dataSaver, src]);
   if (!photo || failedSrc === photo.src) return <>{fallback}</>;
-  if (dataSaver && allowed !== photo.src && !revealed.has(photo.src)) {
+  const tapped = revealed.has(photo.src);
+  const cachedOnly = dataSaver && !tapped && allowed?.src === photo.src ? allowed.only : null;
+  if (dataSaver && !tapped && !cachedOnly) {
     if (!tapToShow) return <>{fallback}</>;
     return (
       // Sized like the photo would be, with the placeholder filling it.
@@ -67,7 +73,7 @@ export function PlacePhoto({ photo, alt, className = '', fallback, showCredit = 
           onClick={e => {
             e.stopPropagation();
             revealed.add(photo.src);
-            setAllowed(photo.src);
+            setAllowed({ src: photo.src, only: null });
           }}
           className="absolute inset-0 z-10 m-auto h-fit w-fit inline-flex items-center gap-1.5 min-h-11 px-4 rounded-full bg-white/90 border border-sand text-xs font-bold text-ink shadow-sm hover:border-nile"
         >
@@ -77,13 +83,14 @@ export function PlacePhoto({ photo, alt, className = '', fallback, showCredit = 
       </div>
     );
   }
-  const small = smallPhotoSrc(photo.src);
+  // Only the cached size (data saver, no tap yet), or every size for the browser to pick from.
+  const small = cachedOnly ? null : smallPhotoSrc(photo.src);
   const thumb = thumbPhotoSrc(photo.src);
 
   return (
     <div className={`relative overflow-hidden bg-sand/30 ${className}`}>
       <img
-        src={photo.src}
+        src={cachedOnly ?? photo.src}
         srcSet={small ? `${thumb} 240w, ${small} 480w, ${photo.src} ${photo.width}w` : undefined}
         sizes={small ? sizes : undefined}
         alt={alt}
