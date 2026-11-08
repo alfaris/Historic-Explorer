@@ -3,7 +3,7 @@
 
 import type { Content } from '../data/content';
 import { walkStops } from '../lib/walk';
-import { REASONS, type Reason } from '../lib/stats';
+import { REASONS, ROUTE_REASONS, routeRatings, type Reason, type RouteReason } from '../lib/stats';
 import { CSV_TYPE, csvText } from './backup';
 import type { StatsResponse } from './api';
 
@@ -27,12 +27,21 @@ const REASON_HEADERS: Record<Reason, string> = {
   other: 'No: something else',
 };
 
+const ROUTE_REASON_HEADERS: Record<RouteReason, string> = {
+  long: 'Low rating: too long',
+  hot: 'Low rating: too hot or tiring',
+  lost: 'Low rating: hard to follow',
+  closed: 'Low rating: places closed',
+  other: 'Low rating: something else',
+};
+
 /** The stats for the period shown, as a CSV file. */
 export function statsCsv(data: StatsResponse, content: Content, days: number, today = new Date()) {
   const { total } = data;
   const n = (r: Record<string, number>, id: string | number) => r[id] ?? 0;
   const routeName = new Map(content.routes.map(r => [r.id, r.nameEn]));
   const daily = dailySeries(data.perDay, days, today);
+  const ratings = new Map(routeRatings(total, content.routes.map(r => r.id)).map(r => [r.id, r]));
   const from = daily[0].date;
   const to = daily[daily.length - 1].date;
 
@@ -58,10 +67,20 @@ export function statsCsv(data: StatsResponse, content: Content, days: number, to
     ]),
     [],
     ['Per route'],
-    ['Route ID', 'Route', 'Route opens', 'Audio plays at its stops', 'Near me arrivals at its stops'],
+    ['Route ID', 'Route', 'Route opens', 'Audio plays at its stops', 'Near me arrivals at its stops', 'Ratings', 'Average rating', ...ROUTE_REASONS.map(r => ROUTE_REASON_HEADERS[r])],
     ...content.routes.map(r => {
       const stops = walkStops(content.places, r.id);
-      return [r.id, r.nameEn, n(total.routes, r.id), stops.reduce((a, p) => a + n(total.plays, p.id), 0), stops.reduce((a, p) => a + n(total.arrivals, p.id), 0)];
+      const rating = ratings.get(r.id);
+      return [
+        r.id,
+        r.nameEn,
+        n(total.routes, r.id),
+        stops.reduce((a, p) => a + n(total.plays, p.id), 0),
+        stops.reduce((a, p) => a + n(total.arrivals, p.id), 0),
+        rating?.count ?? 0,
+        rating ? rating.average : '',
+        ...ROUTE_REASONS.map(x => rating?.reasons[x] ?? 0),
+      ];
     }),
     [],
     ['Stops in walking order'],

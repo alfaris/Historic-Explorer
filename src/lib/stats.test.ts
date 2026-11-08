@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addEvents, cleanEvents, dayKey, emptyDay, helpfulness, MAX_EVENTS_PER_REQUEST, parseDay, sumDays } from './stats';
+import { addEvents, cleanEvents, dayKey, emptyDay, helpfulness, MAX_EVENTS_PER_REQUEST, parseDay, routeRatings, sumDays } from './stats';
 
 const known = { placeIds: new Set([1, 2]), routeIds: new Set(['ahl-al-bayt']) };
 
@@ -29,7 +29,7 @@ describe('cleanEvents', () => {
 describe('addEvents / sumDays / parseDay', () => {
   it('counts events into the right totals', () => {
     const day = addEvents(emptyDay(), [{ t: 'play', id: 1 }, { t: 'play', id: 1 }, { t: 'route', id: 'r' }, { t: 'arrive', id: 2 }]);
-    expect(day).toEqual({ plays: { 1: 2 }, routes: { r: 1 }, arrivals: { 2: 1 }, helpful: {}, unhelpful: {}, reasons: {} });
+    expect(day).toEqual({ plays: { 1: 2 }, routes: { r: 1 }, arrivals: { 2: 1 }, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {} });
   });
 
   it('adds days together', () => {
@@ -39,7 +39,7 @@ describe('addEvents / sumDays / parseDay', () => {
   });
 
   it('drops malformed stored values', () => {
-    expect(parseDay({ plays: { 1: 3, 2: -1, 3: 1.5, 4: 'x' }, routes: 'bad' })).toEqual({ plays: { 1: 3 }, routes: {}, arrivals: {}, helpful: {}, unhelpful: {}, reasons: {} });
+    expect(parseDay({ plays: { 1: 3, 2: -1, 3: 1.5, 4: 'x' }, routes: 'bad' })).toEqual({ plays: { 1: 3 }, routes: {}, arrivals: {}, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {} });
     expect(parseDay(null)).toEqual(emptyDay());
   });
 
@@ -48,7 +48,7 @@ describe('addEvents / sumDays / parseDay', () => {
     const events = cleanEvents([{ t: 'up', id: 1 }, { t: 'down', id: 1 }, { t: 'up', id: 9 }, { t: 'up', id: '1' }], known);
     expect(events).toEqual([{ t: 'up', id: 1 }, { t: 'down', id: 1 }]);
     expect(addEvents(emptyDay(), events)).toMatchObject({ helpful: { 1: 1 }, unhelpful: { 1: 1 } });
-    expect(parseDay({ plays: { 1: 2 } })).toEqual({ plays: { 1: 2 }, routes: {}, arrivals: {}, helpful: {}, unhelpful: {}, reasons: {} });
+    expect(parseDay({ plays: { 1: 2 } })).toEqual({ plays: { 1: 2 }, routes: {}, arrivals: {}, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {} });
   });
 
   it('lists helpfulness per place, most disliked or most voted first', () => {
@@ -82,5 +82,42 @@ describe('reasons after No', () => {
   it('lists each place’s reasons with its votes', () => {
     const total = { ...emptyDay(), unhelpful: { 1: 3 }, reasons: { '1:outdated': 2, '1:audio': 1, '2:short': 4 } };
     expect(helpfulness(total, [1, 2])[0]).toMatchObject({ id: 1, no: 3, reasons: { outdated: 2, audio: 1 } });
+  });
+});
+
+describe('route ratings', () => {
+  const known = { placeIds: new Set([1]), routeIds: new Set(['al-muizz', 'coptic-cairo']) };
+  it('keeps ratings of 1 to 5 stars and low-rating reasons for known routes', () => {
+    const events = cleanEvents(
+      [
+        { t: 'rate', id: 'al-muizz', s: 5 },
+        { t: 'rate', id: 'al-muizz', s: 2 },
+        { t: 'rate', id: 'al-muizz', s: 6 },
+        { t: 'rate', id: 'al-muizz', s: 3.5 },
+        { t: 'rate', id: 'nowhere', s: 4 },
+        { t: 'rwhy', id: 'al-muizz', r: 'hot' },
+        { t: 'rwhy', id: 'al-muizz', r: 'boring' },
+      ],
+      known,
+    );
+    expect(events).toEqual([
+      { t: 'rate', id: 'al-muizz', s: 5 },
+      { t: 'rate', id: 'al-muizz', s: 2 },
+      { t: 'rwhy', id: 'al-muizz', r: 'hot' },
+    ]);
+    const day = addEvents(emptyDay(), events);
+    expect(day.ratings).toEqual({ 'al-muizz:5': 1, 'al-muizz:2': 1 });
+    expect(day.routeReasons).toEqual({ 'al-muizz:hot': 1 });
+  });
+  it('reads stored ratings, dropping malformed keys, and days stored before ratings existed', () => {
+    expect(parseDay({ ratings: { 'al-muizz:4': 2, 'al-muizz:9': 1, 'Bad Id:3': 1 }, routeReasons: { 'al-muizz:hot': 1, 'al-muizz:boring': 2 } })).toMatchObject({
+      ratings: { 'al-muizz:4': 2 },
+      routeReasons: { 'al-muizz:hot': 1 },
+    });
+    expect(parseDay({ plays: { 1: 1 } }).ratings).toEqual({});
+  });
+  it('averages each route, leaving out routes without ratings', () => {
+    const total = { ...emptyDay(), ratings: { 'al-muizz:5': 2, 'al-muizz:2': 1 }, routeReasons: { 'al-muizz:hot': 1 } };
+    expect(routeRatings(total, ['al-muizz', 'coptic-cairo'])).toEqual([{ id: 'al-muizz', count: 3, average: 4, reasons: { hot: 1 } }]);
   });
 });
