@@ -244,6 +244,7 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
                 photo={photoForPlace(loc)}
                 alt={photoAltOf(loc)}
                 className="w-full h-12 rounded-xl shadow-md"
+                tapToShow={false}
                 fallback={
                   <HistoricPlaceholder 
                     category={loc.category} 

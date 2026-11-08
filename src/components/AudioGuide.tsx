@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { ChevronDown, Gauge, Loader2, Play, Sparkles } from 'lucide-react';
 import { textHash } from '../lib/text-hash';
+import { useDisplay } from '../lib/display';
 import { audioGuideUrl } from '../lib/offline-pack';
 import { track } from '../lib/track';
 import { guidePlayer, nextSpeed, speedLabel, type GuideTrack } from '../lib/guide-player';
@@ -93,10 +94,12 @@ export function AudioGuide({ locationId, text, langCode, onNext, onPrevious, aut
   const nav = useRef({ onNext, onPrevious });
   nav.current = { onNext, onPrevious };
 
+  // Data saver: the guide is prepared only when played, not in the background.
+  const { dataSaver } = useDisplay();
   useEffect(() => {
-    if (!text) return;
-    let active = true;
     setShowTranscript(false);
+    if (!text || dataSaver) return;
+    let active = true;
     const timer = setTimeout(() => {
       loadGuideAudio(locationId, langCode, text)
         .then(result => {
@@ -109,7 +112,7 @@ export function AudioGuide({ locationId, text, langCode, onNext, onPrevious, aut
       clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
+  }, [key, dataSaver]);
 
   const start = async ({ auto = false } = {}) => {
     if (!text) return;
@@ -122,7 +125,8 @@ export function AudioGuide({ locationId, text, langCode, onNext, onPrevious, aut
       key,
       title: place ? nameOf(place) : '',
       artist: route ? nameOf(route) : 'Cairo Walks',
-      artwork: photo ? { src: new URL(photo.src, window.location.href).href, width: photo.width, height: photo.height } : undefined,
+      // Data saver: no photo download for the lock screen either.
+      artwork: photo && !dataSaver ? { src: new URL(photo.src, window.location.href).href, width: photo.width, height: photo.height } : undefined,
       onNext: onNext && (() => nav.current.onNext?.()),
       onPrevious: onPrevious && (() => nav.current.onPrevious?.()),
     };

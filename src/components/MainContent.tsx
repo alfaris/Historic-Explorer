@@ -352,6 +352,7 @@ export const MainContent: React.FC = () => {
               photo={photoForPlace(loc)}
               alt=""
               sizes="96px"
+              tapToShow={false}
               className="w-20 h-20 rounded-xl"
               fallback={<HistoricPlaceholder category={loc.category} name={loc.nameEn} className="w-20 h-20 rounded-xl" />}
             />
@@ -587,6 +588,7 @@ export const MainContent: React.FC = () => {
                     photo={photoForRoute(route)}
                     alt={nameOf(route)}
                     sizes="(min-width: 768px) 260px, 220px"
+                    tapToShow={false}
                     priority={routeIndex < 2}
                     className="absolute inset-0 w-full h-full"
                     fallback={

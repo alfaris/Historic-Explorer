@@ -121,6 +121,7 @@ function SavedSheet({ places, routes, onOpen, onClose }: {
                               photo={photoForPlace(place)}
                               alt=""
                               sizes="64px"
+                              tapToShow={false}
                               className="w-14 h-14 rounded-xl"
                               fallback={<HistoricPlaceholder category={place.category} name={place.nameEn} className="w-14 h-14 rounded-xl" />}
                             />
