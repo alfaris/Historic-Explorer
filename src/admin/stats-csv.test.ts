@@ -79,7 +79,7 @@ describe('statsCsv', () => {
 
   it('sums each route and lists its stops in walking order', () => {
     const routes = section(rows, 'Per route');
-    expect(routes.find(r => r[0] === route.id)).toEqual([route.id, route.nameEn, '1', '3', '1']);
+    expect(routes.find(r => r[0] === route.id)!.slice(0, 7)).toEqual([route.id, route.nameEn, '1', '3', '1', '0', '']);
     const stops = section(rows, 'Stops in walking order').filter(r => r[0] === route.nameEn);
     expect(stops.slice(0, 2)).toEqual([
       [route.nameEn, '1', String(a.id), a.nameEn, '2', '0'],
@@ -95,5 +95,15 @@ describe('statsCsv', () => {
     // Built with a later date, the oldest day would fall off: what the tab avoids by passing loadedAt.
     const shifted = readCsv(statsCsv(data, content, 7, new Date('2026-11-09T00:30:00Z')).text);
     expect(section(shifted, 'Per day').at(-1)).toEqual(['Total', '2', '1', '0']);
+  });
+
+  it("adds each route's ratings and low-rating reasons", () => {
+    const rated = { ...data, total: addEvents(total, [{ t: 'rate', id: route.id, s: 5 }, { t: 'rate', id: route.id, s: 2 }, { t: 'rwhy', id: route.id, r: 'hot' }]) };
+    const rows = readCsv(statsCsv(rated, content, 7, today).text);
+    const header = rows.find(r => r[0] === 'Route ID')!;
+    const row = section(rows, 'Per route').find(r => r[0] === route.id)!;
+    expect(row[header.indexOf('Ratings')]).toBe('2');
+    expect(row[header.indexOf('Average rating')]).toBe('3.5');
+    expect(row[header.indexOf('Low rating: too hot or tiring')]).toBe('1');
   });
 });

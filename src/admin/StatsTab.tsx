@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Download, RefreshCw } from 'lucide-react';
 import type { Content } from '../data/content';
 import { walkStops } from '../lib/walk';
-import { helpfulness, REASONS, type HelpfulRow, type Reason } from '../lib/stats';
+import { helpfulness, REASONS, ROUTE_REASONS, routeRatings, type HelpfulRow, type Reason, type RouteReason } from '../lib/stats';
 import { api, ApiError, type StatsResponse } from './api';
 import { downloadFile } from './backup';
 import { dailySeries, statsCsv } from './stats-csv';
@@ -66,6 +66,14 @@ const reasonText = (r: HelpfulRow) =>
     .map(k => `${r.reasons[k]} × ${REASON_NAMES[k]}`)
     .join(' · ');
 
+const ROUTE_REASON_NAMES: Record<RouteReason, string> = { long: 'too long', hot: 'too hot or tiring', lost: 'hard to follow', closed: 'places closed', other: 'something else' };
+/** "3 × too hot or tiring · 1 × places closed", most picked first. */
+export const routeReasonText = (reasons: Partial<Record<RouteReason, number>>) =>
+  ROUTE_REASONS.filter(k => reasons[k])
+    .sort((a, b) => reasons[b]! - reasons[a]!)
+    .map(k => `${reasons[k]} × ${ROUTE_REASON_NAMES[k]}`)
+    .join(' · ');
+
 export function StatsTab({ content, onSignedOut, onEditPlace }: { content: Content; onSignedOut: () => void; onEditPlace?: (id: number) => void }) {
   const [days, setDays] = useState<Days>(30);
   const [helpSort, setHelpSort] = useState<'disliked' | 'votes'>('disliked');
@@ -110,6 +118,12 @@ export function StatsTab({ content, onSignedOut, onEditPlace }: { content: Conte
     () => (data ? helpfulness(data.total, content.places.map(p => p.id), helpSort) : []),
     [data, content, helpSort],
   );
+
+  const ratingRows = useMemo(
+    () => (data ? routeRatings(data.total, content.routes.map(r => r.id)).sort((a, b) => b.count - a.count) : []),
+    [data, content],
+  );
+  const routeName = useMemo(() => new Map(content.routes.map(r => [r.id, r.nameEn])), [content]);
 
   const routeRows = useMemo(() => {
     if (!data) return [];
@@ -224,6 +238,35 @@ export function StatsTab({ content, onSignedOut, onEditPlace }: { content: Conte
                           </button>
                         </td>
                       )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          <div className="bg-white rounded-2xl border border-sand/50 p-5">
+            <h2 className="text-sm font-bold text-stone-700 mb-1">How was the walk?</h2>
+            <p className="text-[11px] text-stone-400 mb-4">Ratings from the finish screen (1–5 stars, once per route per device), with the reasons given after 1 or 2 stars.</p>
+            {ratingRows.length === 0 ? (
+              <p className="text-sm text-stone-400">No ratings in this period yet.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-start text-[11px] uppercase tracking-widest text-stone-400">
+                    <th className="text-start font-bold pb-2">Route</th>
+                    <th className="text-end font-bold pb-2">Average</th>
+                    <th className="text-end font-bold pb-2">Ratings</th>
+                    <th className="text-start font-bold pb-2 ps-4">After a low rating</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-sand/40">
+                  {ratingRows.map(r => (
+                    <tr key={r.id}>
+                      <td className="py-2 text-stone-700">{routeName.get(r.id) ?? r.id}</td>
+                      <td className="py-2 text-end tabular-nums text-ink">★ {r.average.toFixed(1)}</td>
+                      <td className="py-2 text-end tabular-nums text-stone-600">{fmt(r.count)}</td>
+                      <td className="py-2 ps-4 text-xs text-stone-500">{routeReasonText(r.reasons) || '–'}</td>
                     </tr>
                   ))}
                 </tbody>

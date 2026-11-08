@@ -11,11 +11,13 @@ import { L, currentLang, nameOf } from '../i18n/lang';
 import { PlacePhoto } from './PlacePhoto';
 import { ShareRoute } from './ShareRoute';
 import { PostcardButton } from './PostcardButton';
+import { RouteRating } from './RouteRating';
 
 /**
  * The end of a walk: stops visited, roughly how far the visitor walked (from
- * the walk plan), the route's photo, a share button and "Walk again". All from
- * this device; nothing is sent anywhere.
+ * the walk plan), the route's photo, "How was the walk?", a share button and
+ * "Walk again". The rating is sent with the anonymous usage counts; nothing
+ * else here leaves the device.
  */
 export function WalkFinish({ route, places, onClose }: { route: Route; places: Location[]; onClose: () => void }) {
   const visited = useVisited();
@@ -84,6 +86,8 @@ export function WalkFinish({ route, places, onClose }: { route: Route; places: L
             </div>
           </dl>
           <p className="text-xs text-stone-400 mb-5">{L('Estimated from the walk between the stops you visited.', 'تقدير من المسافة بين المحطات التي زرتها.')}</p>
+
+          {summary.visited > 0 && <RouteRating routeId={route.id} className="mb-5" />}
 
           <div className="flex flex-col items-stretch gap-2">
             <div className="flex justify-center [&>button]:w-full [&>button]:justify-center">
