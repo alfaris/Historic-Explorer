@@ -86,4 +86,14 @@ describe('statsCsv', () => {
       [route.nameEn, '2', String(b.id), b.nameEn, '1', '1'],
     ]);
   });
+
+  it('keeps the loaded period when downloaded after midnight', () => {
+    // The file is built with the time the stats were loaded, not the time of the click.
+    const later = readCsv(statsCsv(data, content, 7, today).text);
+    expect(later[0][2]).toBe('2026-11-02 to 2026-11-08 (UTC)');
+    expect(section(later, 'Per day').at(-1)).toEqual(['Total', '3', '1', '1']);
+    // Built with a later date, the oldest day would fall off: what the tab avoids by passing loadedAt.
+    const shifted = readCsv(statsCsv(data, content, 7, new Date('2026-11-09T00:30:00Z')).text);
+    expect(section(shifted, 'Per day').at(-1)).toEqual(['Total', '2', '1', '0']);
+  });
 });

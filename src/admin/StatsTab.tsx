@@ -38,8 +38,8 @@ function Tile({ label, value, hint }: { label: string; value: number; hint: stri
 }
 
 /** Audio plays per day as thin columns, with the exact count on hover. */
-function Daily({ perDay, days }: { perDay: StatsResponse['perDay']; days: Days }) {
-  const series = dailySeries(perDay, days);
+function Daily({ perDay, days, loadedAt }: { perDay: StatsResponse['perDay']; days: Days; loadedAt: Date }) {
+  const series = dailySeries(perDay, days, loadedAt);
   const max = Math.max(1, ...series.map(s => s.plays));
   return (
     <div>
@@ -70,6 +70,8 @@ export function StatsTab({ content, onSignedOut, onEditPlace }: { content: Conte
   const [days, setDays] = useState<Days>(30);
   const [helpSort, setHelpSort] = useState<'disliked' | 'votes'>('disliked');
   const [data, setData] = useState<StatsResponse | null>(null);
+  // When `data` was loaded: its days end on that date, even if the tab stays open past midnight.
+  const [loadedAt, setLoadedAt] = useState(() => new Date());
   const [error, setError] = useState<string | null>(null);
 
   // Each load is numbered; only the latest may update the screen, so a slow
@@ -81,6 +83,7 @@ export function StatsTab({ content, onSignedOut, onEditPlace }: { content: Conte
       const next = await api.stats(days);
       if (request !== latest.current) return;
       setData(next);
+      setLoadedAt(new Date());
       setError(null);
     } catch (err) {
       if (request !== latest.current) return;
@@ -136,7 +139,7 @@ export function StatsTab({ content, onSignedOut, onEditPlace }: { content: Conte
           </button>
         ))}
         <button
-          onClick={() => data && downloadFile(statsCsv(data, content, days))}
+          onClick={() => data && downloadFile(statsCsv(data, content, days, loadedAt))}
           disabled={!data}
           className="ms-auto flex items-center gap-1 min-h-11 px-2 text-xs text-stone-500 hover:text-nile disabled:opacity-40"
         >
@@ -163,7 +166,7 @@ export function StatsTab({ content, onSignedOut, onEditPlace }: { content: Conte
 
           <div className="bg-white rounded-2xl border border-sand/50 p-5">
             <h2 className="text-sm font-bold text-stone-700 mb-3">Audio plays per day</h2>
-            <Daily perDay={data.perDay} days={days} />
+            <Daily perDay={data.perDay} days={days} loadedAt={loadedAt} />
           </div>
 
           <div className="bg-white rounded-2xl border border-sand/50 p-5">
