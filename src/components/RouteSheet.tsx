@@ -12,6 +12,7 @@ import { L, LANGUAGES, currentLang, descriptionOf, fallbackLang, nameOf } from '
 import { minutesLabel } from './WalkInfo';
 import { accessSummary, hasAccessInfo, routeAccess } from '../lib/step-free';
 import { accessText } from '../lib/visitor-tips';
+import { gettingThere } from '../lib/getting-there';
 
 /**
  * The printable route sheet (A4): the route, a schematic map of the stops,
@@ -75,6 +76,13 @@ export default function RouteSheet({ route, places, onDone }: { route: Route; pl
   const meta = [formatDistance(route.distanceKm, lang), formatDuration(route.hoursMin, route.hoursMax, lang)].filter(Boolean).join(' · ');
   const access = routeAccess(places, route.id);
   const showAccess = hasAccessInfo(access);
+  const there = gettingThere(route, places, lang);
+  // "Start: Bab Zuweila (باب زويلة) · Nearest metro: Attaba · Ask for …": the Arabic name to show a driver.
+  const startLine = there && [
+    `${L('Start', 'البداية')}: ${nameOf(there.start)}${ar ? '' : ` (${there.start.nameAr})`}`,
+    there.metro && `${L('Nearest metro', 'أقرب محطة مترو')}: ${there.metro.text}${there.minutes ? ` · ${minutesLabel(there.minutes)}` : ''}`,
+    there.note?.text,
+  ].filter(Boolean).join(' · ');
 
   return createPortal(
     <div id="print-sheet" dir={LANGUAGES[lang].dir} lang={lang} className="text-ink bg-white">
@@ -83,6 +91,7 @@ export default function RouteSheet({ route, places, onDone }: { route: Route; pl
         <h1 className={`text-3xl leading-tight ${ar ? 'font-arabic font-bold' : 'font-serif'}`}>{nameOf(route)}</h1>
         {meta && <p className="text-sm text-stone-600">{meta}</p>}
         {showAccess && <p className="text-sm text-stone-600">{accessSummary(access)}</p>}
+        {startLine && <p className="text-sm text-stone-600">{startLine}</p>}
         {descriptionOf(route) && <p className="mt-1 text-sm text-stone-700" lang={fallbackLang(route, 'description')}>{descriptionOf(route)}</p>}
       </header>
 

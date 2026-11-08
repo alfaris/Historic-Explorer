@@ -107,11 +107,16 @@ export function RoutesTab({ content, save, initialRouteId = null, onSelected, on
     const description = fieldKey('description', lang);
     if (!draft[name] && draft.nameEn.trim()) missing[name] = draft.nameEn;
     if (!draft[description] && draft.descriptionEn.trim()) missing[description] = draft.descriptionEn;
+    for (const base of ['metro', 'gettingThere'] as const) {
+      const key = fieldKey(base, lang);
+      const english = draft[fieldKey(base, 'en')];
+      if (!draft[key] && english?.trim()) missing[key] = english;
+    }
     if (!lines(highlights[lang]).length) lines(highlights.en).forEach((line, i) => (missing[`h${i}`] = line));
     return missing;
   };
   const applyDrafts = (lang: OptionalLang, texts: Record<string, string>) => {
-    setDraft(d => d && [fieldKey('name', lang), fieldKey('description', lang)].reduce((acc, key) => (texts[key] ? { ...acc, [key]: texts[key] } : acc), d));
+    setDraft(d => d && [fieldKey('name', lang), fieldKey('description', lang), fieldKey('metro', lang), fieldKey('gettingThere', lang)].reduce((acc, key) => (texts[key] ? { ...acc, [key]: texts[key] } : acc), d));
     const drafted = lines(highlights.en).map((_, i) => texts[`h${i}`]).filter(Boolean);
     if (drafted.length) setHighlights(h => (lines(h[lang]).length ? h : { ...h, [lang]: drafted.join('\n') }));
   };
@@ -217,6 +222,16 @@ export function RoutesTab({ content, save, initialRouteId = null, onSelected, on
                   <Field label={`Highlights (${name})`} hint="Optional. One per line, up to 8.">
                     <textarea value={highlights[lang]} onChange={e => setHighlights(h => ({ ...h, [lang]: e.target.value }))} className={inputClass} rows={3} lang={lang} />
                   </Field>
+                  {(draft.metroEn || draft[fieldKey('metro', lang)]) && (
+                    <Field label={`Nearest metro (${name})`}>
+                      <input value={draft[fieldKey('metro', lang)] ?? ''} onChange={e => setField(fieldKey('metro', lang), e.target.value)} className={inputClass} lang={lang} maxLength={80} />
+                    </Field>
+                  )}
+                  {(draft.gettingThereEn || draft[fieldKey('gettingThere', lang)]) && (
+                    <Field label={`Getting there note (${name})`}>
+                      <textarea value={draft[fieldKey('gettingThere', lang)] ?? ''} onChange={e => setField(fieldKey('gettingThere', lang), e.target.value)} className={inputClass} rows={2} lang={lang} maxLength={300} />
+                    </Field>
+                  )}
                   <div className="flex items-end">
                     <FillMissingButton key={`${draft.id}-${lang}`} lang={lang} missing={missingIn(lang)} onFilled={texts => applyDrafts(lang, texts)} />
                   </div>
@@ -247,6 +262,54 @@ export function RoutesTab({ content, save, initialRouteId = null, onSelected, on
               </div>
             </Field>
           </div>
+          {!isNew && (
+            <div id="getting-there" className="rounded-xl border border-sand/60 p-4 space-y-3 scroll-mt-24">
+              <p className="text-xs font-bold text-stone-600">Getting there</p>
+              <p className="text-[11px] text-stone-400">
+                Shown under the route's buttons: where the walk starts, directions to it, a card with its Arabic name to show a taxi driver, and the nearest metro station.
+              </p>
+              <Field label="Start point" hint="Where visitors should go first. A meeting point works well.">
+                <select
+                  value={draft.startId ?? ''}
+                  onChange={e => setDraft(d => (d ? withOptional(d, 'startId', e.target.value ? Number(e.target.value) : undefined) : d))}
+                  className={inputClass}
+                >
+                  <option value="">First stop{walkStops(orderedPlaces, draft.id)[0] ? ` (${walkStops(orderedPlaces, draft.id)[0].nameEn})` : ''}</option>
+                  {content.places.filter(p => p.routeId === draft.id).map(p => (
+                    <option key={p.id} value={p.id}>{p.nameEn}</option>
+                  ))}
+                </select>
+              </Field>
+              <div className="grid sm:grid-cols-[1fr_1fr_8rem] gap-3">
+                <Field label="Nearest metro (English)">
+                  <input value={draft.metroEn ?? ''} onChange={e => setField('metroEn', e.target.value)} className={inputClass} maxLength={80} placeholder="e.g. Attaba" />
+                </Field>
+                <Field label="Nearest metro (Arabic)">
+                  <input value={draft.metroAr ?? ''} onChange={e => setField('metroAr', e.target.value)} className={inputClass} maxLength={80} dir="rtl" placeholder="مثال: العتبة" />
+                </Field>
+                <Field label="Walk (minutes)">
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min="1"
+                    max="60"
+                    step="1"
+                    value={draft.metroMinutes ?? ''}
+                    onChange={e => setDraft(d => (d ? withOptional(d, 'metroMinutes', e.target.value ? Number(e.target.value) : undefined) : d))}
+                    className={inputClass}
+                  />
+                </Field>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <Field label="Note (English)" hint="Optional, e.g. “Ask for Bab Zuweila: cars can't enter the street.”">
+                  <textarea value={draft.gettingThereEn ?? ''} onChange={e => setField('gettingThereEn', e.target.value)} className={inputClass} rows={2} maxLength={300} />
+                </Field>
+                <Field label="Note (Arabic)">
+                  <textarea value={draft.gettingThereAr ?? ''} onChange={e => setField('gettingThereAr', e.target.value)} className={inputClass} rows={2} maxLength={300} dir="rtl" />
+                </Field>
+              </div>
+            </div>
+          )}
           <PhotoField
             photo={draft.photo}
             builtIn={draft.id ? builtInPhoto(`route-${draft.id}`) : undefined}
