@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, Plus } from 'lucide-react';
 import type { Content, Route } from '../data/content';
 import type { SaveFn } from './AdminApp';
@@ -9,11 +9,13 @@ import { builtInPhoto } from '../data/photo-resolve';
 import { applyStopOrder, walkPlan, walkStops } from '../lib/walk';
 import { RouteQr } from './RouteQr';
 import { RouteAudio } from './RouteAudio';
-import { fieldKey, FillMissingButton, withOptional, fillEmpty } from './translations';
+import { DraftReview } from './DraftReview';
+import { fieldKey, FillMissingButton, withOptional, fillEmpty, typedField } from './translations';
 import { LANGS, LANGUAGES, OPTIONAL_LANGS, type Lang, type OptionalLang } from '../i18n/lang';
 import { routeText } from '../lib/route-format';
 import { plannedKm, plannedWalk, type PlaceSection } from './content-health';
 import { routeAccess } from '../lib/step-free';
+import { withDrafted, withoutDrafted } from '../lib/drafted';
 
 const blankRoute = (): Route => ({
   id: '',
@@ -46,6 +48,9 @@ export function RoutesTab({ content, save, initialRouteId = null, onSelected, on
   // Highlights are edited as raw text (one per line) and split only when saving,
   // so spaces and new lines aren't trimmed away while typing.
   const [highlights, setHighlights] = useState<Record<Lang, string>>({ en: '', ar: '', fr: '', es: '' });
+  // The latest highlights, for a translation that comes back after the admin typed some.
+  const highlightsNow = useRef(highlights);
+  highlightsNow.current = highlights;
   // The stops' walking order, as place IDs. Applied to the places when saving.
   const [order, setOrder] = useState<number[]>([]);
 
@@ -97,7 +102,7 @@ export function RoutesTab({ content, save, initialRouteId = null, onSelected, on
       return { ...next, ...routeText(next) };
     });
   const numberValue = (n: number) => (Number.isFinite(n) ? String(n) : '');
-  const setField = (key: keyof Route, value: string) => setDraft(d => (d ? withOptional(d, key, value) : d));
+  const setField = (key: keyof Route, value: string) => setDraft(d => (d ? typedField(d, key, value) : d));
 
   // Empty fields in an optional language, with the English to draft them from. Highlights go line by line.
   const missingIn = (lang: OptionalLang): Record<string, string> => {
@@ -116,9 +121,14 @@ export function RoutesTab({ content, save, initialRouteId = null, onSelected, on
     return missing;
   };
   const applyDrafts = (lang: OptionalLang, texts: Record<string, string>) => {
-    setDraft(d => d && [fieldKey('name', lang), fieldKey('description', lang), fieldKey('metro', lang), fieldKey('gettingThere', lang)].reduce((acc, key) => (texts[key] ? { ...acc, [key]: texts[key] } : acc), d));
+    setDraft(d => d && fillEmpty(d, texts, [fieldKey('name', lang), fieldKey('description', lang), fieldKey('metro', lang), fieldKey('gettingThere', lang)]));
     const drafted = lines(highlights.en).map((_, i) => texts[`h${i}`]).filter(Boolean);
-    if (drafted.length) setHighlights(h => (lines(h[lang]).length ? h : { ...h, [lang]: drafted.join('\n') }));
+    // The highlights as they are now (the admin may have typed some while
+    // Gemini was translating): the drafts, and their mark, go in only if still empty.
+    if (drafted.length && !lines(highlightsNow.current[lang]).length) {
+      setHighlights(h => ({ ...h, [lang]: drafted.join('\n') }));
+      setDraft(d => d && withDrafted(d, [fieldKey('highlights', lang)]));
+    }
   };
 
   const submit = async () => {
@@ -185,6 +195,7 @@ export function RoutesTab({ content, save, initialRouteId = null, onSelected, on
           }}
         >
           <h2 className="text-xl font-serif">{isNew ? 'New route' : draft.nameEn}</h2>
+          <DraftReview item={draft} onChange={next => setDraft(next)} />
           <Field label="ID" hint={isNew ? 'Lowercase letters, numbers and dashes, e.g. "islamic-cairo". Can’t be changed later.' : 'IDs can’t be changed.'}>
             <input value={draft.id} onChange={e => set('id', e.target.value.toLowerCase())} className={inputClass} disabled={!isNew} />
           </Field>
@@ -220,7 +231,17 @@ export function RoutesTab({ content, save, initialRouteId = null, onSelected, on
                     <textarea value={draft[descriptionKey] ?? ''} onChange={e => setField(descriptionKey, e.target.value)} className={inputClass} rows={3} lang={lang} />
                   </Field>
                   <Field label={`Highlights (${name})`} hint="Optional. One per line, up to 8.">
-                    <textarea value={highlights[lang]} onChange={e => setHighlights(h => ({ ...h, [lang]: e.target.value }))} className={inputClass} rows={3} lang={lang} />
+                    <textarea
+                      value={highlights[lang]}
+                      onChange={e => {
+                        setHighlights(h => ({ ...h, [lang]: e.target.value }));
+                        // Typed by hand: no longer a draft to review.
+                        setDraft(d => d && withoutDrafted(d, [fieldKey('highlights', lang)]));
+                      }}
+                      className={inputClass}
+                      rows={3}
+                      lang={lang}
+                    />
                   </Field>
                   {(draft.metroEn || draft[fieldKey('metro', lang)]) && (
                     <Field label={`Nearest metro (${name})`}>
@@ -325,7 +346,7 @@ export function RoutesTab({ content, save, initialRouteId = null, onSelected, on
             item={draft}
             src={(draft.photo ?? (draft.id ? builtInPhoto(`route-${draft.id}`) : undefined))?.src}
             name={draft.nameEn}
-            onChange={(key, value) => setDraft(d => (d ? withOptional(d, key, value) : d))}
+            onChange={(key, value) => setDraft(d => (d ? typedField(d, key, value) : d))}
             onDraft={texts => setDraft(d => (d ? fillEmpty(d, texts, PHOTO_ALT_KEYS) : d))}
           />
           {!isNew && original && <RouteQr route={original} />}

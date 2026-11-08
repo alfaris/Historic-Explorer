@@ -8,6 +8,7 @@ import { Languages, Loader2 } from 'lucide-react';
 import type { Location } from '../data/content';
 import { LANGUAGES, type OptionalLang } from '../i18n/lang';
 import { api } from './api';
+import { withDrafted, withoutDrafted } from '../lib/drafted';
 import { Button } from './ui';
 
 /** Copy of `obj` with `key` set, or removed when the value is empty ('', [], undefined). */
@@ -19,16 +20,28 @@ export function withOptional<T extends object, K extends keyof T>(obj: T, key: K
 }
 
 /**
+ * A field typed by hand in an editor: set as withOptional does, and no longer
+ * a Gemini draft to review. (Not for building the item to save, which must
+ * keep the marks.)
+ */
+export const typedField = <T extends object, K extends keyof T>(obj: T, key: K, value: T[K] | string | undefined): T =>
+  withoutDrafted(withOptional(obj, key, value), [String(key)]);
+
+/**
  * `obj` with Gemini's drafts in the `keys` fields that are still empty (the
- * admin may have typed in one while it was translating).
+ * admin may have typed in one while it was translating), marked as drafts to review.
  */
 export function fillEmpty<T extends object>(obj: T, texts: Record<string, string>, keys: string[]): T {
   const next = { ...obj } as Record<string, unknown>;
+  const filled: string[] = [];
   for (const k of keys) {
     const current = next[k];
-    if (texts[k]?.trim() && !(typeof current === 'string' && current.trim())) next[k] = texts[k];
+    if (texts[k]?.trim() && !(typeof current === 'string' && current.trim())) {
+      next[k] = texts[k];
+      filled.push(k);
+    }
   }
-  return next as T;
+  return withDrafted(next as T, filled);
 }
 
 /** A content field's key in a language: fieldKey('name', 'es') is 'nameEs'. */

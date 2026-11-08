@@ -7,6 +7,8 @@ import { LANGS, LANGUAGES, isOptionalLang, type Lang, type OptionalLang } from '
 import type { SaveFn } from './AdminApp';
 import { Button, ErrorBox, Field, inputClass, sameValue } from './ui';
 import { missingText } from './content-health';
+import { withoutDrafted } from '../lib/drafted';
+import { DraftReview } from './DraftReview';
 import { FillMissingButton, fillEmpty } from './translations';
 
 const blank = (): GlossaryTerm => ({ id: '', termEn: '', termAr: '', defEn: '', defAr: '', match: [] });
@@ -75,7 +77,8 @@ export function GlossaryTab({ content, save, initialId = null, onSelected }: {
   const set = (k: keyof GlossaryTerm, value: string) =>
     setDraft(d => {
       if (!d) return d;
-      const next = { ...d } as Record<string, unknown>;
+      // Typed by hand: no longer a Gemini draft to review.
+      const next = withoutDrafted({ ...d }, [k]) as Record<string, unknown>;
       if (value.trim() || k === 'termEn' || k === 'termAr' || k === 'defEn' || k === 'defAr' || k === 'id') next[k] = value;
       else delete next[k];
       return next as unknown as GlossaryTerm;
@@ -133,6 +136,7 @@ export function GlossaryTab({ content, save, initialId = null, onSelected }: {
             submit();
           }}
         >
+          <DraftReview item={draft} onChange={next => setDraft(next)} />
           <div className="grid sm:grid-cols-2 gap-4">
             {LANGS.map(lang => (
               <div key={lang} className="space-y-3">

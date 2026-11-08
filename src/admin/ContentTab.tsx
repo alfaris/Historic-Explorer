@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { CheckCircle2, ChevronRight } from 'lucide-react';
 import { glossaryOf, type Content } from '../data/content';
-import { LANGUAGES, type OptionalLang } from '../i18n/lang';
-import { GAPS, glossaryGaps, periodGaps, placeGaps, progress, routeGaps, type Gap, type PlaceSection } from './content-health';
+import { LANGS, LANGUAGES, type Lang, type OptionalLang } from '../i18n/lang';
+import { draftLang, draftSection, draftsToReview, GAPS, glossaryGaps, periodGaps, placeGaps, progress, routeGaps, type DraftRow, type Gap, type PlaceSection } from './content-health';
+import { draftLabel } from './DraftReview';
 import { inputClass } from './ui';
 
 /**
@@ -58,6 +59,15 @@ export function ContentTab({ content, onEditPlace, onEditRoute, onEditTerm, onEd
         })}
       </div>
 
+      <DraftsList
+        content={content}
+        onEdit={row => {
+          if (row.kind === 'place') onEditPlace(Number(row.id), row.keys.map(draftSection).find(Boolean) ?? 'lang-fr');
+          else if (row.kind === 'route') onEditRoute(row.id);
+          else if (row.kind === 'term') onEditTerm(row.id);
+          else onEditPeriod(row.id);
+        }}
+      />
       <MissingList title="Routes" rows={routesMissing.map(({ route, gaps }) => ({ id: route.id, name: route.nameEn, gaps }))} onEdit={onEditRoute} />
       <MissingList title="Glossary terms" rows={termsMissing} onEdit={onEditTerm} />
       <MissingList title="Special hours" rows={periodsMissing} onEdit={onEditPeriod} />
@@ -119,6 +129,48 @@ function MissingList({ title, rows, onEdit }: { title: string; rows: { id: strin
             <span className="flex-1">{row.name}</span>
             <span className="text-xs text-amber-800">Missing {row.gaps.map(g => LANGUAGES[g].english).join(', ')}</span>
             <button onClick={() => onEdit(row.id)} className="flex items-center gap-1 min-h-11 px-3 text-xs font-bold text-nile hover:underline" aria-label={`Edit ${row.name}`}>
+              Edit <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+const KIND: Record<DraftRow['kind'], string> = { place: 'Place', route: 'Route', term: 'Glossary term', period: 'Special hours' };
+
+/** "Translations to review": what Gemini drafted and no one has checked yet, by language. Nothing when there's none. */
+function DraftsList({ content, onEdit }: { content: Content; onEdit: (row: DraftRow) => void }) {
+  const [lang, setLang] = useState<Lang | 'all'>('all');
+  const all = useMemo(() => draftsToReview(content), [content]);
+  if (all.length === 0) return null;
+  const count = (l: Lang) => all.reduce((n, r) => n + r.keys.filter(k => draftLang(k) === l).length, 0);
+  const rows = lang === 'all' ? all : draftsToReview(content, lang);
+  const chip = (active: boolean) => `min-h-9 px-3 rounded-full border text-xs font-bold ${active ? 'bg-nile/10 border-nile text-nile' : 'border-sand text-stone-600 hover:border-nile/50'}`;
+  return (
+    <div className="bg-white rounded-2xl border border-gold/50 p-4">
+      <p className="text-xs font-bold uppercase tracking-widest text-stone-500">Translations to review ({all.reduce((n, r) => n + r.keys.length, 0)})</p>
+      <p className="mt-1 text-xs text-stone-500">Drafted by Gemini and not checked yet. Editing a field, or Mark reviewed in its editor, takes it off the list once saved.</p>
+      <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Language">
+        <button type="button" aria-pressed={lang === 'all'} onClick={() => setLang('all')} className={chip(lang === 'all')}>All</button>
+        {LANGS.filter(l => count(l) > 0).map(l => (
+          <button key={l} type="button" aria-pressed={lang === l} onClick={() => setLang(l)} className={chip(lang === l)}>
+            {LANGUAGES[l].english} ({count(l)})
+          </button>
+        ))}
+      </div>
+      <ul className="mt-2 divide-y divide-sand/40">
+        {rows.map(row => (
+          <li key={`${row.kind}-${row.id}`} className="flex flex-wrap items-center gap-3 py-2 text-sm">
+            <span className="min-w-0 flex-1">
+              <span className="block text-ink truncate">{row.name || row.id}</span>
+              <span className="block text-xs text-stone-400">{KIND[row.kind]}</span>
+            </span>
+            <span className="flex flex-wrap gap-1.5">
+              {row.keys.map(k => <span key={k} className="px-2 py-0.5 rounded-full text-xs bg-gold/15 text-ink">{draftLabel(k)}</span>)}
+            </span>
+            <button onClick={() => onEdit(row)} className="flex items-center gap-1 min-h-11 px-3 text-xs font-bold text-nile hover:underline" aria-label={`Edit ${row.name || row.id}`}>
               Edit <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
             </button>
           </li>
