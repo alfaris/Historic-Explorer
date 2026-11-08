@@ -62,3 +62,12 @@ export function approachAlert(
   if (accuracy !== null && accuracy > APPROACH_METERS) return null;
   return meters <= APPROACH_METERS && meters > arriveMeters ? next.id : null;
 }
+
+/**
+ * "Play on arrival": whether arriving at a stop should start its audio guide.
+ * Only when the visitor turned it on, once per stop, and never over another
+ * guide that's playing, loading or paused.
+ */
+export function shouldAutoPlay(on: boolean, placeId: number, played: Set<number>, playerStatus: 'idle' | 'loading' | 'playing' | 'paused'): boolean {
+  return on && !played.has(placeId) && playerStatus === 'idle';
+}

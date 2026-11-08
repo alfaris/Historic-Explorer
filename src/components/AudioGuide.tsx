@@ -16,6 +16,13 @@ interface AudioGuideProps {
   /** Walk mode: the lock screen's next and previous buttons move between stops. */
   onNext?: () => void;
   onPrevious?: () => void;
+  /**
+   * Walk mode's "Play on arrival": start this guide by itself, then call
+   * onAutoPlayStarted so the request is used once. If the phone only allows
+   * audio after a tap, a "Tap to play" button shows instead.
+   */
+  autoPlay?: boolean;
+  onAutoPlayStarted?: () => void;
 }
 
 const usePlayer = () => {
@@ -66,12 +73,14 @@ const loadGuideAudio = (locationId: number, langCode: Lang, text: string) => {
 // background, so quickly skimmed places don't trigger generation.
 const PREFETCH_DELAY_MS = 1500;
 
-export function AudioGuide({ locationId, text, langCode, onNext, onPrevious }: AudioGuideProps) {
+export function AudioGuide({ locationId, text, langCode, onNext, onPrevious, autoPlay = false, onAutoPlayStarted }: AudioGuideProps) {
   const [state, player] = usePlayer();
   // The words of the narration, once the guide has loaded (null for older guides).
   const [transcript, setTranscript] = useState<{ key: string; text: string } | null>(null);
   const [showTranscript, setShowTranscript] = useState(false);
   const transcriptId = useId();
+  // An automatic start the browser refused (no tap yet): the guide it was for.
+  const [blocked, setBlocked] = useState<string | null>(null);
   // The guide this component shows now: a late answer for an earlier stop (walk mode) is ignored.
   const currentKey = useRef('');
   const { places, routes } = useContent();
@@ -102,8 +111,9 @@ export function AudioGuide({ locationId, text, langCode, onNext, onPrevious }: A
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
-  const start = async () => {
+  const start = async ({ auto = false } = {}) => {
     if (!text) return;
+    setBlocked(null);
     track({ t: 'play', id: locationId });
     const place = places.find(p => p.id === locationId);
     const route = place && routes.find(r => r.id === place.routeId);
@@ -133,6 +143,12 @@ export function AudioGuide({ locationId, text, langCode, onNext, onPrevious }: A
       }
       await player.playAudio(id, result.audio);
     } catch (error) {
+      // Started without a tap and the browser said no: ask for one rather than fail silently.
+      if (auto && (error as Error)?.name === 'NotAllowedError') {
+        player.stop(key);
+        if (currentKey.current === key) setBlocked(key);
+        return;
+      }
       console.warn('Audio guide failed, using the browser voice:', error);
       player.playSpeech(id, spoken, langCode);
     }
@@ -146,6 +162,15 @@ export function AudioGuide({ locationId, text, langCode, onNext, onPrevious }: A
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
+  // "Play on arrival" asked for this guide. Declared after the effect above,
+  // so a change of stop has already stopped the previous guide.
+  useEffect(() => {
+    if (!autoPlay || !text) return;
+    onAutoPlayStarted?.();
+    start({ auto: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoPlay, key]);
+
   const toggle = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (status === 'playing') player.stop(key);
@@ -157,6 +182,18 @@ export function AudioGuide({ locationId, text, langCode, onNext, onPrevious }: A
   const words = transcript?.key === key ? transcript.text : null;
   return (
     <span className="inline-flex flex-wrap items-center gap-2">
+      {blocked === key && status === 'idle' && (
+        <button
+          onClick={e => {
+            e.stopPropagation();
+            start();
+          }}
+          className="basis-full inline-flex items-center justify-center gap-2 min-h-11 px-4 py-2 rounded-xl bg-gold text-ink text-sm font-bold shadow-sm"
+        >
+          <Play className="w-4 h-4" aria-hidden="true" />
+          {L("You've arrived. Tap to play the guide", 'وصلت. اضغط لتشغيل الدليل')}
+        </button>
+      )}
       <button
         onClick={toggle}
         disabled={busy}
