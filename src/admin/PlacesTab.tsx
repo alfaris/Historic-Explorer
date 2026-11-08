@@ -338,6 +338,25 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
             ))}
           </div>
 
+          <div id="spot" className="rounded-xl border border-sand/60 p-4 space-y-3 scroll-mt-24">
+            <p className="text-xs font-bold text-stone-600">Spot it, for families (optional)</p>
+            <p className="text-[11px] text-stone-400">
+              A small thing for children to find at this stop, e.g. "Find the carved shell above the door. How many ribs does it have?", and the answer (shown on tap). French and Spanish are in their sections below.
+            </p>
+            <div className="grid sm:grid-cols-2 gap-3">
+              {(['en', 'ar'] as const).map(lang => (
+                <div key={lang} className="space-y-2">
+                  <Field label={`Challenge (${LANGUAGES[lang].english})`}>
+                    <textarea value={draft[fieldKey('spot', lang)] ?? ''} onChange={e => setField(fieldKey('spot', lang), e.target.value)} className={inputClass} rows={2} maxLength={200} dir={LANGUAGES[lang].dir} lang={lang} />
+                  </Field>
+                  <Field label={`Answer (${LANGUAGES[lang].english}, optional)`}>
+                    <input value={draft[fieldKey('spotAnswer', lang)] ?? ''} onChange={e => setField(fieldKey('spotAnswer', lang), e.target.value)} className={inputClass} maxLength={120} dir={LANGUAGES[lang].dir} lang={lang} />
+                  </Field>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <TipsEditor place={draft} onChange={tips => setDraft(d => (d ? withOptional(d, 'tips', tips) : d))} />
 
           <HoursEditor hours={draft.hours} onChange={hours => setDraft(d => (d ? withOptional(d, 'hours', hours) : d))} />
@@ -373,6 +392,16 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
                 <Field label={`Description (${name})`}>
                   <textarea value={draft[descriptionKey] ?? ''} onChange={e => setField(descriptionKey, e.target.value)} className={inputClass} rows={4} lang={lang} maxLength={2000} />
                 </Field>
+                {(draft.spotEn || draft[fieldKey('spot', lang)]) && (
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <Field label={`Spot it challenge (${name})`}>
+                      <textarea value={draft[fieldKey('spot', lang)] ?? ''} onChange={e => setField(fieldKey('spot', lang), e.target.value)} className={inputClass} rows={2} lang={lang} maxLength={200} />
+                    </Field>
+                    <Field label={`Spot it answer (${name})`}>
+                      <input value={draft[fieldKey('spotAnswer', lang)] ?? ''} onChange={e => setField(fieldKey('spotAnswer', lang), e.target.value)} className={inputClass} lang={lang} maxLength={120} />
+                    </Field>
+                  </div>
+                )}
                 <FillMissingButton
                   key={`${draft.id}-${lang}`}
                   lang={lang}

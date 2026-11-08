@@ -41,6 +41,12 @@ export function missingPlaceText(place: Location, lang: OptionalLang): Record<st
   const description = fieldKey('description', lang);
   if (!place[name] && place.nameEn.trim()) missing[name] = place.nameEn;
   if (!place[description] && place.descriptionEn?.trim()) missing[description] = place.descriptionEn;
+  // "Spot it": the challenge and its answer, when there's an English one.
+  for (const base of ['spot', 'spotAnswer'] as const) {
+    const key = fieldKey(base, lang);
+    const english = place[fieldKey(base, 'en')];
+    if (!place[key] && english?.trim()) missing[key] = english;
+  }
   return missing;
 }
 

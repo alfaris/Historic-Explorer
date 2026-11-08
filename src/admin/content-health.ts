@@ -9,7 +9,7 @@ import type { GlossaryTerm } from '../lib/glossary';
 import type { SpecialPeriod } from '../lib/special-hours';
 import { eraOf } from '../lib/eras';
 
-export type Gap = 'photo' | 'photoAlt' | 'hours' | 'era' | OptionalLang;
+export type Gap = 'photo' | 'photoAlt' | 'hours' | 'era' | 'spot' | OptionalLang;
 
 /** Each item the checklist tracks, with the place editor section that fixes it. */
 export const GAPS: { id: Gap; label: string; section: PlaceSection }[] = [
@@ -17,11 +17,12 @@ export const GAPS: { id: Gap; label: string; section: PlaceSection }[] = [
   { id: 'photoAlt', label: 'Photo description', section: 'photo' },
   { id: 'hours', label: 'Opening hours', section: 'hours' },
   { id: 'era', label: 'Build date or era', section: 'built' },
+  { id: 'spot', label: 'Spot it challenge', section: 'spot' },
   ...OPTIONAL_LANGS.map(lang => ({ id: lang, label: LANGUAGES[lang].english, section: `lang-${lang}` as const })),
 ];
 
 /** Sections of the place editor that can be scrolled to (element ids). */
-export type PlaceSection = 'photo' | 'hours' | 'built' | `lang-${OptionalLang}`;
+export type PlaceSection = 'photo' | 'hours' | 'built' | 'spot' | `lang-${OptionalLang}`;
 
 const hasLang = (o: Record<string, unknown>, lang: OptionalLang, bases: string[]) =>
   bases.every(b => {
@@ -40,6 +41,7 @@ export function placeGaps(place: Location): Gap[] {
   else if (!place.photoAltEn?.trim()) gaps.push('photoAlt');
   if (!place.hours) gaps.push('hours');
   if (needsEra(place) && !eraOf(place)) gaps.push('era');
+  if (needsEra(place) && !place.spotEn?.trim()) gaps.push('spot');
   for (const lang of OPTIONAL_LANGS) {
     const needsDescription = !!place.descriptionEn?.trim();
     if (!hasLang(place as unknown as Record<string, unknown>, lang, needsDescription ? ['name', 'description'] : ['name'])) gaps.push(lang);
@@ -77,8 +79,8 @@ export function missingText(obj: object, lang: OptionalLang, bases: string[]): R
 export function progress(content: Content): { id: Gap; label: string; done: number; total: number }[] {
   const gaps = content.places.map(placeGaps);
   return GAPS.map(g => {
-    // The era counts only the places that need one.
-    const applies = content.places.map(p => g.id !== 'era' || needsEra(p));
+    // The era and Spot it count only the places that need one (monuments).
+    const applies = content.places.map(p => (g.id !== 'era' && g.id !== 'spot') || needsEra(p));
     return {
       id: g.id,
       label: g.label,

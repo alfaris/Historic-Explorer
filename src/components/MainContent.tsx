@@ -28,6 +28,7 @@ import { HoursBadge, PlaceHours, useNow } from './PlaceHours';
 import { anyFilter, NO_FILTERS, passesFilters, withoutHours, type PlaceFilters } from '../lib/place-filters';
 import { BuiltBadge, EraFilter, ThroughTheAgesButton } from './PlaceEra';
 import { WeatherAdvice } from './WeatherAdvice';
+import { SpotIt } from './SpotIt';
 import { breakCount } from '../lib/weather';
 import { nextQuarter } from '../lib/visit-plan';
 import { PrayerNotice } from './PrayerTimes';
@@ -466,6 +467,7 @@ export const MainContent: React.FC = () => {
                       
                       <PlaceHours place={loc} />
                                   <VisitorTips place={loc} />
+                                  <SpotIt place={loc} className="mt-4" />
                       <LiveLocationInfo locationId={loc.id} />
                       <HelpfulPrompt placeId={loc.id} className="mt-6" />
 
@@ -940,6 +942,7 @@ export const MainContent: React.FC = () => {
                             
                             <PlaceHours place={loc} />
                                   <VisitorTips place={loc} />
+                                  <SpotIt place={loc} className="mt-4" />
                             <LiveLocationInfo locationId={loc.id} />
                             <HelpfulPrompt placeId={loc.id} className="mt-6" />
                             

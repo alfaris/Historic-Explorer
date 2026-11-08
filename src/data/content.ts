@@ -39,7 +39,7 @@ export const CATEGORY_IDS = categories.map(c => c.id) as Category[];
 // Roughly Greater Cairo. Generous, but catches swapped lat/lng and typos.
 export const CAIRO_BOUNDS = { minLat: 29.9, maxLat: 30.15, minLng: 31.1, maxLng: 31.4 };
 
-const LIMITS = { name: 120, description: 2000, highlights: 8, fee: 120, photoAlt: 250 };
+const LIMITS = { name: 120, description: 2000, highlights: 8, fee: 120, photoAlt: 250, spot: 200, spotAnswer: 120 };
 
 const hasArabic = (value: string) => /[؀-ۿ]/.test(value);
 const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
@@ -153,7 +153,7 @@ export function normalizeContent(input: unknown): Content {
       ...(normalizeTips(p?.tips) ? { tips: normalizeTips(p?.tips) } : {}),
       ...(normalizeHours(p?.hours) ? { hours: normalizeHours(p?.hours) } : {}),
       ...normalizeBuilt(p),
-      ...textFields(p, ['fee'], LANGS),
+      ...textFields(p, ['fee', 'spot', 'spotAnswer'], LANGS),
       lat: Number(p?.lat),
       lng: Number(p?.lng),
       ...(normalizePhoto(p?.photo) ? { photo: normalizePhoto(p?.photo) } : {}),
@@ -215,7 +215,11 @@ export function validateContent(content: Content): string[] {
     if (!p.descriptionEn) problems.push(`${label}: English description is empty.`);
     if (!hasArabic(p.descriptionAr ?? '')) problems.push(`${label}: Arabic description is missing.`);
     const optional = OPTIONAL_LANGS.flatMap(l => [[`name${LANGUAGES[l].suffix}`, LIMITS.name], [`description${LANGUAGES[l].suffix}`, LIMITS.description]] as const);
-    const fees = LANGS.map(l => [`fee${LANGUAGES[l].suffix}`, LIMITS.fee] as const);
+    const fees = LANGS.flatMap(l => [
+      [`fee${LANGUAGES[l].suffix}`, LIMITS.fee],
+      [`spot${LANGUAGES[l].suffix}`, LIMITS.spot],
+      [`spotAnswer${LANGUAGES[l].suffix}`, LIMITS.spotAnswer],
+    ] as const);
     for (const [field, max] of [['nameEn', LIMITS.name], ['nameAr', LIMITS.name], ['descriptionEn', LIMITS.description], ['descriptionAr', LIMITS.description], ...optional, ...fees] as const) {
       if ((p[field] ?? '').length > max) problems.push(`${label}: ${field} is longer than ${max} characters.`);
     }
