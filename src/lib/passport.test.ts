@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { parseStamps, stampCount, stampDate, withStamp } from './passport';
 import { stampGrid } from './passport-image';
 
@@ -45,5 +45,25 @@ describe('stampGrid', () => {
     // Circles don't overlap each other or the edges.
     expect(spots[0].r * 2).toBeLessThan(360);
     expect(spots[0].x - spots[0].r).toBeGreaterThan(0);
+  });
+});
+
+describe('stampRoute', () => {
+  it("keeps a stamp another tab added since this tab read the passport", async () => {
+    const store = new Map<string, string>();
+    vi.stubGlobal('window', {
+      localStorage: { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => store.set(k, v) },
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    });
+    vi.resetModules();
+    const { stampRoute } = await import('./passport');
+    stampRoute('al-muizz', '2026-11-08', { found: 0, total: 0 });
+    // Another tab stamps a route; this tab hasn't seen its storage event yet.
+    const other = JSON.parse(store.get('cairo-walks:passport')!);
+    store.set('cairo-walks:passport', JSON.stringify({ ...other, 'coptic-cairo': { date: '2026-11-08', found: 1, spots: 2 } }));
+    stampRoute('fustat-roda', '2026-11-09', { found: 0, total: 0 });
+    expect(Object.keys(JSON.parse(store.get('cairo-walks:passport')!)).sort()).toEqual(['al-muizz', 'coptic-cairo', 'fustat-roda']);
+    vi.unstubAllGlobals();
   });
 });

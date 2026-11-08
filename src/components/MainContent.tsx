@@ -33,6 +33,9 @@ import { nextQuarter } from '../lib/visit-plan';
 import { PrayerNotice } from './PrayerTimes';
 import { SaveToggle, SavedButton } from './Saved';
 import { PassportButton, PassportSheet } from './Passport';
+import { stampRoute } from '../lib/passport';
+import { cairoDate } from '../lib/special-hours';
+import { spotCount, spotted } from '../lib/spot-it';
 import { DisplaySettings } from './DisplaySettings';
 import { HelpfulPrompt } from './HelpfulPrompt';
 import { OtherRouteResults } from './OtherRouteResults';
@@ -288,6 +291,9 @@ export const MainContent: React.FC = () => {
       const summary = walkSummary(locations, r.id, visited);
       counts.set(r.id, summary.visited);
       if (!fresh && justCompleted(visitedBefore.current!.counts.get(r.id) ?? null, summary)) {
+        // The stamp goes in the passport now, with today's date, even if the
+        // finish screen waits for the walk to end (and the page is closed first).
+        stampRoute(r.id, cairoDate(new Date()), spotCount(locations, r.id, spotted.get()));
         if (walkingRef.current) finishAfterWalk.current = r.id;
         else setFinishedRoute(r.id);
       }

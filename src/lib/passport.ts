@@ -71,10 +71,30 @@ const read = (): Stamps => {
 };
 const current = () => (stamps ??= typeof window === 'undefined' ? {} : read());
 
+// Changes start from the latest saved stamps, not this tab's copy, so a stamp
+// another tab added moments earlier isn't overwritten (as for visited places).
+// Without storage, the in-memory stamps.
+const latest = (): Stamps => {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage.getItem(KEY) !== undefined) return read();
+  } catch {
+    // No storage: below.
+  }
+  return current();
+};
+
 /** Adds (or updates) a route's stamp. */
 export function stampRoute(routeId: string, date: string, spot: { found: number; total: number }) {
-  const next = withStamp(current(), routeId, date, spot);
-  if (next === current()) return;
+  const base = latest();
+  const next = withStamp(base, routeId, date, spot);
+  if (next === base) {
+    // Nothing new here, but another tab's stamps may be newer than this tab's copy.
+    if (base !== stamps) {
+      stamps = base;
+      listeners.forEach(l => l());
+    }
+    return;
+  }
   stamps = next;
   try {
     window.localStorage.setItem(KEY, JSON.stringify(next));
