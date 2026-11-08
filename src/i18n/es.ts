@@ -237,6 +237,8 @@ export const ES: Record<string, string> = {
   'Share now': 'Compartir ahora',
   'Save image': 'Guardar imagen',
   'Alert me when the next stop is close (vibrates)': 'Avisarme cuando la siguiente parada esté cerca (vibra)',
+  'Play the guide when I arrive': 'Reproducir la guía al llegar',
+  "You've arrived. Tap to play the guide": 'Has llegado. Toca para escuchar la guía',
   'Not now': 'Ahora no',
   'Continue your walk': 'Continúa tu paseo',
   'Continue': 'Continuar',

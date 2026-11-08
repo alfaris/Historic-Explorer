@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { arrowRotation, bearingDegrees, compassPoint, startIndex, approachAlert } from './walk-mode';
+import { arrowRotation, bearingDegrees, compassPoint, startIndex, approachAlert, shouldAutoPlay } from './walk-mode';
 
 describe('bearingDegrees', () => {
   const o = { lat: 30, lng: 31 };
@@ -74,5 +74,15 @@ describe('approachAlert', () => {
   it('needs a next stop and a distance', () => {
     expect(approachAlert(null, 50, 10, new Set())).toBeNull();
     expect(approachAlert(next, null, null, new Set())).toBeNull();
+  });
+});
+
+describe('shouldAutoPlay', () => {
+  it('plays on arrival only when turned on, once per stop, with nothing else playing', () => {
+    expect(shouldAutoPlay(true, 3, new Set(), 'idle')).toBe(true);
+    expect(shouldAutoPlay(false, 3, new Set(), 'idle')).toBe(false);
+    expect(shouldAutoPlay(true, 3, new Set([3]), 'idle')).toBe(false);
+    expect(shouldAutoPlay(true, 3, new Set([2]), 'idle')).toBe(true);
+    for (const busy of ['loading', 'playing', 'paused'] as const) expect(shouldAutoPlay(true, 3, new Set(), busy)).toBe(false);
   });
 });

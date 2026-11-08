@@ -6,7 +6,8 @@ import { photoForPlace } from '../data/photo-resolve';
 import { ARRIVE_METERS, distanceMeters, formatDistance, MAX_ACCURACY_METERS } from '../lib/geo';
 import { markVisited, useVisited } from '../lib/visited';
 import { walkMinutes, walkPlan, walkStops } from '../lib/walk';
-import { approachAlert, arrowRotation, bearingDegrees, compassPoint, startIndex } from '../lib/walk-mode';
+import { approachAlert, arrowRotation, bearingDegrees, compassPoint, shouldAutoPlay, startIndex } from '../lib/walk-mode';
+import { guidePlayer } from '../lib/guide-player';
 import { useDialog } from '../lib/useDialog';
 import { useHeading, useWakeLock } from '../lib/useWalkSensors';
 import { AudioGuide } from './AudioGuide';
@@ -39,6 +40,15 @@ const readApproachOn = () => {
     return true;
   }
 };
+// "Play on arrival": off unless turned on, remembered on the device.
+const AUTOPLAY_KEY = 'cw:walk-autoplay';
+const readAutoPlayOn = () => {
+  try {
+    return window.localStorage.getItem(AUTOPLAY_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
 import { minutesLabel as minutes, stopOfLabel } from './WalkInfo';
 import { ArrivalWarning, HoursBadge } from './PlaceHours';
 import { PrayerArrivalWarning, PrayerNotice } from './PrayerTimes';
@@ -50,7 +60,8 @@ import { BreakView, TakeABreak } from './TakeABreak';
  * "Start the walk": a full-screen guide through a route's stops. Shows the
  * current stop with its audio guide, and the way to the next one (distance
  * and direction when location is on). Arriving at a stop moves to it, marks
- * it visited and offers its audio guide; audio never plays by itself.
+ * it visited and offers its audio guide, which plays by itself only when the
+ * visitor turned on "Play the guide when I arrive".
  */
 export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = onClose }: {
   route: Route;
@@ -107,17 +118,36 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
       return !on;
     });
 
+  // "Play on arrival": the stop whose guide should start by itself (cleared once it starts).
+  const [autoPlayOn, setAutoPlayOn] = useState(readAutoPlayOn);
+  const [autoPlayFor, setAutoPlayFor] = useState<number | null>(null);
+  const autoPlayed = useRef(new Set<number>());
+  const toggleAutoPlay = () =>
+    setAutoPlayOn(on => {
+      try {
+        window.localStorage.setItem(AUTOPLAY_KEY, on ? '0' : '1');
+      } catch {
+        // Not remembered; it still changes.
+      }
+      return !on;
+    });
+
   // Near me spotted an arrival: if it's one of this walk's stops, move there.
   useEffect(() => {
     const place = nearMe.arrivedPlace;
     if (!place) return;
     const i = stops.findIndex(s => s.id === place.id);
     if (i === -1) return;
+    // Checked before moving: moving to another stop stops the guide that was playing.
+    if (shouldAutoPlay(autoPlayOn, place.id, autoPlayed.current, guidePlayer().getState().status)) {
+      autoPlayed.current.add(place.id);
+      setAutoPlayFor(place.id);
+    }
     setIndex(i);
     setArrivedId(place.id);
     markVisited(place.id);
     nearMe.dismissArrival();
-  }, [nearMe.arrivedPlace, stops, nearMe]);
+  }, [nearMe.arrivedPlace, stops, nearMe, autoPlayOn]);
 
   // Whenever the position or the next stop changes: announce the next stop once, when close.
   const nextStop = stops.length ? plan.get(stops[Math.min(index, stops.length - 1)].id)?.leg?.next ?? null : null;
@@ -245,6 +275,8 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
                   // The lock screen's next button does what "Done here, next stop" does.
                   onNext={next ? () => { markVisited(stop.id); go(index + 1); } : undefined}
                   onPrevious={index > 0 ? () => go(index - 1) : undefined}
+                  autoPlay={autoPlayFor === stop.id}
+                  onAutoPlayStarted={() => setAutoPlayFor(null)}
                 />
                 <SaveToggle place={stop} />
                 {visited.has(stop.id) ? (
@@ -277,6 +309,12 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
               <label className="mt-3 flex items-center gap-2 min-h-11 text-xs text-stone-600 cursor-pointer">
                 <input type="checkbox" checked={approachOn} onChange={toggleApproach} className="w-4 h-4 accent-nile" />
                 {L('Alert me when the next stop is close (vibrates)', 'نبهني عند الاقتراب من المحطة التالية (اهتزاز)')}
+              </label>
+            )}
+            {nearMe.on && (
+              <label className="flex items-center gap-2 min-h-11 text-xs text-stone-600 cursor-pointer">
+                <input type="checkbox" checked={autoPlayOn} onChange={toggleAutoPlay} className="w-4 h-4 accent-nile" />
+                {L('Play the guide when I arrive', 'شغّل الدليل عند وصولي')}
               </label>
             )}
           </section>
