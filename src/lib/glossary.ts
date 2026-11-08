@@ -5,6 +5,7 @@
 // offline; content saved before the glossary existed uses DEFAULT_GLOSSARY.
 
 import { LANGS, LANGUAGES, OPTIONAL_LANGS, type Lang } from '../i18n/lang.js';
+import { normalizeDrafted } from './drafted.js';
 
 export interface GlossaryTerm {
   /** Lowercase letters, numbers and dashes, e.g. "sabil-kuttab". */
@@ -24,6 +25,8 @@ export interface GlossaryTerm {
    * letter variants, and allows "al-"-style Arabic prefixes and plural endings.
    */
   match: string[];
+  /** Fields Gemini drafted that no one has checked yet (admin only). See drafted.ts. */
+  drafted?: string[];
 }
 
 export const GLOSSARY_LIMITS = { terms: 100, term: 60, def: 300, matches: 12, matchMin: 3 };
@@ -153,6 +156,7 @@ export function normalizeGlossary(input: unknown): GlossaryTerm[] | undefined {
       defAr: str(t?.defAr),
       ...optional,
       match: Array.isArray(t?.match) ? [...new Set(t.match.map(str).filter(Boolean) as string[])] : [],
+      ...normalizeDrafted(t),
     };
   });
 }

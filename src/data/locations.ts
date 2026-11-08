@@ -49,6 +49,8 @@ export interface Route {
   gettingThereAr?: string;
   gettingThereFr?: string;
   gettingThereEs?: string;
+  /** Fields Gemini drafted that no one has checked yet (admin only). See drafted.ts. */
+  drafted?: string[];
 }
 
 export interface Location {
@@ -98,6 +100,8 @@ export interface Location {
   photoAltAr?: string;
   photoAltFr?: string;
   photoAltEs?: string;
+  /** Fields Gemini drafted that no one has checked yet (admin only). See drafted.ts. */
+  drafted?: string[];
 }
 
 export const routes: Route[] = [

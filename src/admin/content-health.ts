@@ -1,9 +1,10 @@
 // What content is still missing: the admin's Content checklist, and the
 // planned walk for the route editor. Pure, so it's easy to test.
 
-import type { Content, Location, Route } from '../data/content';
+import { glossaryOf, type Content, type Location, type Route } from '../data/content';
+import { draftedOf } from '../lib/drafted';
 import { photoForPlace } from '../data/photo-resolve';
-import { LANGUAGES, OPTIONAL_LANGS, type OptionalLang } from '../i18n/lang';
+import { LANGS, LANGUAGES, OPTIONAL_LANGS, type Lang, type OptionalLang } from '../i18n/lang';
 import { walkPlan } from '../lib/walk';
 import type { GlossaryTerm } from '../lib/glossary';
 import type { SpecialPeriod } from '../lib/special-hours';
@@ -106,3 +107,36 @@ export function plannedWalk(places: Location[], routeId: string): { meters: numb
 
 /** The planned walk as kilometres for the distance field, to one decimal place. */
 export const plannedKm = (meters: number) => Math.round(meters / 100) / 10;
+
+export type DraftKind = 'place' | 'route' | 'term' | 'period';
+export type DraftRow = { kind: DraftKind; id: string; name: string; keys: string[] };
+
+/** The language a drafted field is in ("descriptionFr" is French). */
+export function draftLang(key: string): Lang | undefined {
+  return LANGS.find(l => key.endsWith(LANGUAGES[l].suffix));
+}
+
+/**
+ * Everything Gemini drafted that no one has reviewed yet, item by item
+ * (places, routes, glossary terms, special hours), optionally in one language.
+ */
+export function draftsToReview(content: Content, lang?: Lang): DraftRow[] {
+  const rows: DraftRow[] = [];
+  const add = (kind: DraftKind, id: string | number, name: string, item: object) => {
+    const keys = draftedOf(item).filter(k => !lang || draftLang(k) === lang);
+    if (keys.length) rows.push({ kind, id: String(id), name, keys });
+  };
+  content.places.forEach(p => add('place', p.id, p.nameEn, p));
+  content.routes.forEach(r => add('route', r.id, r.nameEn, r));
+  glossaryOf(content).forEach(t => add('term', t.id, t.termEn, t));
+  (content.specialPeriods ?? []).forEach(p => add('period', p.id, p.nameEn, p));
+  return rows;
+}
+
+/** The place editor section where a drafted field is. */
+export function draftSection(key: string): PlaceSection | undefined {
+  if (key.startsWith('photoAlt')) return 'photo';
+  if (key.startsWith('spot') && (key.endsWith('En') || key.endsWith('Ar'))) return 'spot';
+  const lang = draftLang(key);
+  return lang === 'fr' || lang === 'es' ? `lang-${lang}` : undefined;
+}

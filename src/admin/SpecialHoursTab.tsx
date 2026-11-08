@@ -8,6 +8,8 @@ import type { SaveFn } from './AdminApp';
 import { HoursEditor } from './HoursEditor';
 import { Button, ErrorBox, Field, inputClass, sameValue } from './ui';
 import { missingText } from './content-health';
+import { withoutDrafted } from '../lib/drafted';
+import { DraftReview } from './DraftReview';
 import { fieldKey, FillMissingButton, fillEmpty } from './translations';
 
 const blank = (): SpecialPeriod => ({ id: '', nameEn: '', nameAr: '', from: '', to: '', places: {} });
@@ -62,7 +64,8 @@ export function SpecialHoursTab({ content, save, initialId = null, onSelected }:
   const set = (key: keyof SpecialPeriod, value: string) =>
     setDraft(d => {
       if (!d) return d;
-      const next = { ...d } as Record<string, unknown>;
+      // Typed by hand: no longer a Gemini draft to review.
+      const next = withoutDrafted({ ...d }, [key]) as Record<string, unknown>;
       if (value.trim() || !(key === 'nameFr' || key === 'nameEs')) next[key] = value;
       else delete next[key];
       return next as unknown as SpecialPeriod;
@@ -137,6 +140,7 @@ export function SpecialHoursTab({ content, save, initialId = null, onSelected }:
             submit();
           }}
         >
+          <DraftReview item={draft} onChange={next => setDraft(next)} />
           <div className="grid sm:grid-cols-2 gap-4">
             {LANGS.map(lang => {
               const key = `name${LANGUAGES[lang].suffix}` as 'nameEn';

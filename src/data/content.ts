@@ -14,6 +14,7 @@ import { glossaryProblems, normalizeGlossary, type GlossaryTerm } from '../lib/g
 import { DEFAULT_GLOSSARY } from './glossary.js';
 import { normalizePeriods, periodProblems, type SpecialPeriod } from '../lib/special-hours.js';
 import { builtProblems, normalizeBuilt } from '../lib/eras.js';
+import { normalizeDrafted } from '../lib/drafted.js';
 import { LANGS, LANGUAGES, OPTIONAL_LANGS } from '../i18n/lang.js';
 
 export type { Category, Location, Route };
@@ -142,6 +143,7 @@ export function normalizeContent(input: unknown): Content {
       // A start point that's no longer on the route (deleted or moved) is dropped: the first stop applies.
       ...(placesIn.some((p: any) => Number(p?.id) === Number(r?.startId) && str(p?.routeId) === str(r?.id)) ? { startId: Number(r.startId) } : {}),
       ...(Number.isInteger(Number(r?.metroMinutes)) && Number(r?.metroMinutes) > 0 ? { metroMinutes: Number(r.metroMinutes) } : {}),
+      ...normalizeDrafted(r),
     })),
     places: placesIn.map((p: any): Location => ({
       id: Number(p?.id),
@@ -161,6 +163,7 @@ export function normalizeContent(input: unknown): Content {
       lng: Number(p?.lng),
       ...(normalizePhoto(p?.photo) ? { photo: normalizePhoto(p?.photo) } : {}),
       ...textFields(p, ['photoAlt'], LANGS),
+      ...normalizeDrafted(p),
     })),
   };
 }

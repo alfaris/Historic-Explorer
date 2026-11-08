@@ -14,7 +14,9 @@ import { HoursEditor } from './HoursEditor';
 import { BulkHours } from './BulkHours';
 import { withoutPlace } from '../lib/special-hours';
 import { TipsEditor } from './TipsEditor';
+import { withDrafted } from '../lib/drafted';
 import { PlacePreview } from './PlacePreview';
+import { DraftReview } from './DraftReview';
 import { isActiveMosque } from '../lib/prayer-times';
 import { builtProblems, eraById, eraForYear, ERAS, isEraId, YEAR_MAX, YEAR_MIN } from '../lib/eras';
 import type { PlaceSection } from './content-health';
@@ -146,7 +148,7 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
       }
       const places = content.places.map(p => {
         const fields = filled.get(p.id);
-        return fields ? { ...p, ...fields } : p;
+        return fields ? withDrafted({ ...p, ...fields }, Object.keys(fields)) : p;
       });
       if (await save({ ...content, places }, `Filled in missing ${name} with Gemini (${filled.size} places)`)) {
         setBulk({ text: `${name} drafted for ${filled.size} places and saved. Review them place by place.`, error: false });
@@ -239,6 +241,7 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
         >
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-serif">{isNew ? 'New place' : draft.nameEn || 'Untitled'}</h2>
+            <DraftReview item={draft} onChange={next => setDraft(next)} />
             <span className="text-xs text-stone-400">ID {draft.id}</span>
           </div>
 
@@ -409,7 +412,7 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
                   key={`${draft.id}-${lang}`}
                   lang={lang}
                   missing={missingPlaceText(draft, lang)}
-                  onFilled={texts => setDraft(d => (d ? { ...d, ...texts } : d))}
+                  onFilled={texts => setDraft(d => (d ? fillEmpty(d, texts, Object.keys(texts)) : d))}
                 />
               </div>
             );

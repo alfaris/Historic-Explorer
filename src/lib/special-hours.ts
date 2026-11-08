@@ -6,6 +6,7 @@
 
 import { cairoTime, hoursProblems, isTime, openStatus, toMinutes, type OpenStatus, type OpeningHours, type TimeRange } from './opening-hours.js';
 import { LANGS, LANGUAGES, OPTIONAL_LANGS, type Lang } from '../i18n/lang.js';
+import { normalizeDrafted } from './drafted.js';
 
 export type PeriodEntry = { closed: true } | { days: TimeRange[][] };
 
@@ -21,6 +22,8 @@ export interface SpecialPeriod {
   to: string;
   /** By place ID: different weekly hours, or closed. Places not listed keep their usual hours. */
   places: Record<string, PeriodEntry>;
+  /** Fields Gemini drafted that no one has checked yet (admin only). See drafted.ts. */
+  drafted?: string[];
 }
 
 export const PERIOD_LIMITS = { periods: 30, name: 60, days: 62 };
@@ -199,7 +202,7 @@ export function normalizePeriods(input: unknown): SpecialPeriod[] | undefined {
       if (/^\d+$/.test(id) && entry) places[id] = entry;
     }
     const optional = Object.fromEntries(OPTIONAL_LANGS.map(l => `name${LANGUAGES[l].suffix}`).filter(k => str(p?.[k])).map(k => [k, str(p?.[k])]));
-    return { id: str(p?.id), nameEn: str(p?.nameEn), nameAr: str(p?.nameAr), ...optional, from: str(p?.from), to: str(p?.to), places };
+    return { id: str(p?.id), nameEn: str(p?.nameEn), nameAr: str(p?.nameAr), ...optional, from: str(p?.from), to: str(p?.to), places, ...normalizeDrafted(p) };
   });
 }
 
