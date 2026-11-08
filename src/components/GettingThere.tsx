@@ -27,7 +27,7 @@ export function GettingThere({ route, places, className = '' }: { route: Route; 
   if (!info) return null;
   const { start, metro, minutes, note } = info;
   return (
-    <section aria-labelledby="getting-there" className={`w-full max-w-md rounded-2xl border border-sand/60 bg-white/70 p-4 text-start ${className}`}>
+    <section aria-labelledby="getting-there" className={`w-full max-w-md rounded-2xl border border-sand/60 bg-white p-4 text-start ${className}`}>
       <h3 id="getting-there" className="text-xs font-bold uppercase tracking-widest text-stone-500">{L('Getting there', 'الوصول إلى البداية')}</h3>
       <p className="mt-1 text-sm text-ink">
         {L('The walk starts at', 'تبدأ الجولة من')} <span className="font-bold" lang={fallbackLang(start, 'name')}>{nameOf(start)}</span>
