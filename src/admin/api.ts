@@ -76,6 +76,9 @@ export const api = {
   audioStatus: (placeId: number) => call<Record<Lang, AudioState>>('audio', {}, `&id=${placeId}`),
   generateAudio: (placeId: number, lang: Lang, version: string) =>
     call<{ state: 'stored' }>('audio', { method: 'POST', body: JSON.stringify({ id: placeId, lang, version }) }),
+  /** Gemini's draft descriptions of a photo, as photoAltEn … photoAltEs; nothing is saved. */
+  describePhoto: (src: string, name: string) =>
+    call<{ texts: Record<string, string> }>('describe-photo', { method: 'POST', body: JSON.stringify({ src, name }) }),
   /** French or Spanish drafts from Gemini for the given English texts; nothing is saved. */
   translate: (texts: Record<string, string>, lang: OptionalLang) =>
     call<{ texts: Record<string, string> }>('translate', { method: 'POST', body: JSON.stringify({ lang, texts }) }),

@@ -2,7 +2,7 @@ import React, { lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowUp, BellRing, ChevronDown, ChevronLeft, ChevronRight, CircleCheck, Footprints, Flag, LocateFixed, Map as MapIcon, X } from 'lucide-react';
 import type { Location, Route } from '../data/locations';
-import { photoForPlace } from '../data/photo-resolve';
+import { photoForPlace, photoAltOf } from '../data/photo-resolve';
 import { ARRIVE_METERS, distanceMeters, formatDistance, MAX_ACCURACY_METERS } from '../lib/geo';
 import { markVisited, useVisited } from '../lib/visited';
 import { walkMinutes, walkPlan, walkStops } from '../lib/walk';
@@ -256,7 +256,7 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
           <article className="bg-white rounded-3xl border border-sand/50 overflow-hidden">
             <PlacePhoto
               photo={photoForPlace(stop)}
-              alt={name(stop)}
+              alt={photoAltOf(stop)}
               className="w-full h-48"
               sizes="(min-width: 672px) 672px, 100vw"
               priority

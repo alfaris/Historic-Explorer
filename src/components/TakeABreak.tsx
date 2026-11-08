@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { ChevronDown, Coffee, Toilet, Utensils } from 'lucide-react';
 import type { Location } from '../data/locations';
 import { useContent } from '../data/ContentContext';
-import { photoForPlace } from '../data/photo-resolve';
+import { photoForPlace, photoAltOf } from '../data/photo-resolve';
 import { nearestBreaks, type BreakPlace } from '../lib/breaks';
 import { formatDistance, type Point } from '../lib/geo';
 import { L, descriptionOf, fallbackLang, nameOf } from '../i18n/lang';
@@ -88,7 +88,7 @@ export function BreakView({ place, distance, isArabic, onBack }: { place: Locati
       <article className="bg-white rounded-3xl border border-sand/50 overflow-hidden">
         <PlacePhoto
           photo={photoForPlace(place)}
-          alt={nameOf(place)}
+          alt={photoAltOf(place)}
           className="w-full h-40"
           sizes="(min-width: 672px) 672px, 100vw"
           fallback={<HistoricPlaceholder category={place.category} name={place.nameEn} className="w-full h-40" />}

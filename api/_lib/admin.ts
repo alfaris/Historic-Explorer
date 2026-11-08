@@ -13,6 +13,7 @@
 //   GET  audio?id=n / POST audio {id, lang, version}  (see admin-audio.ts)
 //   GET  stats?days=7|30|90 → { total, perDay }  (see stats.ts)
 //   POST translate {lang, texts} → { texts } French or Spanish drafts, nothing saved  (see translate.ts)
+//   POST describe-photo {src, name} → { texts } photo descriptions in each language, nothing saved  (see describe-photo.ts)
 //   GET  digest → { configured, to }   POST digest-test → sends a test email  (see digest.ts)
 //
 // Everything except session and login requires a signed-in admin.
@@ -33,6 +34,7 @@ import { listReports, updateReport } from './reports.js';
 import { handlePhotoUpload } from './photos.js';
 import { handleAdminAudio } from './admin-audio.js';
 import { handleTranslate } from './translate.js';
+import { handleDescribePhoto } from './describe-photo.js';
 import { readStats } from './stats.js';
 import { digestConfigured, sendTestEmail } from './digest.js';
 import { normalizeContent, validateContent } from '../../src/data/content.js';
@@ -131,6 +133,10 @@ export async function handleAdmin(request: Request): Promise<Response> {
 
     if (action === 'translate' && method === 'POST') {
       return await handleTranslate(request);
+    }
+
+    if (action === 'describe-photo' && method === 'POST') {
+      return await handleDescribePhoto(request);
     }
 
     if (action === 'version' && method === 'GET') {

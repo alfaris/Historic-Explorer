@@ -5,6 +5,7 @@ import { nextPlaceId, type Content, type Location } from '../data/content';
 import type { SaveFn } from './AdminApp';
 import { Button, Field, inputClass, MapPicker, sameValue } from './ui';
 import { PhotoField } from './PhotoField';
+import { PhotoAltFields, withoutPhotoAlts } from './PhotoAltFields';
 import { builtInPhoto } from '../data/photo-resolve';
 import { descriptionOf, LANGS, LANGUAGES, OPTIONAL_LANGS, type Lang, type OptionalLang } from '../i18n/lang';
 import { api } from './api';
@@ -400,9 +401,17 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
             builtIn={builtInPhoto(`place-${draft.id}`)}
             onChange={photo => setDraft(d => {
               if (!d) return d;
-              const { photo: _old, ...rest } = d;
+              const { photo: old, ...kept } = d;
+              // A different photo: the descriptions were of the old one.
+              const rest = old?.src === photo?.src ? kept : withoutPhotoAlts(kept);
               return photo ? { ...rest, photo } : rest;
             })}
+          />
+          <PhotoAltFields
+            item={draft}
+            src={(draft.photo ?? builtInPhoto(`place-${draft.id}`))?.src}
+            name={draft.nameEn}
+            onChange={(key, value) => setDraft(d => (d ? withOptional(d, key, value) : d))}
           />
 
           <div>

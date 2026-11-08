@@ -3,6 +3,7 @@
 
 import { photos, type Photo } from './photos.js';
 import type { Location, Route } from './locations';
+import { currentLang, LANGUAGES, nameOf, type Lang } from '../i18n/lang.js';
 
 export const photoForPlace = (place: Pick<Location, 'id' | 'photo'>): Photo | undefined =>
   place.photo ?? photos[`place-${place.id}`];
@@ -23,3 +24,13 @@ export const smallPhotoSrc = (src: string) =>
 /** The 240px copy of a built-in photo, for list thumbnails (made by the same script). */
 export const thumbPhotoSrc = (src: string) =>
   /^\/images\/photos\/[\w-]+\.webp$/.test(src) ? src.replace(/\.webp$/, '-240.webp') : null;
+
+type Described = Parameters<typeof nameOf>[0] & Partial<Record<`photoAlt${'En' | 'Ar' | 'Fr' | 'Es'}`, string>>;
+
+/**
+ * A place's or route's photo as a screen reader should hear it: the admin's
+ * description in the visitor's language, or else the name. ("A carved stone
+ * façade…" says what the picture shows; the name only says what it's of.)
+ */
+export const photoAltOf = (item: Described, lang: Lang = currentLang()): string =>
+  item[`photoAlt${LANGUAGES[lang].suffix}`]?.trim() || nameOf(item, lang);

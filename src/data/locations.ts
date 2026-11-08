@@ -31,6 +31,11 @@ export interface Route {
   duration: string;
   /** Uploaded in the admin dashboard; replaces the built-in photo. */
   photo?: Photo;
+  /** What the photo shows, for screen readers, in each language (optional). See photoAltOf. */
+  photoAltEn?: string;
+  photoAltAr?: string;
+  photoAltFr?: string;
+  photoAltEs?: string;
 }
 
 export interface Location {
@@ -66,6 +71,11 @@ export interface Location {
   image?: string;
   /** Uploaded in the admin dashboard; replaces the built-in photo. */
   photo?: Photo;
+  /** What the photo shows, for screen readers, in each language (optional). See photoAltOf. */
+  photoAltEn?: string;
+  photoAltAr?: string;
+  photoAltFr?: string;
+  photoAltEs?: string;
 }
 
 export const routes: Route[] = [

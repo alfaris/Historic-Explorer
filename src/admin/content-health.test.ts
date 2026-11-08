@@ -7,14 +7,15 @@ const place = bundledContent.places[0];
 
 describe('placeGaps', () => {
   it('lists what a bundled place is missing', () => {
-    // Place 1 (a monument) has a built-in photo, but no hours, build date or era, French or Spanish yet.
-    expect(placeGaps(place)).toEqual(['hours', 'era', 'fr', 'es']);
+    // Place 1 (a monument) has a built-in photo, but no description of it, hours, build date or era, French or Spanish yet.
+    expect(placeGaps(place)).toEqual(['photoAlt', 'hours', 'era', 'fr', 'es']);
   });
   it('clears each gap once it is filled', () => {
     const full = {
       ...place,
       hours: { days: Array.from({ length: 7 }, () => []) },
       builtFrom: 879,
+      photoAltEn: 'The open courtyard.',
       nameFr: 'Mosquée', descriptionFr: 'Description.',
       nameEs: 'Mezquita', descriptionEs: 'Descripción.',
     };
@@ -25,6 +26,10 @@ describe('placeGaps', () => {
     expect(placeGaps({ ...place, era: 'tulunid' })).not.toContain('era');
     expect(placeGaps({ ...place, builtFrom: 879 })).not.toContain('era');
     expect(placeGaps({ ...place, category: 'coffee' })).not.toContain('era');
+  });
+  it('asks for a description only of a photo that is there', () => {
+    expect(placeGaps({ ...place, id: 999_998 })).not.toContain('photoAlt');
+    expect(placeGaps({ ...place, photoAltEn: '  ' })).toContain('photoAlt');
   });
   it('needs a photo when there is neither an upload nor a built-in one', () => {
     expect(placeGaps({ ...place, id: 999_998 })).toContain('photo');
