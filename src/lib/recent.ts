@@ -38,6 +38,16 @@ const read = () => {
   }
 };
 const current = () => (list ??= typeof window === 'undefined' ? [] : read());
+const storageWorks = () => {
+  try {
+    return typeof window !== 'undefined' && window.localStorage.getItem(KEY) !== undefined;
+  } catch {
+    return false;
+  }
+};
+// The latest list: the stored one when storage works (another tab may have
+// changed it while nothing here was listening), else this tab's own.
+const latest = () => (storageWorks() ? read() : current());
 const EMPTY: number[] = [];
 
 function save(next: number[]) {
@@ -53,8 +63,8 @@ function save(next: number[]) {
 
 /** Notes that the visitor opened this place's card. */
 export function addRecent(id: number) {
-  const now = current();
-  if (now[0] === id) return;
+  const now = latest();
+  if (now[0] === id && current()[0] === id) return;
   save(withRecent(now, id));
 }
 
@@ -63,6 +73,8 @@ export const clearRecent = () => save([]);
 
 function subscribe(listener: () => void) {
   listeners.add(listener);
+  // Changes made in another tab while nothing here was listening.
+  list = latest();
   const onStorage = (e: StorageEvent) => {
     if (e.key === KEY || e.key === null) {
       list = read();
