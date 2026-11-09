@@ -8,6 +8,7 @@ import { HoursBadge, PlaceHours } from './PlaceHours';
 import { PrayerNotice } from './PrayerTimes';
 import { SpotIt } from './SpotIt';
 import { VisitorTips } from './VisitorTips';
+import { Notices } from './Notices';
 
 // The parts of a place's card shared by the list, the map and the admin's
 // preview, so the preview shows exactly what visitors see.
@@ -32,6 +33,7 @@ export function PlaceDetails({ place, audioNote }: { place: Location; audioNote?
   const description = descriptionOf(place);
   return (
     <>
+      <Notices scope={{ placeId: place.id }} className="mb-6" />
       <div className="mb-8">
         <p className="text-stone-600 text-lg leading-relaxed mb-4 font-serif italic" lang={fallbackLang(place, 'description')}>
           {description ? <GlossaryText text={description} /> : L('No description available for this location at the moment.', 'لا يوجد وصف متاح حالياً لهذا الموقع.')}

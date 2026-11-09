@@ -55,6 +55,7 @@ import { minutesLabel as minutes, stopOfLabel } from './WalkInfo';
 import { ArrivalWarning, HoursBadge } from './PlaceHours';
 import { PrayerArrivalWarning, PrayerNotice } from './PrayerTimes';
 import { VisitorTips } from './VisitorTips';
+import { Notices } from './Notices';
 import { BreakView, TakeABreak } from './TakeABreak';
 
 
@@ -268,6 +269,7 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
               <BuiltBadge place={stop} className="mb-2" />
               <HoursBadge place={stop} className="mb-3" />
               <PrayerNotice place={stop} className="mb-3" />
+              <Notices scope={{ placeId: stop.id }} className="mb-3" />
               <p className="text-stone-600 leading-relaxed mb-4" lang={fallbackLang(stop, 'description')}><GlossaryText text={descriptionOf(stop)} /></p>
               <VisitorTips place={stop} className="mb-4" />
               <SpotIt place={stop} className="mb-4" />

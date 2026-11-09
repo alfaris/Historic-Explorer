@@ -43,6 +43,7 @@ import { OtherRouteResults } from './OtherRouteResults';
 import { SharePlace, ShareRoute } from './ShareRoute';
 import { RouteFinder } from './RouteFinder';
 import { GettingThere } from './GettingThere';
+import { Notices } from './Notices';
 import { accessSummary, hasAccessInfo, routeAccess } from '../lib/step-free';
 import { ContinueWalk } from './ContinueWalk';
 import { PlanVisit } from './PlanVisit';
@@ -521,6 +522,7 @@ export const MainContent: React.FC = () => {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 md:py-8 pb-28 md:pb-8">
+        <Notices scope={{ app: true }} className="mb-6" />
         {/* Breadcrumbs: only once a category or place is chosen (on the route's
             home view they'd repeat the header and the route title). */}
         {(selectedLocation !== null || selectedCategory !== 'all') && (
@@ -656,6 +658,8 @@ export const MainContent: React.FC = () => {
                 {accessSummary(access)}
               </p>
             )}
+
+            <Notices scope={{ routeId: currentRouteData.id }} className="order-2 w-full max-w-md mb-5 sm:mb-6" />
 
             <p className="order-4 sm:order-3 text-stone-500 italic text-base md:text-lg leading-relaxed font-serif mb-6 sm:mb-8 line-clamp-3 sm:line-clamp-none">
               "{descriptionOf(currentRouteData)}"

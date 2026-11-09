@@ -5,18 +5,21 @@ import { LANGS, LANGUAGES, type Lang, type OptionalLang } from '../i18n/lang';
 import { draftLang, draftSection, draftsToReview, GAPS, glossaryGaps, periodGaps, placeGaps, progress, routeGaps, type DraftRow, type Gap, type PlaceSection } from './content-health';
 import { draftLabel } from './DraftReview';
 import { inputClass } from './ui';
+import { isExpired } from '../lib/notices';
+import { cairoDate } from '../lib/special-hours';
 
 /**
  * What content is still missing: progress per item, and the places (and
  * routes) that need something, each linking to the right part of its editor.
  */
-export function ContentTab({ content, onEditPlace, onEditRoute, onEditTerm, onEditPeriod, onEditHelp }: {
+export function ContentTab({ content, onEditPlace, onEditRoute, onEditTerm, onEditPeriod, onEditHelp, onEditNotices }: {
   content: Content;
   onEditPlace: (placeId: number, section: PlaceSection) => void;
   onEditRoute: (routeId: string) => void;
   onEditTerm: (termId: string) => void;
   onEditPeriod: (periodId: string) => void;
   onEditHelp?: () => void;
+  onEditNotices?: () => void;
 }) {
   const [filter, setFilter] = useState<Gap | 'all'>('all');
   const [routeFilter, setRouteFilter] = useState<string>('all');
@@ -32,6 +35,9 @@ export function ContentTab({ content, onEditPlace, onEditRoute, onEditTerm, onEd
   const routesMissing = content.routes.map(route => ({ route, gaps: routeGaps(route) })).filter(r => r.gaps.length > 0);
   const termsMissing = glossaryOf(content).map(t => ({ id: t.id, name: t.termEn, gaps: glossaryGaps(t) })).filter(r => r.gaps.length > 0);
   const periodsMissing = (content.specialPeriods ?? []).map(p => ({ id: p.id, name: p.nameEn, gaps: periodGaps(p) })).filter(r => r.gaps.length > 0);
+  // Notices past their last day: visitors no longer see them, so they can go.
+  const today = cairoDate(new Date());
+  const ended = (content.notices ?? []).map((n, i) => ({ n, i })).filter(({ n }) => isExpired(n, today));
   const routeName = (id: string) => content.routes.find(r => r.id === id)?.nameEn ?? id;
   const sectionFor = (gaps: Gap[]) => GAPS.find(g => (filter === 'all' ? gaps.includes(g.id) : g.id === filter))!.section;
 
@@ -67,12 +73,29 @@ export function ContentTab({ content, onEditPlace, onEditRoute, onEditTerm, onEd
           else if (row.kind === 'route') onEditRoute(row.id);
           else if (row.kind === 'term') onEditTerm(row.id);
           else if (row.kind === 'help') onEditHelp?.();
+          else if (row.kind === 'notice') onEditNotices?.();
           else onEditPeriod(row.id);
         }}
       />
       <MissingList title="Routes" rows={routesMissing.map(({ route, gaps }) => ({ id: route.id, name: route.nameEn, gaps }))} onEdit={onEditRoute} />
       <MissingList title="Glossary terms" rows={termsMissing} onEdit={onEditTerm} />
       <MissingList title="Special hours" rows={periodsMissing} onEdit={onEditPeriod} />
+      {ended.length > 0 && (
+        <div className="bg-white rounded-2xl border border-sand/50 p-4">
+          <p className="text-xs font-bold uppercase tracking-widest text-stone-500 mb-2">Notices that have ended ({ended.length})</p>
+          <ul className="divide-y divide-sand/40">
+            {ended.map(({ n, i }) => (
+              <li key={i} className="flex items-center gap-3 py-2 text-sm">
+                <span className="flex-1">{n.textEn}</span>
+                <span className="text-xs text-amber-800">Last day {n.until}</span>
+                <button onClick={() => onEditNotices?.()} className="flex items-center gap-1 min-h-11 px-3 text-xs font-bold text-nile hover:underline" aria-label={`Edit notice ${i + 1}`}>
+                  Edit <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl border border-sand/50 p-4">
         <div className="flex flex-wrap items-center gap-3 mb-3">
@@ -140,7 +163,7 @@ function MissingList({ title, rows, onEdit }: { title: string; rows: { id: strin
   );
 }
 
-const KIND: Record<DraftRow['kind'], string> = { place: 'Place', route: 'Route', term: 'Glossary term', period: 'Special hours', help: 'Help sheet' };
+const KIND: Record<DraftRow['kind'], string> = { place: 'Place', route: 'Route', term: 'Glossary term', period: 'Special hours', help: 'Help sheet', notice: 'Notice' };
 
 /** "Translations to review": what Gemini drafted and no one has checked yet, by language. Nothing when there's none. */
 function DraftsList({ content, onEdit }: { content: Content; onEdit: (row: DraftRow) => void }) {
