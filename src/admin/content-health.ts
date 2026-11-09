@@ -144,3 +144,23 @@ export function draftSection(key: string): PlaceSection | undefined {
   const lang = draftLang(key);
   return lang === 'fr' || lang === 'es' ? `lang-${lang}` : undefined;
 }
+
+export type TranslationPriority = { lang: OptionalLang; pct: number; missing: number };
+
+/**
+ * The optional language most worth translating next: the one where visitors
+ * meet the most missing places (its share of visitors × places missing it).
+ * `shares` is each language's share of visitors in percent. Undefined when no
+ * language with visitors is missing anything.
+ */
+export function translationPriority(items: { id: Gap; done: number; total: number }[], shares: Partial<Record<Lang, number>>): TranslationPriority | undefined {
+  let best: (TranslationPriority & { weight: number }) | undefined;
+  for (const lang of OPTIONAL_LANGS) {
+    const item = items.find(i => i.id === lang);
+    const pct = shares[lang] ?? 0;
+    const missing = item ? item.total - item.done : 0;
+    const weight = pct * missing;
+    if (weight > 0 && (!best || weight > best.weight)) best = { lang, pct, missing, weight };
+  }
+  return best && { lang: best.lang, pct: best.pct, missing: best.missing };
+}

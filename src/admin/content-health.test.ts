@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { bundledContent } from '../data/content';
 import { walkPlan } from '../lib/walk';
-import { glossaryGaps, missingText, periodGaps, placeGaps, plannedKm, plannedWalk, progress, routeGaps } from './content-health';
+import { glossaryGaps, missingText, periodGaps, placeGaps, plannedKm, plannedWalk, progress, routeGaps, translationPriority } from './content-health';
 
 const place = bundledContent.places[0];
 
@@ -97,5 +97,21 @@ describe('glossary and special-hours gaps', () => {
   it('drafts only the empty fields that have English', () => {
     expect(missingText({ ...term, termFr: 'Sabil' }, 'fr', ['term', 'def'])).toEqual({ defFr: 'A public water fountain.' });
     expect(missingText({ ...term, defEn: '' }, 'es', ['term', 'def'])).toEqual({ termEs: 'Sabil' });
+  });
+});
+
+describe('translationPriority', () => {
+  const items = [
+    { id: 'photo' as const, done: 1, total: 10 },
+    { id: 'fr' as const, done: 6, total: 10 }, // 4 missing
+    { id: 'es' as const, done: 2, total: 10 }, // 8 missing
+  ];
+  it('picks the language whose visitors meet the most missing places', () => {
+    expect(translationPriority(items, { en: 60, fr: 30, es: 10 })).toEqual({ lang: 'fr', pct: 30, missing: 4 });
+    expect(translationPriority(items, { en: 60, fr: 10, es: 10 })).toEqual({ lang: 'es', pct: 10, missing: 8 });
+  });
+  it('suggests nothing without visitors or with nothing missing', () => {
+    expect(translationPriority(items, { en: 100 })).toBeUndefined();
+    expect(translationPriority([{ id: 'fr', done: 10, total: 10 }, { id: 'es', done: 10, total: 10 }], { fr: 50, es: 50 })).toBeUndefined();
   });
 });
