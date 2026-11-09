@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { categories } from '../data/locations';
 import type { Content, Location } from '../data/content';
 import { ContentValue } from '../data/ContentContext';
 import { photoAltOf, photoForPlace } from '../data/photo-resolve';
-import { LANGS, LANGUAGES, descriptionOf, fallbackLang, nameOf, setCurrentLang, type Lang } from '../i18n/lang';
+import { LANGS, LANGUAGES, descriptionOf, fallbackLang, loadDictionary, nameOf, setCurrentLang, type Lang } from '../i18n/lang';
 import { useDialog } from '../lib/useDialog';
 import { HistoricPlaceholder } from '../components/HistoricPlaceholder';
 import { PlacePhoto } from '../components/PlacePhoto';
@@ -25,6 +25,15 @@ export const withDraft = (content: Content, place: Location): Content => ({
  */
 export function PlacePreview({ place, content, onClose }: { place: Location; content: Content; onClose: () => void }) {
   const [lang, setLang] = useState<Lang>('en');
+  // The language's interface text first (French and Spanish are downloaded on first use), as in the app.
+  // Only the latest choice applies.
+  const chosen = useRef<Lang>('en');
+  const choose = (l: Lang) => {
+    chosen.current = l;
+    loadDictionary(l).then(() => {
+      if (chosen.current === l) setLang(l);
+    });
+  };
   const { ref: panel, guard } = useDialog<HTMLDivElement>(onClose);
   // The card's text (L(), nameOf(), …) reads the current language. The admin
   // itself is in English and doesn't use it; back to English on closing.
@@ -71,7 +80,7 @@ export function PlacePreview({ place, content, onClose }: { place: Location; con
                 type="button"
                 aria-pressed={lang === l}
                 lang={l}
-                onClick={() => setLang(l)}
+                onClick={() => choose(l)}
                 className={`min-h-11 px-3 rounded-lg text-xs font-bold ${lang === l ? 'bg-nile text-white' : 'bg-chalk text-stone-600 hover:bg-sand/40'}`}
               >
                 {LANGUAGES[l].native}

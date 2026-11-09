@@ -1,16 +1,18 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { byLang, descriptionOf, fallbackLang, highlightsOf, initialLang, L, LANGS, LANGUAGES, nameOf, optionalText, setCurrentLang } from './lang';
+import { byLang, descriptionOf, fallbackLang, highlightsOf, initialLang, L, LANGS, LANGUAGES, loadDictionary, nameOf, optionalText, setCurrentLang } from './lang';
 import { FR } from './fr';
 
 afterEach(() => setCurrentLang('en'));
 const place = { nameEn: 'Manial Palace', nameAr: 'قصر المنيل', descriptionEn: 'English', descriptionAr: 'عربي' };
 
 describe('L', () => {
-  it('picks the current language, with French from the dictionary', () => {
+  it('picks the current language, with French from the dictionary once loaded', async () => {
     expect(L('Visited', 'تمت الزيارة')).toBe('Visited');
     setCurrentLang('ar');
     expect(L('Visited', 'تمت الزيارة')).toBe('تمت الزيارة');
     setCurrentLang('fr');
+    expect(L('Visited', 'تمت الزيارة')).toBe('Visited'); // not loaded yet: English
+    await loadDictionary('fr');
     expect(L('Visited', 'تمت الزيارة')).toBe(FR['Visited'] ?? 'Visited');
     expect(L('Some string with no French', 'x')).toBe('Some string with no French');
   });
@@ -91,7 +93,8 @@ describe('Spanish', () => {
     expect(descriptionOf(place, 'es')).toBe('Old.');
     expect(nameOf({ nameEn: 'X', nameAr: 'س' }, 'es')).toBe('X');
   });
-  it('translates interface text from the Spanish dictionary, and byLang falls back to English', () => {
+  it('translates interface text from the Spanish dictionary, and byLang falls back to English', async () => {
+    await loadDictionary('es');
     setCurrentLang('es');
     expect(L('Share route', 'مشاركة المسار')).toBe('Compartir la ruta');
     expect(L('Not in the dictionary', 'س')).toBe('Not in the dictionary');

@@ -10,9 +10,6 @@
 //
 // Shared by the browser, the API functions and the tests.
 
-import { FR } from './fr.js';
-import { ES } from './es.js';
-
 export const LANGS = ['en', 'ar', 'fr', 'es'] as const;
 export type Lang = (typeof LANGS)[number];
 
@@ -37,16 +34,38 @@ export interface LanguageInfo {
   /** For Open Graph link previews. */
   og: string;
   dir: 'ltr' | 'rtl';
-  /** Interface text keyed by the English text (none for English and Arabic, written in place). */
-  dictionary?: Record<string, string>;
 }
 
 export const LANGUAGES: Record<Lang, LanguageInfo> = {
   en: { native: 'English', english: 'English', suffix: 'En', locale: 'en-GB', speech: 'en-US', og: 'en_GB', dir: 'ltr' },
   ar: { native: 'العربية', english: 'Arabic', suffix: 'Ar', locale: 'ar-EG', speech: 'ar-EG', og: 'ar_EG', dir: 'rtl' },
-  fr: { native: 'Français', english: 'French', suffix: 'Fr', locale: 'fr-FR', speech: 'fr-FR', og: 'fr_FR', dir: 'ltr', dictionary: FR },
-  es: { native: 'Español', english: 'Spanish', suffix: 'Es', locale: 'es-ES', speech: 'es-ES', og: 'es_ES', dir: 'ltr', dictionary: ES },
+  fr: { native: 'Français', english: 'French', suffix: 'Fr', locale: 'fr-FR', speech: 'fr-FR', og: 'fr_FR', dir: 'ltr' },
+  es: { native: 'Español', english: 'Spanish', suffix: 'Es', locale: 'es-ES', speech: 'es-ES', og: 'es_ES', dir: 'ltr' },
 };
+
+// Interface text keyed by the English text, for the languages that have a
+// dictionary (English and Arabic are written in place). Each is its own file,
+// downloaded only for visitors using it: see loadDictionary.
+const DICTIONARIES: Partial<Record<Lang, () => Promise<Record<string, string>>>> = {
+  fr: () => import('./fr.js').then(m => m.FR),
+  es: () => import('./es.js').then(m => m.ES),
+};
+const loaded: Partial<Record<Lang, Record<string, string>>> = {};
+
+/**
+ * Downloads a language's dictionary, once, before it's used: on start for
+ * the starting language, and before switching. Never fails: without it (offline
+ * before it was cached), the interface shows English, as for a missing string.
+ */
+export async function loadDictionary(lang: Lang): Promise<void> {
+  const load = DICTIONARIES[lang];
+  if (!load || loaded[lang]) return;
+  try {
+    loaded[lang] = await load();
+  } catch {
+    // English meanwhile; tried again on the next switch.
+  }
+}
 
 export const isLang = (v: unknown): v is Lang => typeof v === 'string' && (LANGS as readonly string[]).includes(v);
 export const isOptionalLang = (v: unknown): v is OptionalLang => typeof v === 'string' && (OPTIONAL_LANGS as readonly string[]).includes(v);
@@ -64,7 +83,7 @@ export const currentLang = () => current;
  */
 export function L(en: string, ar: string): string {
   if (current === 'ar') return ar;
-  return LANGUAGES[current].dictionary?.[en] ?? en;
+  return loaded[current]?.[en] ?? en;
 }
 
 /**
