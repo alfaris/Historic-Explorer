@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { BarChart3, BookOpen, CalendarDays, History, Inbox, LifeBuoy, ListChecks, LogOut, MapPinned, Route as RouteIcon } from 'lucide-react';
+import { BarChart3, BookOpen, CalendarDays, History, Inbox, LifeBuoy, ListChecks, LogOut, MapPinned, Megaphone, Route as RouteIcon } from 'lucide-react';
 import type { Content } from '../data/content';
 import { normalizeContent, validateContent, withMaxPlaceId } from '../data/content';
 import { api, ApiError } from './api';
 import { ReportsTab } from './ReportsTab';
 import { HelpTab } from './HelpTab';
+import { NoticesTab } from './NoticesTab';
 import { PlacesTab } from './PlacesTab';
 import { RoutesTab } from './RoutesTab';
 import { ContentTab } from './ContentTab';
@@ -88,7 +89,7 @@ function Login({ onSignedIn }: { onSignedIn: () => void }) {
   );
 }
 
-type Tab = 'reports' | 'content' | 'places' | 'routes' | 'special' | 'glossary' | 'help' | 'stats' | 'history';
+type Tab = 'reports' | 'content' | 'places' | 'routes' | 'special' | 'notices' | 'glossary' | 'help' | 'stats' | 'history';
 
 function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
   const [tab, setTab] = useState<Tab>('reports');
@@ -157,6 +158,7 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
     { id: 'places', label: 'Places', icon: <MapPinned className="w-4 h-4" /> },
     { id: 'routes', label: 'Routes', icon: <RouteIcon className="w-4 h-4" /> },
     { id: 'special', label: 'Special hours', icon: <CalendarDays className="w-4 h-4" /> },
+    { id: 'notices', label: 'Notices', icon: <Megaphone className="w-4 h-4" /> },
     { id: 'glossary', label: 'Glossary', icon: <BookOpen className="w-4 h-4" /> },
     { id: 'help', label: 'Help', icon: <LifeBuoy className="w-4 h-4" /> },
     { id: 'stats', label: 'Stats', icon: <BarChart3 className="w-4 h-4" /> },
@@ -253,6 +255,7 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
               setTab('special');
             }}
             onEditHelp={() => setTab('help')}
+            onEditNotices={() => setTab('notices')}
           />
         ) : tab === 'places' ? (
           <PlacesTab content={content} save={save} initialPlaceId={editPlaceId} initialSection={editSection} onSelected={() => { setEditPlaceId(null); setEditSection(null); }} />
@@ -272,6 +275,8 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
           <SpecialHoursTab content={content} save={save} initialId={editPeriodId} onSelected={() => setEditPeriodId(null)} />
         ) : tab === 'glossary' ? (
           <GlossaryTab content={content} save={save} initialId={editTermId} onSelected={() => setEditTermId(null)} />
+        ) : tab === 'notices' ? (
+          <NoticesTab content={content} save={save} />
         ) : tab === 'help' ? (
           <HelpTab content={content} save={save} />
         ) : tab === 'stats' ? (

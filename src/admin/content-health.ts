@@ -108,7 +108,7 @@ export function plannedWalk(places: Location[], routeId: string): { meters: numb
 /** The planned walk as kilometres for the distance field, to one decimal place. */
 export const plannedKm = (meters: number) => Math.round(meters / 100) / 10;
 
-export type DraftKind = 'place' | 'route' | 'term' | 'period' | 'help';
+export type DraftKind = 'place' | 'route' | 'term' | 'period' | 'help' | 'notice';
 export type DraftRow = { kind: DraftKind; id: string; name: string; keys: string[] };
 
 /** The language a drafted field is in ("descriptionFr" is French). */
@@ -133,6 +133,7 @@ export function draftsToReview(content: Content, lang?: Lang): DraftRow[] {
   content.help?.contacts.forEach((c, i) => add('help', `contacts-${i}`, `Contact: ${c.nameEn}`, c));
   content.help?.tips.forEach((t, i) => add('help', `tips-${i}`, `Tip ${i + 1}`, t));
   content.help?.phrases.forEach((p, i) => add('help', `phrases-${i}`, `Phrase: ${p.meaningEn}`, p));
+  content.notices?.forEach((n, i) => add('notice', i, `Notice ${i + 1}: ${n.textEn.slice(0, 50)}`, n));
   return rows;
 }
 

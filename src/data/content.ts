@@ -16,6 +16,7 @@ import { normalizePeriods, periodProblems, type SpecialPeriod } from '../lib/spe
 import { builtProblems, normalizeBuilt } from '../lib/eras.js';
 import { normalizeDrafted } from '../lib/drafted.js';
 import { helpProblems, normalizeHelp, type HelpContent } from '../lib/help-content.js';
+import { noticeProblems, normalizeNotices, withoutMissing, type Notice } from '../lib/notices.js';
 import { LANGS, LANGUAGES, OPTIONAL_LANGS } from '../i18n/lang.js';
 
 export type { Category, Location, Route };
@@ -31,6 +32,8 @@ export interface Content {
   specialPeriods?: SpecialPeriod[];
   /** The Help sheet's own contacts, tips and phrases (the emergency numbers are fixed in the app). */
   help?: HelpContent;
+  /** Announcements for visitors (closures, works, events), app-wide or on a route or place. */
+  notices?: Notice[];
 }
 
 export const bundledContent: Content = { routes, places: locations };
@@ -125,7 +128,7 @@ export function normalizeContent(input: unknown): Content {
   const glossary = normalizeGlossary((raw as { glossary?: unknown }).glossary);
   const specialPeriods = normalizePeriods((raw as { specialPeriods?: unknown }).specialPeriods);
   const help = normalizeHelp((raw as { help?: unknown }).help);
-  return {
+  const content: Content = {
     ...(help ? { help } : {}),
     ...(specialPeriods ? { specialPeriods } : {}),
     ...(Number.isInteger(maxPlaceId) && maxPlaceId > 0 ? { maxPlaceId } : {}),
@@ -171,6 +174,9 @@ export function normalizeContent(input: unknown): Content {
       ...normalizeDrafted(p),
     })),
   };
+  // A notice on a route or place that's been deleted is dropped with it.
+  const notices = withoutMissing(normalizeNotices((raw as { notices?: unknown }).notices), new Set(content.routes.map(r => r.id)), new Set(content.places.map(p => p.id)));
+  return notices ? { ...content, notices } : content;
 }
 
 /**
@@ -260,6 +266,7 @@ export function validateContent(content: Content): string[] {
   if (content.glossary) problems.push(...glossaryProblems(content.glossary));
   if (content.specialPeriods) problems.push(...periodProblems(content.specialPeriods, placeIds));
   if (content.help) problems.push(...helpProblems(content.help));
+  if (content.notices) problems.push(...noticeProblems(content.notices, new Set(content.routes.map(r => r.id)), placeIds));
   return problems;
 }
 
