@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
 import { initialLang, LANGUAGES, loadDictionary, setCurrentLang, type Lang } from './lang';
 
 type Language = Lang;
@@ -110,6 +110,7 @@ export function startingLang(): Lang {
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // A saved choice, else the browser's language (Arabic, French or English).
   const [language, setLanguageState] = useState<Language>(startingLang);
+  const requested = useRef<Language | null>(null);
   const setLanguage = (lang: Language) => {
     try {
       window.localStorage.setItem(STORAGE_KEY, lang);
@@ -117,7 +118,11 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       // Not remembered; still switches for this visit.
     }
     // Its interface text first (downloaded the first time), so the switch is in one go.
-    loadDictionary(lang).then(() => setLanguageState(lang));
+    // Only the latest choice applies: a slower download for an earlier one is ignored.
+    requested.current = lang;
+    loadDictionary(lang).then(() => {
+      if (requested.current === lang) setLanguageState(lang);
+    });
   };
   // L(), nameOf() and friends read this; set before the tree renders.
   setCurrentLang(language);
