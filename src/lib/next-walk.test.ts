@@ -62,5 +62,9 @@ describe('lastStamped', () => {
     const stamps: Stamps = { a: { ...stamp, date: '2026-10-01' }, c: { ...stamp, date: '2026-11-02' }, b: { ...stamp, date: '2026-11-01' } };
     expect(lastStamped(routes, stamps)?.id).toBe('c');
     expect(lastStamped(routes, {})).toBeUndefined();
+    // Two walks finished the same day: the later time wins, whatever the route order.
+    const sameDay: Stamps = { a: { ...stamp, at: 2_000 }, b: { ...stamp, at: 1_000 } };
+    expect(lastStamped(routes, sameDay)?.id).toBe('a');
+    expect(lastStamped(routes, { a: { ...stamp, at: 1_000 }, b: stamp })?.id).toBe('a');
   });
 });

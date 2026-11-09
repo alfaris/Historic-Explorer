@@ -45,9 +45,18 @@ export function nextWalk<R extends Pick<Route, 'id' | 'startId'>, P extends Loca
   return { kind: 'next', route: best.route, start: best.start, meters, minutes: walkMinutes(best.straight), far: meters > FAR_METERS };
 }
 
-/** The route stamped most recently (the latest date; ties go to the later route in the list), for the passport's suggestion. */
+/**
+ * The route stamped most recently, for the passport's suggestion: the latest
+ * date, then the latest time on that day (older stamps have none and count as
+ * earlier); a remaining tie goes to the later route in the list.
+ */
 export function lastStamped<R extends { id: string }>(routes: R[], stamps: Stamps): R | undefined {
   let last: R | undefined;
-  for (const r of routes) if (stamps[r.id] && (!last || stamps[r.id].date >= stamps[last.id].date)) last = r;
+  for (const r of routes) {
+    const s = stamps[r.id];
+    if (!s) continue;
+    const l = last && stamps[last.id];
+    if (!l || s.date > l.date || (s.date === l.date && (s.at ?? 0) >= (l.at ?? 0))) last = r;
+  }
   return last;
 }

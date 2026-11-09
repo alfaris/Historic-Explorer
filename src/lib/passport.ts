@@ -11,6 +11,8 @@ export interface Stamp {
   /** Spot it challenges found on the route, and how many it has. */
   found: number;
   spots: number;
+  /** When it was first finished (ms since 1970), to tell apart walks finished the same day. Absent on older stamps. */
+  at?: number;
 }
 export type Stamps = Record<string, Stamp>;
 
@@ -28,8 +30,8 @@ export function parseStamps(raw: string | null): Stamps {
       Object.entries(value as Record<string, unknown>)
         .filter(([id, s]) => id && s && typeof s === 'object' && DATE.test(String((s as Stamp).date)))
         .map(([id, s]) => {
-          const { date, found, spots } = s as Stamp;
-          return [id, { date, found: Math.min(count(found), count(spots)), spots: count(spots) }];
+          const { date, found, spots, at } = s as Stamp;
+          return [id, { date, found: Math.min(count(found), count(spots)), spots: count(spots), ...(count(at) > 0 ? { at } : {}) }];
         }),
     );
   } catch {
@@ -41,11 +43,11 @@ export function parseStamps(raw: string | null): Stamps {
  * The stamps with this route's: the first finish keeps its date, and walking it
  * again only adds Spot it challenges found since.
  */
-export function withStamp(stamps: Stamps, routeId: string, date: string, spot: { found: number; total: number }): Stamps {
+export function withStamp(stamps: Stamps, routeId: string, date: string, spot: { found: number; total: number }, at?: number): Stamps {
   const old = stamps[routeId];
-  const stamp = old
-    ? { date: old.date, found: Math.max(old.found, Math.min(spot.found, spot.total)), spots: Math.max(old.spots, spot.total) }
-    : { date, found: Math.min(spot.found, spot.total), spots: spot.total };
+  const stamp: Stamp = old
+    ? { ...old, found: Math.max(old.found, Math.min(spot.found, spot.total)), spots: Math.max(old.spots, spot.total) }
+    : { date, found: Math.min(spot.found, spot.total), spots: spot.total, ...(at ? { at } : {}) };
   if (old && old.found === stamp.found && old.spots === stamp.spots) return stamps;
   return { ...stamps, [routeId]: stamp };
 }
@@ -79,7 +81,13 @@ export function mergeStamps(a: Stamps, b: Stamps): Stamps {
   const out: Stamps = { ...a };
   for (const [id, s] of Object.entries(b)) {
     const o = out[id];
-    out[id] = o ? { date: o.date < s.date ? o.date : s.date, found: Math.max(o.found, s.found), spots: Math.max(o.spots, s.spots) } : s;
+    if (!o) {
+      out[id] = s;
+      continue;
+    }
+    // The first finish: its date and, when it has one, its time.
+    const first = s.date < o.date || (s.date === o.date && (s.at ?? Infinity) < (o.at ?? Infinity)) ? s : o;
+    out[id] = { date: first.date, found: Math.max(o.found, s.found), spots: Math.max(o.spots, s.spots), ...(first.at ? { at: first.at } : {}) };
   }
   return out;
 }
@@ -92,7 +100,7 @@ const latest = (): Stamps => (typeof window === 'undefined' ? current() : mergeS
 /** Adds (or updates) a route's stamp. */
 export function stampRoute(routeId: string, date: string, spot: { found: number; total: number }) {
   const base = latest();
-  const next = withStamp(base, routeId, date, spot);
+  const next = withStamp(base, routeId, date, spot, Date.now());
   if (next === base) {
     // Nothing new here, but another tab's stamps may be newer than this tab's copy.
     if (JSON.stringify(base) !== JSON.stringify(current())) {
