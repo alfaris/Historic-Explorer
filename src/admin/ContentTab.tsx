@@ -10,12 +10,13 @@ import { inputClass } from './ui';
  * What content is still missing: progress per item, and the places (and
  * routes) that need something, each linking to the right part of its editor.
  */
-export function ContentTab({ content, onEditPlace, onEditRoute, onEditTerm, onEditPeriod }: {
+export function ContentTab({ content, onEditPlace, onEditRoute, onEditTerm, onEditPeriod, onEditHelp }: {
   content: Content;
   onEditPlace: (placeId: number, section: PlaceSection) => void;
   onEditRoute: (routeId: string) => void;
   onEditTerm: (termId: string) => void;
   onEditPeriod: (periodId: string) => void;
+  onEditHelp?: () => void;
 }) {
   const [filter, setFilter] = useState<Gap | 'all'>('all');
   const [routeFilter, setRouteFilter] = useState<string>('all');
@@ -65,6 +66,7 @@ export function ContentTab({ content, onEditPlace, onEditRoute, onEditTerm, onEd
           if (row.kind === 'place') onEditPlace(Number(row.id), row.keys.map(draftSection).find(Boolean) ?? 'lang-fr');
           else if (row.kind === 'route') onEditRoute(row.id);
           else if (row.kind === 'term') onEditTerm(row.id);
+          else if (row.kind === 'help') onEditHelp?.();
           else onEditPeriod(row.id);
         }}
       />
@@ -138,7 +140,7 @@ function MissingList({ title, rows, onEdit }: { title: string; rows: { id: strin
   );
 }
 
-const KIND: Record<DraftRow['kind'], string> = { place: 'Place', route: 'Route', term: 'Glossary term', period: 'Special hours' };
+const KIND: Record<DraftRow['kind'], string> = { place: 'Place', route: 'Route', term: 'Glossary term', period: 'Special hours', help: 'Help sheet' };
 
 /** "Translations to review": what Gemini drafted and no one has checked yet, by language. Nothing when there's none. */
 function DraftsList({ content, onEdit }: { content: Content; onEdit: (row: DraftRow) => void }) {
