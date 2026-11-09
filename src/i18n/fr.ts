@@ -310,6 +310,8 @@ export const FR: Record<string, string> = {
   'Important notice': 'Avis important',
   'Notice': 'Avis',
   'Close this notice': 'Fermer cet avis',
+  'Next walk': 'Prochaine visite',
+  'best by taxi or metro': 'plutôt en taxi ou en métro',
   'Through the ages': 'À travers les âges',
   'Places on every route, from the oldest.': 'Les lieux de tous les parcours, du plus ancien au plus récent.',
   'Era': 'Époque',

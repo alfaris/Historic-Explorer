@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { parseStamps, stampCount, stampDate, withStamp } from './passport';
+import { mergeStamps, parseStamps, stampCount, stampDate, withStamp } from './passport';
 import { stampGrid } from './passport-image';
 
 describe('withStamp', () => {
@@ -88,5 +88,18 @@ describe('mergeStamps and a full storage', () => {
     stampRoute('coptic-cairo', '2026-11-08', { found: 0, total: 0 });
     expect(Object.keys(stampsNow()).sort()).toEqual(['al-muizz', 'coptic-cairo']);
     vi.unstubAllGlobals();
+  });
+});
+
+describe('stamp times', () => {
+  it('keeps the time of the first finish, through walking again, storage and merging', () => {
+    const first = withStamp({}, 'a', '2026-11-08', { found: 0, total: 0 }, 1_000);
+    expect(first.a.at).toBe(1_000);
+    expect(withStamp(first, 'a', '2026-11-08', { found: 1, total: 1 }, 9_000).a.at).toBe(1_000);
+    expect(parseStamps(JSON.stringify(first)).a.at).toBe(1_000);
+    expect(parseStamps(JSON.stringify({ a: { ...first.a, at: 'x' } })).a.at).toBeUndefined();
+    const other = { a: { date: '2026-11-08', found: 0, spots: 0, at: 500 } };
+    expect(mergeStamps(first, other).a.at).toBe(500);
+    expect(mergeStamps(first, { a: { date: '2026-11-07', found: 0, spots: 0 } }).a).toEqual({ date: '2026-11-07', found: 0, spots: 0 });
   });
 });
