@@ -108,7 +108,12 @@ describe('translationPriority', () => {
   ];
   it('picks the language whose visitors meet the most missing places', () => {
     expect(translationPriority(items, { en: 60, fr: 30, es: 10 })).toEqual({ lang: 'fr', pct: 30, missing: 4 });
-    expect(translationPriority(items, { en: 60, fr: 10, es: 10 })).toEqual({ lang: 'es', pct: 10, missing: 8 });
+    expect(translationPriority(items, { en: 60, fr: 10, es: 10 })).toEqual({ lang: 'es', pct: 13, missing: 8 });
+  });
+  it('scores by counts, so a language under 0.5% of visits still counts', () => {
+    expect(translationPriority(items, { en: 9_960, fr: 40 })).toEqual({ lang: 'fr', pct: 0, missing: 4 });
+    // 41 vs 39 visits round to the same 0%; the counts decide.
+    expect(translationPriority([{ id: 'fr', done: 0, total: 10 }, { id: 'es', done: 0, total: 10 }], { en: 9_920, fr: 39, es: 41 })?.lang).toBe('es');
   });
   it('suggests nothing without visitors or with nothing missing', () => {
     expect(translationPriority(items, { en: 100 })).toBeUndefined();

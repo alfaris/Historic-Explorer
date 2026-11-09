@@ -30,21 +30,22 @@ export function ContentTab({ content, onEditPlace, onEditRoute, onEditTerm, onEd
   // Each language's share of visitors over the last 30 days (from the Stats
   // tab's counts), shown beside its translation progress. Without stats (no
   // store, offline), the tiles are as before.
-  const [shares, setShares] = useState<Partial<Record<Lang, number>> | null>(null);
+  // Visits per language (route opens and audio plays) and their rounded shares.
+  const [langs, setLangs] = useState<{ visits: Partial<Record<Lang, number>>; pct: Partial<Record<Lang, number>> } | null>(null);
   useEffect(() => {
     let live = true;
     api
       .stats(30)
       .then(data => {
         const { rows, counted } = languageShares(data.total);
-        if (live && counted > 0) setShares(Object.fromEntries(rows.map(r => [r.lang, r.pct])));
+        if (live && counted > 0) setLangs({ visits: Object.fromEntries(rows.map(r => [r.lang, r.total])), pct: Object.fromEntries(rows.map(r => [r.lang, r.pct])) });
       })
       .catch(() => {});
     return () => {
       live = false;
     };
   }, []);
-  const priority = shares ? translationPriority(items, shares) : undefined;
+  const priority = langs ? translationPriority(items, langs.visits) : undefined;
   const rows = useMemo(
     () =>
       content.places
@@ -81,8 +82,8 @@ export function ContentTab({ content, onEditPlace, onEditRoute, onEditTerm, onEd
               <div className="mt-2 h-1.5 rounded-full bg-sand/40 overflow-hidden" role="progressbar" aria-valuemin={0} aria-valuemax={item.total} aria-valuenow={item.done} aria-label={`${item.label}: ${item.done} of ${item.total} places`}>
                 <div className="h-full bg-nile rounded-full" style={{ width: `${pct}%` }} />
               </div>
-              {shares && (OPTIONAL_LANGS as readonly string[]).includes(item.id) && (
-                <p className="mt-2 text-[11px] text-stone-500">{pct}% translated · {shares[item.id as Lang] ?? 0}% of visitors</p>
+              {langs && (OPTIONAL_LANGS as readonly string[]).includes(item.id) && (
+                <p className="mt-2 text-[11px] text-stone-500">{pct}% translated · {langs.pct[item.id as Lang] ?? 0}% of visitors</p>
               )}
             </button>
           );
@@ -90,7 +91,7 @@ export function ContentTab({ content, onEditPlace, onEditRoute, onEditTerm, onEd
       </div>
       {priority && (
         <p className="-mt-3 text-xs text-stone-600">
-          Most worth translating next: <strong>{LANGUAGES[priority.lang].english}</strong>, used by {priority.pct}% of visitors in the last 30 days, with {priority.missing} {priority.missing === 1 ? 'place' : 'places'} still missing it.
+          Most worth translating next: <strong>{LANGUAGES[priority.lang].english}</strong>, used by {priority.pct || "under 1"}% of visitors in the last 30 days, with {priority.missing} {priority.missing === 1 ? 'place' : 'places'} still missing it.
         </p>
       )}
 
