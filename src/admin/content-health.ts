@@ -144,3 +144,26 @@ export function draftSection(key: string): PlaceSection | undefined {
   const lang = draftLang(key);
   return lang === 'fr' || lang === 'es' ? `lang-${lang}` : undefined;
 }
+
+export type TranslationPriority = { lang: OptionalLang; pct: number; missing: number };
+
+/**
+ * The optional language most worth translating next: the one where visitors
+ * meet the most missing places (its visits × places missing it).
+ * `visits` is each language's count of route opens and audio plays; scoring
+ * uses the counts, and only the returned `pct` is rounded, so a language with
+ * under 0.5% of visits still counts. Undefined when no language with visits
+ * is missing anything.
+ */
+export function translationPriority(items: { id: Gap; done: number; total: number }[], visits: Partial<Record<Lang, number>>): TranslationPriority | undefined {
+  const all = Object.values(visits).reduce((a, b) => a + (b ?? 0), 0);
+  let best: { lang: OptionalLang; count: number; missing: number; weight: number } | undefined;
+  for (const lang of OPTIONAL_LANGS) {
+    const item = items.find(i => i.id === lang);
+    const count = visits[lang] ?? 0;
+    const missing = item ? item.total - item.done : 0;
+    const weight = count * missing;
+    if (weight > 0 && (!best || weight > best.weight)) best = { lang, count, missing, weight };
+  }
+  return best && { lang: best.lang, pct: Math.round((best.count / all) * 100), missing: best.missing };
+}
