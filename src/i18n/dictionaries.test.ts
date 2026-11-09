@@ -1,7 +1,8 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { LANGS, LANGUAGES } from './lang';
+import { FR } from './fr';
+import { ES } from './es';
 
 // Every English string the visitor app passes to L() (or its local aliases)
 // should have a translation in each language that uses a dictionary.
@@ -15,8 +16,7 @@ for (const f of readdirSync(dir).filter(f => f.endsWith('.tsx'))) {
   for (const m of src.matchAll(option)) used.add(m[1].replace(/\\'/g, "'"));
 }
 
-describe.each(LANGS.filter(l => LANGUAGES[l].dictionary))('%s interface text', lang => {
-  const dictionary = LANGUAGES[lang].dictionary!;
+describe.each([['fr', FR], ['es', ES]] as const)('%s interface text', (_lang, dictionary: Record<string, string>) => {
   it('covers every string in the visitor app', () => {
     expect(used.size).toBeGreaterThan(80);
     expect([...used].filter(s => !(s in dictionary))).toEqual([]);
@@ -27,5 +27,5 @@ describe.each(LANGS.filter(l => LANGUAGES[l].dictionary))('%s interface text', l
 });
 
 it('French and Spanish translate the same strings', () => {
-  expect(Object.keys(LANGUAGES.es.dictionary!).sort()).toEqual(Object.keys(LANGUAGES.fr.dictionary!).sort());
+  expect(Object.keys(ES).sort()).toEqual(Object.keys(FR).sort());
 });

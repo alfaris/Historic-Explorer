@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { initialLang, LANGUAGES, setCurrentLang, type Lang } from './lang';
+import { initialLang, LANGUAGES, loadDictionary, setCurrentLang, type Lang } from './lang';
 
 type Language = Lang;
 const STORAGE_KEY = 'cairo-walks:lang';
@@ -96,24 +96,28 @@ const translations = {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
+/** A saved choice, else the link's or the browser's language. main.tsx loads its dictionary before the first paint. */
+export function startingLang(): Lang {
+  let saved: string | null = null;
+  try {
+    saved = window.localStorage.getItem(STORAGE_KEY);
+  } catch {
+    // No storage (private mode): use the browser's language.
+  }
+  return initialLang(saved, navigator.language || '', new URLSearchParams(window.location.search).get('lang'));
+}
+
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // A saved choice, else the browser's language (Arabic, French or English).
-  const [language, setLanguageState] = useState<Language>(() => {
-    let saved: string | null = null;
-    try {
-      saved = window.localStorage.getItem(STORAGE_KEY);
-    } catch {
-      // No storage (private mode): use the browser's language.
-    }
-    return initialLang(saved, navigator.language || '', new URLSearchParams(window.location.search).get('lang'));
-  });
+  const [language, setLanguageState] = useState<Language>(startingLang);
   const setLanguage = (lang: Language) => {
-    setLanguageState(lang);
     try {
       window.localStorage.setItem(STORAGE_KEY, lang);
     } catch {
       // Not remembered; still switches for this visit.
     }
+    // Its interface text first (downloaded the first time), so the switch is in one go.
+    loadDictionary(lang).then(() => setLanguageState(lang));
   };
   // L(), nameOf() and friends read this; set before the tree renders.
   setCurrentLang(language);
