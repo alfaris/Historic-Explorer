@@ -308,6 +308,7 @@ export const ES: Record<string, string> = {
   'Agree on a taxi fare before you set off, or use a ride-hailing app.': 'Acuerda la tarifa del taxi antes de salir, o usa una aplicación de transporte.',
   "Help couldn't load. Check your connection. Emergency numbers:": 'No se pudo cargar la ayuda. Comprueba tu conexión. Números de emergencia:',
   'The chosen spot: drag it, or tap the map': 'El lugar elegido: arrástralo o toca el mapa',
+  'Local contacts': 'Contactos locales',
   'Through the ages': 'A través de los siglos',
   'Places on every route, from the oldest.': 'Los lugares de todas las rutas, del más antiguo al más reciente.',
   'Era': 'Época',

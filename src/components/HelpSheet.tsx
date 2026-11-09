@@ -7,7 +7,9 @@ import { EMERGENCY, phrases, positionLink, positionText, type EmergencyId, type 
 import { startPlace } from '../lib/getting-there';
 import { useDialog } from '../lib/useDialog';
 import { walkStops } from '../lib/walk';
-import { L, currentLang, nameOf } from '../i18n/lang';
+import { L, currentLang, nameOf, optionalText } from '../i18n/lang';
+import { useContent } from '../data/ContentContext';
+import { telHref } from '../lib/help-content';
 
 const serviceLabel = (id: EmergencyId) =>
   id === 'ambulance' ? L('Ambulance', 'الإسعاف') : id === 'touristPolice' ? L('Tourist police', 'شرطة السياحة') : id === 'police' ? L('Police', 'الشرطة') : L('Fire', 'المطافئ');
@@ -18,6 +20,9 @@ const phraseMeaning = (id: string) =>
   : id === 'toilet' ? L('Where is the nearest toilet?', 'أين أقرب دورة مياه؟')
   : id === 'water' ? L('Where can I find drinking water?', 'أين أجد ماءً للشرب؟')
   : L("I'm lost. Please help me get to the start of my walk.", 'أنا تائه. من فضلك ساعدني في الوصول إلى بداية جولتي.');
+
+/** A phrase to show: the built-in ones (meaning from phraseMeaning) or the admin's (own meaning). */
+type Shown = Phrase & { meaning?: { text: string; lang: 'en' | undefined } };
 
 type Where = { state: 'idle' | 'finding' | 'denied' | 'unavailable' } | { state: 'found'; at: Point };
 
@@ -33,7 +38,14 @@ export default function HelpSheet({ route, places, onClose }: { route?: Route; p
   const [where, setWhere] = useState<Where>({ state: 'idle' });
   const [copied, setCopied] = useState(false);
   // A phrase shown large, in place of the sheet (one dialog, so focus stays in it).
-  const [shown, setShown] = useState<Phrase | null>(null);
+  const [shown, setShown] = useState<Shown | null>(null);
+  const start = route ? startPlace(route, places) : undefined;
+  // The admin's own contacts, tips and phrases (Help in the admin), after the built-in ones.
+  const help = useContent().help;
+  const allPhrases: Shown[] = [
+    ...phrases(start?.nameAr),
+    ...(help?.phrases ?? []).map((p, i) => ({ id: `own-${i}`, ar: p.ar, meaning: optionalText(p, 'meaning') })),
+  ];
   // Focus follows the switch: to Back when a phrase opens, and back to that phrase's button on return.
   const backButton = useRef<HTMLButtonElement>(null);
   const lastPhrase = useRef<string | null>(null);
@@ -45,7 +57,6 @@ export default function HelpSheet({ route, places, onClose }: { route?: Route; p
       ref.current?.querySelector<HTMLElement>(`[data-phrase="${lastPhrase.current}"]`)?.focus();
     }
   }, [shown, ref]);
-  const start = route ? startPlace(route, places) : undefined;
   const near = where.state === 'found' && route ? nearest(where.at, walkStops(places, route.id)) : null;
 
   const locate = () => {
@@ -88,7 +99,11 @@ export default function HelpSheet({ route, places, onClose }: { route?: Route; p
               <p id="help-title" className="text-sm text-stone-500">{L('Show this to someone', 'اعرض هذه الشاشة على أحد')}</p>
             </div>
             <p lang="ar" dir="rtl" className="flex-1 flex items-center justify-center text-center font-arabic text-4xl sm:text-5xl font-bold leading-snug text-ink py-8">{shown.ar}</p>
-            {!ar && <p className="text-center text-sm text-stone-500">{phraseMeaning(shown.id)}</p>}
+            {!ar && (
+              <p className="text-center text-sm text-stone-500" lang={shown.meaning?.lang}>
+                {shown.meaning ? shown.meaning.text : phraseMeaning(shown.id)}
+              </p>
+            )}
           </div>
         ) : (
           <div className="p-5 space-y-6">
@@ -113,6 +128,26 @@ export default function HelpSheet({ route, places, onClose }: { route?: Route; p
                 ))}
               </ul>
             </section>
+
+            {help && help.contacts.length > 0 && (
+              <section aria-labelledby="help-contacts">
+                <h3 id="help-contacts" className={heading}>{L('Local contacts', 'أرقام محلية')}</h3>
+                <ul className="space-y-2">
+                  {help.contacts.map((c, i) => {
+                    const name = optionalText(c, 'name');
+                    return (
+                      <li key={i}>
+                        <a href={telHref(c.phone)} className="flex items-center gap-3 min-h-14 px-3 rounded-2xl border border-sand hover:border-nile">
+                          <Phone className="w-4 h-4 shrink-0 text-nile" aria-hidden="true" />
+                          <span className="min-w-0 flex-1 text-sm font-bold text-ink" lang={ar ? undefined : name.lang}>{ar ? c.nameAr : name.text}</span>
+                          <span className="text-sm font-bold tabular-nums text-nile" dir="ltr">{c.phone}</span>
+                        </a>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            )}
 
             <section aria-labelledby="help-where">
               <h3 id="help-where" className={heading}>{L('Where am I?', 'أين أنا؟')}</h3>
@@ -153,10 +188,14 @@ export default function HelpSheet({ route, places, onClose }: { route?: Route; p
             <section aria-labelledby="help-phrases">
               <h3 id="help-phrases" className={heading}>{L('Show in Arabic', 'عبارات بالعربية')}</h3>
               <ul className="space-y-2">
-                {phrases(start?.nameAr).map(p => (
+                {allPhrases.map(p => (
                   <li key={p.id}>
                     <button type="button" data-phrase={p.id} onClick={() => setShown(p)} className="w-full text-start rounded-2xl border border-sand p-3 hover:border-nile">
-                      {!ar && <span className="block text-sm text-ink">{phraseMeaning(p.id)}</span>}
+                      {!ar && (
+                        <span className="block text-sm text-ink" lang={p.meaning?.lang}>
+                          {p.meaning ? p.meaning.text : phraseMeaning(p.id)}
+                        </span>
+                      )}
                       <span lang="ar" dir="rtl" className="block font-arabic text-base text-stone-700">{p.ar}</span>
                     </button>
                   </li>
@@ -171,6 +210,10 @@ export default function HelpSheet({ route, places, onClose }: { route?: Route; p
                 <li>{L('In mosques, cover shoulders and knees; women cover their hair. Shoes come off at the door.', 'في المساجد، غطِّ الكتفين والركبتين، وتغطي النساء شعرهن. يُخلع الحذاء عند الباب.')}</li>
                 <li>{L('Keep small change for tips, toilets and the shoe keeper.', 'احتفظ بفكة للبقشيش ودورات المياه وحارس الأحذية.')}</li>
                 <li>{L('Agree on a taxi fare before you set off, or use a ride-hailing app.', 'اتفق على أجرة التاكسي قبل التحرك، أو استخدم تطبيقًا لطلب السيارات.')}</li>
+                {(help?.tips ?? []).map((t, i) => {
+                  const text = ar ? { text: t.textAr, lang: undefined } : optionalText(t, 'text');
+                  return <li key={i} lang={text.lang}>{text.text}</li>;
+                })}
               </ul>
             </section>
           </div>

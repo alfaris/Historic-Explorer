@@ -15,6 +15,7 @@ import { DEFAULT_GLOSSARY } from './glossary.js';
 import { normalizePeriods, periodProblems, type SpecialPeriod } from '../lib/special-hours.js';
 import { builtProblems, normalizeBuilt } from '../lib/eras.js';
 import { normalizeDrafted } from '../lib/drafted.js';
+import { helpProblems, normalizeHelp, type HelpContent } from '../lib/help-content.js';
 import { LANGS, LANGUAGES, OPTIONAL_LANGS } from '../i18n/lang.js';
 
 export type { Category, Location, Route };
@@ -28,6 +29,8 @@ export interface Content {
   glossary?: GlossaryTerm[];
   /** Ramadan, Eid, one-off closures: dates on which some places keep other hours. */
   specialPeriods?: SpecialPeriod[];
+  /** The Help sheet's own contacts, tips and phrases (the emergency numbers are fixed in the app). */
+  help?: HelpContent;
 }
 
 export const bundledContent: Content = { routes, places: locations };
@@ -121,7 +124,9 @@ export function normalizeContent(input: unknown): Content {
   const maxPlaceId = Number((raw as { maxPlaceId?: unknown }).maxPlaceId);
   const glossary = normalizeGlossary((raw as { glossary?: unknown }).glossary);
   const specialPeriods = normalizePeriods((raw as { specialPeriods?: unknown }).specialPeriods);
+  const help = normalizeHelp((raw as { help?: unknown }).help);
   return {
+    ...(help ? { help } : {}),
     ...(specialPeriods ? { specialPeriods } : {}),
     ...(Number.isInteger(maxPlaceId) && maxPlaceId > 0 ? { maxPlaceId } : {}),
     ...(glossary ? { glossary } : {}),
@@ -254,6 +259,7 @@ export function validateContent(content: Content): string[] {
   }
   if (content.glossary) problems.push(...glossaryProblems(content.glossary));
   if (content.specialPeriods) problems.push(...periodProblems(content.specialPeriods, placeIds));
+  if (content.help) problems.push(...helpProblems(content.help));
   return problems;
 }
 
