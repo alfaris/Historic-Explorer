@@ -3,6 +3,7 @@ import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-lea
 import L from 'leaflet';
 import '../lib/leaflet-fixes';
 import 'leaflet/dist/leaflet.css';
+import { L as T } from '../i18n/lang';
 
 export interface LatLng {
   lat: number;
@@ -61,6 +62,9 @@ export default function LocationPicker({ value, onChange, reference, height = 26
           position={[value.lat, value.lng]}
           icon={chosenPin}
           draggable
+          // A name for screen readers (Leaflet makes the pin a focusable button).
+          title={T('The chosen spot: drag it, or tap the map', 'الموضع المختار: اسحبه أو اضغط على الخريطة')}
+          alt={T('The chosen spot: drag it, or tap the map', 'الموضع المختار: اسحبه أو اضغط على الخريطة')}
           eventHandlers={{
             dragend: e => {
               const p = (e.target as L.Marker).getLatLng();

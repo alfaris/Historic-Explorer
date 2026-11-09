@@ -562,11 +562,12 @@ export const MainContent: React.FC = () => {
 
         {/* Route Selector */}
         <div className="mb-8">
-          <div className="flex items-center gap-4 mb-4">
+          {/* Wraps when Passport and Saved don't fit beside the heading (narrow phones, large text). */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4">
             <h2 className="text-xs font-bold text-nile uppercase tracking-[0.25em]">
               {t('routes')}
             </h2>
-            <div className="h-px flex-1 bg-sand/50"></div>
+            <div className="h-px flex-1 min-w-4 bg-sand/50"></div>
             <PassportButton routes={routes} />
             <SavedButton places={locations} routes={routes} onOpen={openPlace} />
           </div>
