@@ -20,11 +20,11 @@ function readCsv(text: string): string[][] {
 }
 
 const events: StatEvent[] = [
-  { t: 'play', id: a.id },
-  { t: 'play', id: a.id },
+  { t: 'play', id: a.id, l: 'fr' },
+  { t: 'play', id: a.id, l: 'en' },
   { t: 'play', id: b.id },
   { t: 'arrive', id: b.id },
-  { t: 'route', id: route.id },
+  { t: 'route', id: route.id, l: 'en' },
   { t: 'up', id: a.id },
   { t: 'down', id: b.id },
   { t: 'why', id: b.id, r: 'outdated' },
@@ -56,6 +56,17 @@ describe('dailySeries', () => {
 describe('statsCsv', () => {
   const file = statsCsv(data, content, 7, today);
   const rows = readCsv(file.text);
+
+  it('has a languages section, noting plays and opens with no language', () => {
+    const start = rows.findIndex(r => r[0] === 'Languages');
+    expect(rows[start]).toEqual(['Languages', '3 of 4 route opens and audio plays have a language (not recorded before it was added)']);
+    expect(rows.slice(start + 1, start + 4)).toEqual([
+      ['Language', 'Route opens', 'Audio plays', 'Share (%)'],
+      ['English', '1', '1', '67'],
+      ['French', '0', '1', '33'],
+    ]);
+    expect(rows[start + 4]).toEqual([]);
+  });
 
   it('is a UTF-8 CSV named for the period', () => {
     expect(file.name).toBe('cairo-walks-stats-7-days-2026-11-08.csv');

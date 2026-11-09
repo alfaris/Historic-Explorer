@@ -3,8 +3,11 @@
 //
 // Only totals per day are kept: how many times each audio guide was played,
 // each route opened, each place reached with Near me, and each place's
-// "Was this helpful?" votes, with the reason picked after a No. No cookies, no visitor or device IDs, no IP
+// "Was this helpful?" votes, with the reason picked after a No, and the
+// interface language of audio plays and route opens. No cookies, no visitor or device IDs, no IP
 // addresses, no timestamps finer than a day.
+
+import { LANGS, type Lang } from '../i18n/lang.js';
 
 /** Why a place's page wasn't helpful, picked after "No". */
 export const REASONS = ['outdated', 'short', 'location', 'audio', 'other'] as const;
@@ -18,9 +21,13 @@ const isRouteReason = (r: unknown): r is RouteReason => (ROUTE_REASONS as readon
 export type Stars = 1 | 2 | 3 | 4 | 5;
 const isStars = (s: unknown): s is Stars => Number.isInteger(s) && (s as number) >= 1 && (s as number) <= 5;
 
+const isLang = (l: unknown): l is Lang => (LANGS as readonly unknown[]).includes(l);
+
 export type StatEvent =
-  | { t: 'play' | 'arrive' | 'up' | 'down'; id: number }
-  | { t: 'route'; id: string }
+  /** Audio plays and route opens carry the interface language (`l`). */
+  | { t: 'play'; id: number; l?: Lang }
+  | { t: 'arrive' | 'up' | 'down'; id: number }
+  | { t: 'route'; id: string; l?: Lang }
   | { t: 'why'; id: number; r: Reason }
   /** "How was the walk?" on the finish screen. */
   | { t: 'rate'; id: string; s: Stars }
@@ -40,20 +47,29 @@ export interface DayStats {
   ratings: Record<string, number>;
   /** Reasons after a low rating, keyed "routeId:reason", e.g. "al-muizz:hot". */
   routeReasons: Record<string, number>;
+  /** Audio plays and route opens by interface language, keyed "play:fr" or "route:ar". Absent on days before it was recorded. */
+  langs: Record<string, number>;
 }
 
-const FIELDS = ['plays', 'routes', 'arrivals', 'helpful', 'unhelpful', 'reasons', 'ratings', 'routeReasons'] as const;
+const FIELDS = ['plays', 'routes', 'arrivals', 'helpful', 'unhelpful', 'reasons', 'ratings', 'routeReasons', 'langs'] as const;
 const REASON_KEY = new RegExp(`^\\d+:(${REASONS.join('|')})$`);
 const ROUTE_ID = '[a-z0-9]+(?:-[a-z0-9]+)*';
 const RATING_KEY = new RegExp(`^${ROUTE_ID}:[1-5]$`);
 const ROUTE_REASON_KEY = new RegExp(`^${ROUTE_ID}:(${ROUTE_REASONS.join('|')})$`);
+const LANG_KEY = new RegExp(`^(play|route):(${LANGS.join('|')})$`);
 
-export const emptyDay = (): DayStats => ({ plays: {}, routes: {}, arrivals: {}, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {} });
+export const emptyDay = (): DayStats => ({ plays: {}, routes: {}, arrivals: {}, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {}, langs: {} });
 
 /** The most events one request may carry. */
 export const MAX_EVENTS_PER_REQUEST = 50;
 
 const FIELD = { play: 'plays', route: 'routes', arrive: 'arrivals', up: 'helpful', down: 'unhelpful', why: 'reasons', rate: 'ratings', rwhy: 'routeReasons' } as const;
+
+/** The event with its language, when the visitor sent a known one. */
+const withLang = <E extends { t: 'play' | 'route' }>(event: E, raw: object): E => {
+  const l = (raw as { l?: unknown }).l;
+  return isLang(l) ? { ...event, l } : event;
+};
 
 /** Checks events from a visitor, keeping only well-formed ones for known places and routes. */
 export function cleanEvents(raw: unknown, known: { placeIds: Set<number>; routeIds: Set<string> }): StatEvent[] {
@@ -63,8 +79,9 @@ export function cleanEvents(raw: unknown, known: { placeIds: Set<number>; routeI
     if (!e || typeof e !== 'object') continue;
     const { t, id, r } = e as { t?: unknown; id?: unknown; r?: unknown };
     if (t === 'why' && typeof id === 'number' && known.placeIds.has(id) && isReason(r)) out.push({ t, id, r });
-    else if ((t === 'play' || t === 'arrive' || t === 'up' || t === 'down') && typeof id === 'number' && known.placeIds.has(id)) out.push({ t, id });
-    else if (t === 'route' && typeof id === 'string' && known.routeIds.has(id)) out.push({ t, id });
+    else if (t === 'play' && typeof id === 'number' && known.placeIds.has(id)) out.push(withLang({ t, id }, e));
+    else if ((t === 'arrive' || t === 'up' || t === 'down') && typeof id === 'number' && known.placeIds.has(id)) out.push({ t, id });
+    else if (t === 'route' && typeof id === 'string' && known.routeIds.has(id)) out.push(withLang({ t, id }, e));
     else if (t === 'rate' && typeof id === 'string' && known.routeIds.has(id) && isStars((e as { s?: unknown }).s)) out.push({ t, id, s: (e as { s: Stars }).s });
     else if (t === 'rwhy' && typeof id === 'string' && known.routeIds.has(id) && isRouteReason(r)) out.push({ t, id, r });
   }
@@ -78,6 +95,7 @@ export function addEvents(day: DayStats, events: StatEvent[]): DayStats {
     const bucket = next[FIELD[e.t]];
     const key = e.t === 'why' || e.t === 'rwhy' ? `${e.id}:${e.r}` : e.t === 'rate' ? `${e.id}:${e.s}` : e.id;
     bucket[key] = (bucket[key] ?? 0) + 1;
+    if ((e.t === 'play' || e.t === 'route') && e.l) next.langs[`${e.t}:${e.l}`] = (next.langs[`${e.t}:${e.l}`] ?? 0) + 1;
   }
   return next;
 }
@@ -93,6 +111,7 @@ export function parseDay(raw: unknown): DayStats {
       if (field === 'reasons' && !REASON_KEY.test(k)) continue;
       if (field === 'ratings' && !RATING_KEY.test(k)) continue;
       if (field === 'routeReasons' && !ROUTE_REASON_KEY.test(k)) continue;
+      if (field === 'langs' && !LANG_KEY.test(k)) continue;
       if (Number.isInteger(v) && (v as number) > 0) day[field][k] = v as number;
     }
   }
@@ -151,4 +170,25 @@ export function routeRatings(total: DayStats, routeIds: string[]): RatingRow[] {
       return { id, count, average: count ? Math.round((sum / count) * 10) / 10 : 0, reasons };
     })
     .filter(r => r.count > 0);
+}
+
+export type LanguageRow = { lang: Lang; plays: number; routes: number; total: number; pct: number };
+
+/**
+ * Audio plays and route opens per interface language, most used first, with
+ * each one's share. `counted` is how many plays and opens had a language and
+ * `all` how many there were: days before languages were recorded have none.
+ */
+export function languageShares(total: DayStats): { rows: LanguageRow[]; counted: number; all: number } {
+  const count = (r: Record<string, number>) => Object.values(r).reduce((a, b) => a + b, 0);
+  // An older server's totals may have no languages.
+  const langs = total.langs ?? {};
+  const rows = LANGS.map(lang => {
+    const plays = langs[`play:${lang}`] ?? 0;
+    const routes = langs[`route:${lang}`] ?? 0;
+    return { lang, plays, routes, total: plays + routes, pct: 0 };
+  });
+  const counted = rows.reduce((a, r) => a + r.total, 0);
+  for (const r of rows) r.pct = counted ? Math.round((r.total / counted) * 100) : 0;
+  return { rows: rows.filter(r => r.total > 0).sort((a, b) => b.total - a.total), counted, all: count(total.plays) + count(total.routes) };
 }

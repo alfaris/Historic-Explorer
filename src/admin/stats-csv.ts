@@ -3,9 +3,10 @@
 
 import type { Content } from '../data/content';
 import { walkStops } from '../lib/walk';
-import { REASONS, ROUTE_REASONS, routeRatings, type Reason, type RouteReason } from '../lib/stats';
+import { languageShares, REASONS, ROUTE_REASONS, routeRatings, type Reason, type RouteReason } from '../lib/stats';
 import { CSV_TYPE, csvText } from './backup';
 import type { StatsResponse } from './api';
+import { LANGUAGES } from '../i18n/lang';
 
 export type DailyRow = { date: string; plays: number; routes: number; arrivals: number };
 
@@ -42,6 +43,7 @@ export function statsCsv(data: StatsResponse, content: Content, days: number, to
   const routeName = new Map(content.routes.map(r => [r.id, r.nameEn]));
   const daily = dailySeries(data.perDay, days, today);
   const ratings = new Map(routeRatings(total, content.routes.map(r => r.id)).map(r => [r.id, r]));
+  const languages = languageShares(total);
   const from = daily[0].date;
   const to = daily[daily.length - 1].date;
 
@@ -52,6 +54,10 @@ export function statsCsv(data: StatsResponse, content: Content, days: number, to
     ['Date', 'Audio plays', 'Route opens', 'Near me arrivals'],
     ...daily.map(d => [d.date, d.plays, d.routes, d.arrivals]),
     ['Total', ...(['plays', 'routes', 'arrivals'] as const).map(k => daily.reduce((a, d) => a + d[k], 0))],
+    [],
+    ['Languages', ...(languages.counted < languages.all ? [`${languages.counted} of ${languages.all} route opens and audio plays have a language (not recorded before it was added)`] : [])],
+    ['Language', 'Route opens', 'Audio plays', 'Share (%)'],
+    ...languages.rows.map(r => [LANGUAGES[r.lang].english, r.routes, r.plays, r.pct]),
     [],
     ['Per place'],
     ['Place ID', 'Place', 'Route', 'Audio plays', 'Near me arrivals', 'Helpful: yes', 'Helpful: no', ...REASONS.map(r => REASON_HEADERS[r])],
