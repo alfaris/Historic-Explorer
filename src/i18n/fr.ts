@@ -317,6 +317,7 @@ export const FR: Record<string, string> = {
   'All saved on this phone': 'Tous enregistrés sur ce téléphone',
   'Save all': 'Tout enregistrer',
   'These places are no longer in the app.': 'Ces lieux ne sont plus dans l’application.',
+  'Recently viewed': 'Vus récemment',
   'Through the ages': 'À travers les âges',
   'Places on every route, from the oldest.': 'Les lieux de tous les parcours, du plus ancien au plus récent.',
   'Era': 'Époque',

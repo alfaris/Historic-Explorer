@@ -32,6 +32,7 @@ import { breakCount } from '../lib/weather';
 import { nextQuarter } from '../lib/visit-plan';
 import { PrayerNotice } from './PrayerTimes';
 import { SaveToggle, SavedButton, SharedListSheet } from './Saved';
+import { addRecent } from '../lib/recent';
 import { PassportButton, PassportSheet } from './Passport';
 import { stampRoute } from '../lib/passport';
 import { cairoDate } from '../lib/special-hours';
@@ -101,6 +102,10 @@ export const MainContent: React.FC = () => {
   const filtering = anyFilter(filters);
   const [selectedCategory, setSelectedCategory] = useState<Category | 'all'>('all');
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
+  // Each place whose card is opened goes to the top of Recently viewed (in the Saved sheet).
+  useEffect(() => {
+    if (selectedLocation !== null) addRecent(selectedLocation);
+  }, [selectedLocation]);
   // Start on the route of a shared place (?loc=) or route (?route=), so the
   // first screen, and the route-open count, aren't briefly the first route.
   const [selectedRoute, setSelectedRoute] = useState<string>(() => {

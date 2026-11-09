@@ -5,6 +5,7 @@ import { categories, type Location, type Route } from '../data/locations';
 import { photoForPlace } from '../data/photo-resolve';
 import { addSaved, removeSaved, savedByRoute, toggleSaved, useSaved } from '../lib/saved';
 import { savedShareUrl } from '../lib/share';
+import { clearRecent, recentPlaces, useRecent } from '../lib/recent';
 import { shareLink, useCopied } from './ShareRoute';
 import { useDialog } from '../lib/useDialog';
 import { L, byLang, currentLang, fallbackLang, nameOf } from '../i18n/lang';
@@ -176,6 +177,40 @@ export function SharedListSheet({ ids, places, routes, onOpen, onClose }: {
   );
 }
 
+/** "Recently viewed": the last places whose card was opened, newest first, with Clear. Nothing when there are none. */
+function RecentList({ places, routes, onOpen }: { places: Location[]; routes: Route[]; onOpen: (id: number) => void }) {
+  const items = recentPlaces(useRecent(), places);
+  const ar = currentLang() === 'ar';
+  if (!items.length) return null;
+  const routeName = (id: string) => {
+    const r = routes.find(x => x.id === id);
+    return r ? nameOf(r) : '';
+  };
+  return (
+    <section aria-labelledby="recent-title" className="px-5 pb-5 pt-1">
+      <div className="flex items-center gap-2 border-t border-sand/50 pt-4 mb-2">
+        <h3 id="recent-title" className="flex-1 text-xs font-bold uppercase tracking-widest text-stone-500">{L('Recently viewed', 'شوهدت مؤخرًا')}</h3>
+        <button type="button" onClick={clearRecent} className="min-h-11 px-2 text-xs font-bold text-nile underline underline-offset-4 hover:no-underline">
+          {L('Clear', 'مسح')}
+        </button>
+      </div>
+      <ul className="divide-y divide-sand/40">
+        {items.map(place => (
+          <li key={place.id}>
+            <button onClick={() => onOpen(place.id)} className="flex w-full min-h-11 items-center gap-3 py-2 text-start hover:text-nile">
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm text-ink" lang={fallbackLang(place, 'name')}>{nameOf(place)}</span>
+                <span className="block truncate text-xs text-stone-500">{routeName(place.routeId)}</span>
+              </span>
+              <ChevronRight className={`w-4 h-4 shrink-0 text-stone-300 ${ar ? 'rotate-180' : ''}`} aria-hidden="true" />
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function SavedSheet({ places, routes, onOpen, onClose }: {
   places: Location[];
   routes: Route[];
@@ -266,6 +301,10 @@ function SavedSheet({ places, routes, onOpen, onClose }: {
             ))}
           </div>
         )}
+        <RecentList places={places} routes={routes} onOpen={id => {
+          onClose();
+          onOpen(id);
+        }} />
       </div>
       <span {...guard('end')} />
     </div>,
