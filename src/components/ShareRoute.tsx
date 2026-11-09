@@ -9,7 +9,7 @@ import { L, currentLang, nameOf } from '../i18n/lang';
  * Opens the phone's share sheet where there is one, otherwise copies the link.
  * Returns whether the link was copied (to show "Link copied").
  */
-async function shareLink(url: string, title: string, text: string): Promise<boolean> {
+export async function shareLink(url: string, title: string, text: string): Promise<boolean> {
   if (navigator.share) {
     try {
       await navigator.share({ title, text, url });
@@ -27,7 +27,7 @@ async function shareLink(url: string, title: string, text: string): Promise<bool
   }
 }
 
-function useCopied() {
+export function useCopied() {
   const [copied, setCopied] = useState(false);
   const flash = () => {
     setCopied(true);

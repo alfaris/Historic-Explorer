@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Bookmark, BookmarkCheck, ChevronRight, X } from 'lucide-react';
+import { Bookmark, BookmarkCheck, Check, ChevronRight, Share2, X } from 'lucide-react';
 import { categories, type Location, type Route } from '../data/locations';
 import { photoForPlace } from '../data/photo-resolve';
-import { removeSaved, savedByRoute, toggleSaved, useSaved } from '../lib/saved';
+import { addSaved, removeSaved, savedByRoute, toggleSaved, useSaved } from '../lib/saved';
+import { savedShareUrl } from '../lib/share';
+import { shareLink, useCopied } from './ShareRoute';
 import { useDialog } from '../lib/useDialog';
 import { L, byLang, currentLang, fallbackLang, nameOf } from '../i18n/lang';
 import { HistoricPlaceholder } from './HistoricPlaceholder';
@@ -58,6 +60,122 @@ const countLabel = (n: number) =>
     es: n === 1 ? '1 lugar guardado' : `${n} lugares guardados`,
   });
 
+/** "Share list": a link to these places, through the phone's share sheet or copied. */
+function ShareList({ ids }: { ids: number[] }) {
+  const [copied, flash] = useCopied();
+  const share = async () => {
+    const title = L('My Cairo places', 'أماكني في القاهرة');
+    if (await shareLink(savedShareUrl(window.location.origin, ids), title, `${title}: ${countLabel(ids.length)}`)) flash();
+  };
+  return (
+    <button type="button" onClick={share} className="mt-2 inline-flex items-center gap-1.5 min-h-11 px-3 -ms-3 text-xs font-bold text-nile underline underline-offset-4 hover:no-underline">
+      {copied ? <Check className="w-4 h-4" aria-hidden="true" /> : <Share2 className="w-4 h-4" aria-hidden="true" />}
+      <span aria-live="polite">{copied ? L('Link copied', 'تم نسخ الرابط') : L('Share list', 'مشاركة القائمة')}</span>
+    </button>
+  );
+}
+
+/** "5 places shared with you" etc. */
+const sharedLabel = (n: number) =>
+  byLang({
+    en: n === 1 ? '1 place shared with you' : `${n} places shared with you`,
+    ar: n === 1 ? 'مكان واحد شاركه أحدهم معك' : n === 2 ? 'مكانان شاركهما أحدهم معك' : `${n} ${n <= 10 ? 'أماكن' : 'مكانًا'} شاركها أحدهم معك`,
+    fr: n === 1 ? '1 lieu partagé avec vous' : `${n} lieux partagés avec vous`,
+    es: n === 1 ? '1 lugar compartido contigo' : `${n} lugares compartidos contigo`,
+  });
+
+/**
+ * A list of places someone shared (a `?saved=` link): grouped by route, each
+ * opening its card, with Save all. Places that no longer exist are skipped.
+ */
+export function SharedListSheet({ ids, places, routes, onOpen, onClose }: {
+  ids: number[];
+  places: Location[];
+  routes: Route[];
+  onOpen: (id: number) => void;
+  onClose: () => void;
+}) {
+  const saved = useSaved();
+  const groups = savedByRoute(new Set(ids), places, routes);
+  const found = groups.flatMap(g => g.places.map(p => p.id));
+  const allSaved = found.length > 0 && found.every(id => saved.has(id));
+  const { ref, guard } = useDialog<HTMLDivElement>(onClose);
+  const ar = currentLang() === 'ar';
+
+  return createPortal(
+    <div className="fixed inset-0 z-[7100] flex items-end sm:items-center justify-center bg-ink/50 p-0 sm:p-4" onClick={onClose}>
+      <span {...guard('start')} />
+      <div
+        ref={ref}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="shared-title"
+        dir={ar ? 'rtl' : 'ltr'}
+        onClick={e => e.stopPropagation()}
+        className="relative w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[88vh] overflow-y-auto"
+      >
+        <div className="sticky top-0 z-10 bg-white border-b border-sand/50 px-5 pt-5 pb-4">
+          <button onClick={onClose} className="absolute top-3 end-3 flex items-center justify-center min-h-11 min-w-11 rounded-full text-stone-500 hover:text-ink" aria-label={L('Close', 'إغلاق')}>
+            <X className="w-5 h-5" />
+          </button>
+          <h2 id="shared-title" className={`text-2xl text-ink pe-10 ${ar ? 'font-arabic font-bold' : 'font-serif'}`}>{sharedLabel(found.length)}</h2>
+          {found.length > 0 && (
+            <button
+              type="button"
+              onClick={() => addSaved(found)}
+              disabled={allSaved}
+              className="mt-3 flex w-full items-center justify-center gap-2 min-h-11 rounded-xl bg-nile text-white text-xs font-bold uppercase tracking-widest hover:bg-nile-light disabled:bg-chalk disabled:text-ink"
+            >
+              {allSaved ? <BookmarkCheck className="w-4 h-4" aria-hidden="true" /> : <Bookmark className="w-4 h-4" aria-hidden="true" />}
+              <span aria-live="polite">{allSaved ? L('All saved on this phone', 'كلها محفوظة على هذا الهاتف') : L('Save all', 'احفظ الكل')}</span>
+            </button>
+          )}
+        </div>
+        {found.length === 0 ? (
+          <p className="px-5 py-8 text-sm text-stone-600">{L('These places are no longer in the app.', 'هذه الأماكن لم تعد موجودة في التطبيق.')}</p>
+        ) : (
+          <div className="px-5 py-4 space-y-6">
+            {groups.map(({ route, places: items }) => (
+              <section key={route.id} aria-labelledby={`shared-${route.id}`}>
+                <h3 id={`shared-${route.id}`} className="text-xs font-bold uppercase tracking-widest text-gold-ink mb-2">{nameOf(route)}</h3>
+                <ul className="space-y-2">
+                  {items.map(place => (
+                    <li key={place.id} className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          onClose();
+                          onOpen(place.id);
+                        }}
+                        className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl border border-sand/40 p-2 text-start hover:border-nile/40"
+                      >
+                        <span aria-hidden="true" className="shrink-0">
+                          <PlacePhoto
+                            photo={photoForPlace(place)}
+                            alt=""
+                            sizes="64px"
+                            tapToShow={false}
+                            className="w-14 h-14 rounded-xl"
+                            fallback={<HistoricPlaceholder category={place.category} name={place.nameEn} className="w-14 h-14 rounded-xl" />}
+                          />
+                        </span>
+                        <span className="min-w-0 flex-1 truncate text-base text-ink" lang={fallbackLang(place, 'name')}>{nameOf(place)}</span>
+                        <ChevronRight className={`w-4 h-4 shrink-0 text-stone-300 ${ar ? 'rotate-180' : ''}`} aria-hidden="true" />
+                      </button>
+                      <SaveToggle place={place} />
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
+        )}
+      </div>
+      <span {...guard('end')} />
+    </div>,
+    document.body,
+  );
+}
+
 function SavedSheet({ places, routes, onOpen, onClose }: {
   places: Location[];
   routes: Route[];
@@ -92,6 +210,7 @@ function SavedSheet({ places, routes, onOpen, onClose }: {
           </button>
           <h2 id="saved-title" className={`text-2xl text-ink pe-10 ${ar ? 'font-arabic font-bold' : 'font-serif'}`}>{L('Saved places', 'الأماكن المحفوظة')}</h2>
           <p className="text-sm text-stone-500" aria-live="polite">{countLabel(total)}</p>
+          {total > 0 && <ShareList ids={groups.flatMap(g => g.places.map(p => p.id))} />}
         </div>
 
         {total === 0 ? (

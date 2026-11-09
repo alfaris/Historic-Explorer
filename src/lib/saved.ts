@@ -8,6 +8,8 @@ const store = createIdSetStore('cairo-walks:saved');
 
 export const toggleSaved = (id: number) => store.toggle(id);
 export const removeSaved = (ids: number[]) => store.remove(ids);
+/** Saves each of these places (ones already saved stay saved). */
+export const addSaved = (ids: number[]) => ids.forEach(id => store.add(id));
 /** The set of saved place IDs. Re-renders when it changes. */
 export const useSaved = () => store.useIds();
 

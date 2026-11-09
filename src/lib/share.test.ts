@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { isPlaceLink, isRouteLink, placeFromLocation, placeShareUrl, routeFromLocation, routeShareUrl } from './share';
+import { MAX_SHARED_PLACES, savedFromLocation, savedShareUrl } from './share';
 
 const at = (href: string) => new URL(href, 'https://x');
 const ids = ['ahl-al-bayt', 'fustat-roda'];
@@ -47,5 +48,27 @@ describe('place links', () => {
     expect(isPlaceLink(at('/p/abc'))).toBe(true);
     expect(isPlaceLink(at('/?loc=7'))).toBe(true);
     expect(isPlaceLink(at('/r/x'))).toBe(false);
+  });
+});
+
+describe('shared lists of places', () => {
+  it('builds a short link: sorted, no repeats, no bad IDs, at most 50', () => {
+    expect(savedShareUrl('https://x.app', [40, 12, 31, 12])).toBe('https://x.app/?saved=12,31,40');
+    expect(savedShareUrl('https://x.app', [0, -3, 1.5, 7])).toBe('https://x.app/?saved=7');
+    const many = Array.from({ length: 80 }, (_, i) => i + 1);
+    expect(savedShareUrl('https://x.app', many).split('=')[1].split(',')).toHaveLength(MAX_SHARED_PLACES);
+  });
+
+  it('reads the IDs back, skipping malformed ones', () => {
+    expect(savedFromLocation({ search: '?saved=12,31,40' })).toEqual([12, 31, 40]);
+    expect(savedFromLocation({ search: '?saved=5,x,5,0,%2012,-1,1234567,7' })).toEqual([5, 12, 7]);
+    expect(savedFromLocation({ search: '?saved=' })).toEqual([]);
+    expect(savedFromLocation({ search: '?route=al-muizz' })).toBeNull();
+    expect(savedFromLocation({ search: `?saved=${Array.from({ length: 80 }, (_, i) => i + 1).join(',')}` })).toHaveLength(MAX_SHARED_PLACES);
+  });
+
+  it('round-trips', () => {
+    const url = new URL(savedShareUrl('https://x.app', [3, 1, 2]));
+    expect(savedFromLocation(url)).toEqual([1, 2, 3]);
   });
 });
