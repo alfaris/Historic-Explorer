@@ -34,14 +34,20 @@ export function missingHelpText(help: HelpContent, lang: OptionalLang): Record<s
   return missing;
 }
 
-/** Gemini's drafts put into the items' empty fields, marked as drafts to review. */
-export function applyHelpDrafts(help: HelpContent, texts: Record<string, string>): HelpContent {
+/**
+ * Gemini's drafts put into the items' empty fields, marked as drafts to review.
+ * With `sent` (the English each draft was made from), a draft is dropped when
+ * its item's English no longer matches: the item was removed, moved up after
+ * one above it was removed, or edited while the request was running.
+ */
+export function applyHelpDrafts(help: HelpContent, texts: Record<string, string>, sent?: Record<string, string>): HelpContent {
   const next: HelpContent = { contacts: [...help.contacts], tips: [...help.tips], phrases: [...help.phrases] };
   for (const [path, text] of Object.entries(texts)) {
     const [list, index, key] = path.split('.') as [ListName, string, string];
     const items = next[list] as object[] | undefined;
     const i = Number(index);
     if (!items || !items[i]) continue;
+    if (sent && (items[i] as Record<string, string>)[ENGLISH[list]] !== sent[path]) continue;
     items[i] = fillEmpty(items[i], { [key]: text }, [key]);
   }
   return next;
@@ -173,7 +179,7 @@ export function HelpTab({ content, save }: { content: Content; save: SaveFn }) {
 
       <div className="flex flex-wrap gap-3">
         {OPTIONAL_LANGS.map(l => (
-          <FillMissingButton key={l} lang={l} missing={missingHelpText(draft, l)} onFilled={texts => setDraft(d => applyHelpDrafts(d, texts))} />
+          <FillMissingButton key={l} lang={l} missing={missingHelpText(draft, l)} onFilled={(texts, sent) => setDraft(d => applyHelpDrafts(d, texts, sent))} />
         ))}
       </div>
 

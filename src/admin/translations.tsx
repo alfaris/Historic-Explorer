@@ -70,7 +70,8 @@ export function missingPlaceText(place: Location, lang: OptionalLang): Record<st
 export function FillMissingButton({ lang, missing, onFilled }: {
   lang: OptionalLang;
   missing: Record<string, string>;
-  onFilled: (texts: Record<string, string>) => void;
+  /** The drafts, and the source texts that were sent for them. */
+  onFilled: (texts: Record<string, string>, sent: Record<string, string>) => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
@@ -91,9 +92,10 @@ export function FillMissingButton({ lang, missing, onFilled }: {
     setBusy(true);
     setMessage(null);
     try {
-      const { texts } = await api.translate(missing, lang);
+      const sent = missing;
+      const { texts } = await api.translate(sent, lang);
       if (!mounted.current) return;
-      onFilled(texts);
+      onFilled(texts, sent);
       setMessage({ text: `${name} drafted. Check it, then save.`, error: false });
     } catch (err) {
       if (mounted.current) setMessage({ text: (err as Error).message, error: true });

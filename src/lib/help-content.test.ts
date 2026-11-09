@@ -55,6 +55,19 @@ describe('in the admin', () => {
     expect(drafted.contacts[0]).toMatchObject({ nameFr: 'Votre guide, Ahmed', drafted: ['nameFr'] });
     expect(n.contacts[0].nameFr).toBeUndefined();
   });
+  it('drops a draft whose item was removed or changed while it was being made', async () => {
+    const { missingHelpText, applyHelpDrafts } = await import('../admin/HelpTab');
+    const two = normalizeHelp({ ...help, contacts: [{ nameEn: 'Guide', nameAr: 'المرشد', phone: '+20 100 123 4567' }, { nameEn: 'Hotel', nameAr: 'الفندق', phone: '+20 2 1234 5678' }] })!;
+    const sent = missingHelpText(two, 'fr');
+    const texts = { 'contacts.0.nameFr': 'Guide (fr)', 'contacts.1.nameFr': 'Hôtel', 'tips.0.textFr': 'Conseil' };
+    // The first contact removed while Gemini was drafting: the hotel is now contacts.0.
+    const removed = { ...two, contacts: [two.contacts[1]], tips: [{ ...two.tips[0], textEn: 'Edited.' }] };
+    const filled = applyHelpDrafts(removed, texts, sent);
+    expect(filled.contacts[0].nameFr).toBeUndefined();
+    expect(filled.tips[0].textFr).toBeUndefined();
+    expect(filled.phrases[0].meaningFr).toBeUndefined();
+    expect(applyHelpDrafts(two, texts, sent).contacts.map(c => c.nameFr)).toEqual(['Guide (fr)', 'Hôtel']);
+  });
   it('lists Help drafts in the checklist', async () => {
     const { draftsToReview } = await import('../admin/content-health');
     const content = structuredClone(bundledContent);
