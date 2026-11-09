@@ -305,6 +305,7 @@ export const FR: Record<string, string> = {
   'Keep small change for tips, toilets and the shoe keeper.': 'Gardez de la monnaie pour les pourboires, les toilettes et le gardien des chaussures.',
   'Agree on a taxi fare before you set off, or use a ride-hailing app.': 'Convenez du prix du taxi avant de partir, ou utilisez une application de VTC.',
   "Help couldn't load. Check your connection. Emergency numbers:": 'Impossible de charger l’aide. Vérifiez votre connexion. Numéros d’urgence :',
+  'The chosen spot: drag it, or tap the map': 'L’emplacement choisi : faites-le glisser ou touchez la carte',
   'Through the ages': 'À travers les âges',
   'Places on every route, from the oldest.': 'Les lieux de tous les parcours, du plus ancien au plus récent.',
   'Era': 'Époque',
