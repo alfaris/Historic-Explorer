@@ -37,6 +37,7 @@ import { stampRoute } from '../lib/passport';
 import { cairoDate } from '../lib/special-hours';
 import { spotCount, spotted } from '../lib/spot-it';
 import { DisplaySettings } from './DisplaySettings';
+import { HelpButton } from './HelpButton';
 import { HelpfulPrompt } from './HelpfulPrompt';
 import { OtherRouteResults } from './OtherRouteResults';
 import { SharePlace, ShareRoute } from './ShareRoute';
@@ -511,8 +512,11 @@ export const MainContent: React.FC = () => {
               </span>
             </div>
           </div>
-          {/* Language, text size and contrast. */}
-          <DisplaySettings />
+          <div className="flex items-start gap-2 sm:gap-3 shrink-0">
+            <HelpButton route={currentRouteData} places={locations} />
+            {/* Language, text size and contrast. */}
+            <DisplaySettings />
+          </div>
         </div>
       </header>
 
