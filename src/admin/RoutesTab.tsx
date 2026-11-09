@@ -15,6 +15,7 @@ import { LANGS, LANGUAGES, OPTIONAL_LANGS, type Lang, type OptionalLang } from '
 import { routeText } from '../lib/route-format';
 import { plannedKm, plannedWalk, type PlaceSection } from './content-health';
 import { routeAccess } from '../lib/step-free';
+import { withNoticesFor } from '../lib/notices';
 import { withDrafted, withoutDrafted } from '../lib/drafted';
 
 const blankRoute = (): Route => ({
@@ -156,7 +157,8 @@ export function RoutesTab({ content, save, initialRouteId = null, onSelected, on
     if (isNew) return setDraft(null);
     if (!window.confirm(`Delete the route "${draft.nameEn}"? You can restore it from History.`)) return;
     setBusy(true);
-    if (await save({ ...content, routes: content.routes.filter(r => r.id !== draft.id) }, `Deleted route "${draft.nameEn}"`)) setDraft(null);
+    // Its notices go too.
+    if (await save(withNoticesFor({ ...content, routes: content.routes.filter(r => r.id !== draft.id) }), `Deleted route "${draft.nameEn}"`)) setDraft(null);
     setBusy(false);
   };
 

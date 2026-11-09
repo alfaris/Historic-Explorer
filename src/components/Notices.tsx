@@ -36,7 +36,9 @@ function subscribe(listener: () => void) {
   };
 }
 function dismiss(key: string) {
-  dismissed = [...read().filter(k => k !== key), key].slice(-MAX);
+  // From the stored list (another tab may have added to it) and this tab's own,
+  // so a dismissal that couldn't be saved isn't lost by the next one.
+  dismissed = [...new Set([...read(), ...current()].filter(k => k !== key)), key].slice(-MAX);
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(dismissed));
   } catch {

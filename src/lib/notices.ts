@@ -98,6 +98,14 @@ export function noticeText(n: Notice, lang: Lang): { text: string; lang: 'en' | 
   return { text: n.textEn, lang: 'en' };
 }
 
+/** Content whose notices on routes or places it no longer has are dropped (after a delete). */
+export function withNoticesFor<C extends { routes: { id: string }[]; places: { id: number }[]; notices?: Notice[] }>(content: C): C {
+  if (!content.notices) return content;
+  const { notices: _, ...rest } = content;
+  const notices = withoutMissing(content.notices, new Set(content.routes.map(r => r.id)), new Set(content.places.map(p => p.id)));
+  return (notices ? { ...rest, notices } : rest) as C;
+}
+
 /** The notices kept when routes or places are deleted: those pointing at them go. */
 export const withoutMissing = (notices: Notice[] | undefined, routeIds: Set<string>, placeIds: Set<number>) => {
   const kept = notices?.filter(n => (n.routeId === undefined || routeIds.has(n.routeId)) && (n.placeId === undefined || placeIds.has(n.placeId)));

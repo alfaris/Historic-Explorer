@@ -13,6 +13,7 @@ import { AudioPanel } from './AudioPanel';
 import { HoursEditor } from './HoursEditor';
 import { BulkHours } from './BulkHours';
 import { withoutPlace } from '../lib/special-hours';
+import { withNoticesFor } from '../lib/notices';
 import { TipsEditor } from './TipsEditor';
 import { withDrafted } from '../lib/drafted';
 import { PlacePreview } from './PlacePreview';
@@ -110,7 +111,8 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
     setBusy(true);
     // Its special hours go too (and periods left with no places), or the save check would refuse them.
     const specialPeriods = withoutPlace(content.specialPeriods, draft.id);
-    const next = { ...content, places: content.places.filter(p => p.id !== draft.id), ...(specialPeriods ? { specialPeriods } : {}) };
+    // Its notices go too.
+    const next = withNoticesFor({ ...content, places: content.places.filter(p => p.id !== draft.id), ...(specialPeriods ? { specialPeriods } : {}) });
     if (await save(next, `Deleted "${draft.nameEn}"`)) setDraft(null);
     setBusy(false);
   };

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { bundledContent, normalizeContent, validateContent } from '../data/content';
-import { isActive, isExpired, noticeKey, noticeProblems, noticesFor, noticeText, normalizeNotices, type Notice } from './notices';
+import { withNoticesFor, isActive, isExpired, noticeKey, noticeProblems, noticesFor, noticeText, normalizeNotices, type Notice } from './notices';
 
 const route = bundledContent.routes[0];
 const place = bundledContent.places.find(p => p.routeId === route.id)!;
@@ -74,6 +74,16 @@ describe('notices', () => {
     const withoutPlace = { ...content, places: content.places.filter(p => p.id !== place.id) };
     expect(normalizeContent(withoutPlace).notices).toEqual([base, { ...base, routeId: route.id }]);
     expect(normalizeContent({ ...content, notices: [{ ...base, placeId: 99999 }] }).notices).toBeUndefined();
+  });
+
+  it("drops a deleted place's or route's notices before the save check", () => {
+    const content = { ...structuredClone(bundledContent), notices: [base, { ...base, routeId: route.id }, { ...base, placeId: place.id }] };
+    const noPlace = withNoticesFor({ ...content, places: content.places.filter(p => p.id !== place.id) });
+    expect(noPlace.notices).toEqual([base, { ...base, routeId: route.id }]);
+    expect(validateContent(noPlace)).toEqual([]);
+    const noRoute = withNoticesFor({ ...content, notices: [{ ...base, routeId: route.id }], routes: content.routes.filter(r => r.id !== route.id) });
+    expect('notices' in noRoute).toBe(false);
+    expect(withNoticesFor(bundledContent)).toBe(bundledContent);
   });
 });
 
