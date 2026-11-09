@@ -312,6 +312,8 @@ export const ES: Record<string, string> = {
   'Important notice': 'Aviso importante',
   'Notice': 'Aviso',
   'Close this notice': 'Cerrar este aviso',
+  'Next walk': 'Siguiente paseo',
+  'best by taxi or metro': 'mejor en taxi o metro',
   'Through the ages': 'A través de los siglos',
   'Places on every route, from the oldest.': 'Los lugares de todas las rutas, del más antiguo al más reciente.',
   'Era': 'Época',

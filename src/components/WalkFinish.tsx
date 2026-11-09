@@ -16,6 +16,7 @@ import { RouteRating } from './RouteRating';
 import { StampBadge } from './Passport';
 import { stampRoute, useStamps } from '../lib/passport';
 import { cairoDate } from '../lib/special-hours';
+import { NextWalk } from './NextWalk';
 
 /**
  * The end of a walk: stops visited, roughly how far the visitor walked (from
@@ -23,7 +24,15 @@ import { cairoDate } from '../lib/special-hours';
  * "Walk again". The rating is sent with the anonymous usage counts; nothing
  * else here leaves the device.
  */
-export function WalkFinish({ route, places, onClose, onShowPassport }: { route: Route; places: Location[]; onClose: () => void; onShowPassport?: () => void }) {
+export function WalkFinish({ route, routes, places, onClose, onShowPassport, onShowRoute }: {
+  route: Route;
+  /** All routes, for the Next walk suggestion. */
+  routes?: Route[];
+  places: Location[];
+  onClose: () => void;
+  onShowPassport?: () => void;
+  onShowRoute?: (id: string) => void;
+}) {
   const visited = useVisited();
   const summary = walkSummary(places, route.id, visited);
   const { ref, guard } = useDialog<HTMLDivElement>(onClose);
@@ -121,6 +130,8 @@ export function WalkFinish({ route, places, onClose, onShowPassport }: { route: 
               )}
             </div>
           )}
+
+          {summary.complete && routes && onShowRoute && <NextWalk fromRouteId={route.id} routes={routes} places={places} onShowRoute={onShowRoute} className="mb-5" />}
 
           {summary.visited > 0 && <RouteRating routeId={route.id} className="mb-5" />}
 

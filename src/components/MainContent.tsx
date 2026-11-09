@@ -232,6 +232,14 @@ export const MainContent: React.FC = () => {
   const clearSharedLink = () => {
     if (sharedLinkTarget() !== undefined) window.history.replaceState({}, '', '/');
   };
+  // Next walk (finish screen, passport): open that route at the top of the page.
+  const showRoute = (id: string) => {
+    clearSharedLink();
+    setSelectedRoute(id);
+    setSelectedLocation(null);
+    setSelectedCategory('all');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // A shared link (?loc=, /r/, ?route=) may only resolve once the live content
   // arrives, and its route is selected a render later. Until the route it asks
@@ -570,7 +578,7 @@ export const MainContent: React.FC = () => {
               {t('routes')}
             </h2>
             <div className="h-px flex-1 min-w-4 bg-sand/50"></div>
-            <PassportButton routes={routes} />
+            <PassportButton routes={routes} places={locations} onShowRoute={showRoute} />
             <SavedButton places={locations} routes={routes} onOpen={openPlace} />
           </div>
           <div className="flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
@@ -1042,15 +1050,20 @@ export const MainContent: React.FC = () => {
       {finishedRouteData && (
         <WalkFinish
           route={finishedRouteData}
+          routes={routes}
           places={locations}
           onClose={() => setFinishedRoute(null)}
+          onShowRoute={id => {
+            setFinishedRoute(null);
+            showRoute(id);
+          }}
           onShowPassport={() => {
             setFinishedRoute(null);
             setPassportOpen(true);
           }}
         />
       )}
-      {passportOpen && <PassportSheet routes={routes} onClose={() => setPassportOpen(false)} />}
+      {passportOpen && <PassportSheet routes={routes} places={locations} onClose={() => setPassportOpen(false)} onShowRoute={id => { setPassportOpen(false); showRoute(id); }} />}
       {walking && (
         <LazyBoundary
           key={walkAttempt}

@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Binoculars, Image as ImageIcon, Stamp as StampIcon, X } from 'lucide-react';
-import type { Route } from '../data/locations';
+import type { Location, Route } from '../data/locations';
 import { stampCount, stampDate, useStamps, type Stamp } from '../lib/passport';
 import { useDialog } from '../lib/useDialog';
+import { lastStamped } from '../lib/next-walk';
+import { NextWalk } from './NextWalk';
 import { L, byLang, currentLang, nameOf } from '../i18n/lang';
 
 const SERIF = "'Cormorant Garamond', Georgia, serif";
@@ -49,7 +51,7 @@ export function StampBadge({ route, stamp, size = 'md' }: { route: Route; stamp?
 }
 
 /** "Passport 1/5" beside Saved, over the routes. */
-export function PassportButton({ routes }: { routes: Route[] }) {
+export function PassportButton({ routes, places, onShowRoute }: { routes: Route[]; places?: Location[]; onShowRoute?: (id: string) => void }) {
   const [open, setOpen] = useState(false);
   const stamps = useStamps();
   const n = stampCount(stamps, routes);
@@ -66,14 +68,16 @@ export function PassportButton({ routes }: { routes: Route[] }) {
         <span className="tabular-nums tracking-normal text-stone-500" aria-hidden="true">{n}/{routes.length}</span>
         <span className="sr-only"> ({walksLabel(n, routes.length)})</span>
       </button>
-      {open && <PassportSheet routes={routes} onClose={() => setOpen(false)} />}
+      {open && <PassportSheet routes={routes} places={places} onClose={() => setOpen(false)} onShowRoute={onShowRoute && (id => { setOpen(false); onShowRoute(id); })} />}
     </>
   );
 }
 
 /** The passport: every route's stamp, and Share my passport. */
-export function PassportSheet({ routes, onClose }: { routes: Route[]; onClose: () => void }) {
+export function PassportSheet({ routes, places, onClose, onShowRoute }: { routes: Route[]; places?: Location[]; onClose: () => void; onShowRoute?: (id: string) => void }) {
   const stamps = useStamps();
+  // Next walk: from where the latest stamped walk ended.
+  const last = lastStamped(routes, stamps);
   const n = stampCount(stamps, routes);
   const { ref, guard } = useDialog<HTMLDivElement>(onClose);
   const ar = currentLang() === 'ar';
@@ -110,6 +114,7 @@ export function PassportSheet({ routes, onClose }: { routes: Route[]; onClose: (
               : L('Stamps are kept on this device only.', 'تُحفظ الأختام على هذا الجهاز فقط.')}
           </p>
           {n > 0 && <SharePassport routes={routes} />}
+          {last && places && onShowRoute && <NextWalk fromRouteId={last.id} routes={routes} places={places} onShowRoute={onShowRoute} className="mt-3" />}
         </div>
       </div>
       <span {...guard('end')} />
