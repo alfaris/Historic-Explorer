@@ -45,9 +45,12 @@ const storageWorks = () => {
     return false;
   }
 };
+// Set when the last write failed (storage full or blocked for writing): the
+// stored list is then older than this tab's, which is kept until the page closes.
+let unsaved = false;
 // The latest list: the stored one when storage works (another tab may have
 // changed it while nothing here was listening), else this tab's own.
-const latest = () => (storageWorks() ? read() : current());
+const latest = () => (storageWorks() && !unsaved ? read() : current());
 const EMPTY: number[] = [];
 
 function save(next: number[]) {
@@ -55,8 +58,10 @@ function save(next: number[]) {
   try {
     if (next.length) window.localStorage.setItem(KEY, JSON.stringify(next));
     else window.localStorage.removeItem(KEY);
+    unsaved = false;
   } catch {
     // Not kept after the page closes; still shown now.
+    unsaved = true;
   }
   listeners.forEach(l => l());
 }
@@ -87,6 +92,9 @@ function subscribe(listener: () => void) {
     window.removeEventListener('storage', onStorage);
   };
 }
+
+/** The recently viewed place IDs now, outside React. */
+export const recentNow = () => current();
 
 /** The recently viewed place IDs, newest first. Re-renders when they change. */
 export const useRecent = () => useSyncExternalStore(subscribe, current, () => EMPTY);

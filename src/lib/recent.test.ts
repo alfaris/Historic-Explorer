@@ -45,3 +45,24 @@ describe('recently viewed across tabs', () => {
     expect(stored()).toEqual([6, 5]);
   });
 });
+
+describe('recently viewed when storage writes fail', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.resetModules();
+  });
+  it("keeps this tab's list until the page closes", async () => {
+    vi.resetModules();
+    vi.stubGlobal('window', {
+      // Readable, but full: every write throws.
+      localStorage: { getItem: () => null, setItem: () => { throw new Error('QuotaExceeded'); }, removeItem: () => {} },
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    });
+    const { addRecent, recentNow } = await import('./recent');
+    addRecent(1);
+    addRecent(2);
+    addRecent(3);
+    expect(recentNow()).toEqual([3, 2, 1]);
+  });
+});
