@@ -6,6 +6,7 @@
 // with no connection are kept on the device and sent once it's back online.
 
 import { MAX_EVENTS_PER_REQUEST, type StatEvent } from './stats';
+import { currentLang } from '../i18n/lang';
 
 const ENDPOINT = '/api/stats';
 const SEND_AFTER_MS = 30_000;
@@ -102,7 +103,8 @@ export function track(event: StatEvent) {
   const key = `${event.t}:${event.id}`;
   if (seen.has(key)) return;
   seen.add(key);
-  queue.push(event);
+  // Audio plays and route opens say which interface language they were in.
+  queue.push(event.t === 'play' || event.t === 'route' ? { ...event, l: event.l ?? currentLang() } : event);
   listen();
   timer ??= setTimeout(flush, SEND_AFTER_MS);
 }

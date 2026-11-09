@@ -2,11 +2,12 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Download, RefreshCw } from 'lucide-react';
 import type { Content } from '../data/content';
 import { walkStops } from '../lib/walk';
-import { helpfulness, REASONS, ROUTE_REASONS, routeRatings, type HelpfulRow, type Reason, type RouteReason } from '../lib/stats';
+import { helpfulness, languageShares, REASONS, ROUTE_REASONS, routeRatings, type HelpfulRow, type Reason, type RouteReason } from '../lib/stats';
 import { api, ApiError, type StatsResponse } from './api';
 import { downloadFile } from './backup';
 import { dailySeries, statsCsv } from './stats-csv';
 import { ErrorBox } from './ui';
+import { LANGUAGES } from '../i18n/lang';
 
 type Days = 7 | 30 | 90;
 
@@ -33,6 +34,49 @@ function Tile({ label, value, hint }: { label: string; value: number; hint: stri
       <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400">{label}</p>
       <p className="text-3xl font-serif text-ink tabular-nums mt-1">{fmt(value)}</p>
       <p className="text-[11px] text-stone-400 mt-1">{hint}</p>
+    </div>
+  );
+}
+
+/** Which interface languages visitors use: share of route opens and audio plays, most used first. */
+function Languages({ total }: { total: StatsResponse['total'] }) {
+  const { rows, counted, all } = languageShares(total);
+  return (
+    <div className="bg-white rounded-2xl border border-sand/50 p-5">
+      <h2 className="text-sm font-bold text-stone-700 mb-1">Languages</h2>
+      <p className="text-[11px] text-stone-400 mb-3">The app's language when each route was opened and each audio guide played. Useful for deciding where translation and audio work goes.</p>
+      {rows.length === 0 ? (
+        <p className="text-sm text-stone-400">No language data in this period yet.</p>
+      ) : (
+        <>
+          <p className="text-sm text-ink mb-3">{rows.map(r => `${LANGUAGES[r.lang].english} ${r.pct}%`).join(' · ')}</p>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-xs text-stone-500">
+                <th scope="col" className="text-start font-bold pb-2">Language</th>
+                <th scope="col" className="text-end font-bold pb-2">Route opens</th>
+                <th scope="col" className="text-end font-bold pb-2">Audio plays</th>
+                <th scope="col" className="text-end font-bold pb-2">Share</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-sand/40">
+              {rows.map(r => (
+                <tr key={r.lang}>
+                  <td className="py-1.5 text-stone-700">{LANGUAGES[r.lang].english}</td>
+                  <td className="py-1.5 text-end tabular-nums text-stone-600">{fmt(r.routes)}</td>
+                  <td className="py-1.5 text-end tabular-nums text-stone-600">{fmt(r.plays)}</td>
+                  <td className="py-1.5 text-end tabular-nums text-ink">{r.pct}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {counted < all && (
+            <p className="text-[11px] text-stone-400 mt-3">
+              Based on {fmt(counted)} of {fmt(all)} route opens and audio plays: languages weren't recorded before this was added.
+            </p>
+          )}
+        </>
+      )}
     </div>
   );
 }
@@ -182,6 +226,8 @@ export function StatsTab({ content, onSignedOut, onEditPlace }: { content: Conte
             <h2 className="text-sm font-bold text-stone-700 mb-3">Audio plays per day</h2>
             <Daily perDay={data.perDay} days={days} loadedAt={loadedAt} />
           </div>
+
+          <Languages total={data.total} />
 
           <div className="bg-white rounded-2xl border border-sand/50 p-5">
             <h2 className="text-sm font-bold text-stone-700 mb-3">Most-played audio guides</h2>

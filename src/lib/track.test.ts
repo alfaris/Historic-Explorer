@@ -37,7 +37,7 @@ describe('track', () => {
     track({ t: 'play', id: 1 });
     track({ t: 'route', id: 'ahl-al-bayt' });
     expect(beacons).toEqual([]); // not sent straight away
-    expect(await sent()).toEqual([[{ t: 'play', id: 1 }, { t: 'route', id: 'ahl-al-bayt' }]]);
+    expect(await sent()).toEqual([[{ t: 'play', id: 1, l: 'en' }, { t: 'route', id: 'ahl-al-bayt', l: 'en' }]]);
   });
 
   it('sends nothing once stopped (the admin, whose previews play audio guides)', async () => {

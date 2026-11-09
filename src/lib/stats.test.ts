@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addEvents, cleanEvents, dayKey, emptyDay, helpfulness, MAX_EVENTS_PER_REQUEST, parseDay, routeRatings, sumDays } from './stats';
+import { addEvents, cleanEvents, dayKey, emptyDay, helpfulness, languageShares, MAX_EVENTS_PER_REQUEST, parseDay, routeRatings, sumDays } from './stats';
 
 const known = { placeIds: new Set([1, 2]), routeIds: new Set(['ahl-al-bayt']) };
 
@@ -29,7 +29,7 @@ describe('cleanEvents', () => {
 describe('addEvents / sumDays / parseDay', () => {
   it('counts events into the right totals', () => {
     const day = addEvents(emptyDay(), [{ t: 'play', id: 1 }, { t: 'play', id: 1 }, { t: 'route', id: 'r' }, { t: 'arrive', id: 2 }]);
-    expect(day).toEqual({ plays: { 1: 2 }, routes: { r: 1 }, arrivals: { 2: 1 }, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {} });
+    expect(day).toEqual({ plays: { 1: 2 }, routes: { r: 1 }, arrivals: { 2: 1 }, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {}, langs: {} });
   });
 
   it('adds days together', () => {
@@ -39,7 +39,7 @@ describe('addEvents / sumDays / parseDay', () => {
   });
 
   it('drops malformed stored values', () => {
-    expect(parseDay({ plays: { 1: 3, 2: -1, 3: 1.5, 4: 'x' }, routes: 'bad' })).toEqual({ plays: { 1: 3 }, routes: {}, arrivals: {}, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {} });
+    expect(parseDay({ plays: { 1: 3, 2: -1, 3: 1.5, 4: 'x' }, routes: 'bad' })).toEqual({ plays: { 1: 3 }, routes: {}, arrivals: {}, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {}, langs: {} });
     expect(parseDay(null)).toEqual(emptyDay());
   });
 
@@ -48,7 +48,7 @@ describe('addEvents / sumDays / parseDay', () => {
     const events = cleanEvents([{ t: 'up', id: 1 }, { t: 'down', id: 1 }, { t: 'up', id: 9 }, { t: 'up', id: '1' }], known);
     expect(events).toEqual([{ t: 'up', id: 1 }, { t: 'down', id: 1 }]);
     expect(addEvents(emptyDay(), events)).toMatchObject({ helpful: { 1: 1 }, unhelpful: { 1: 1 } });
-    expect(parseDay({ plays: { 1: 2 } })).toEqual({ plays: { 1: 2 }, routes: {}, arrivals: {}, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {} });
+    expect(parseDay({ plays: { 1: 2 } })).toEqual({ plays: { 1: 2 }, routes: {}, arrivals: {}, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {}, langs: {} });
   });
 
   it('lists helpfulness per place, most disliked or most voted first', () => {
@@ -119,5 +119,47 @@ describe('route ratings', () => {
   it('averages each route, leaving out routes without ratings', () => {
     const total = { ...emptyDay(), ratings: { 'al-muizz:5': 2, 'al-muizz:2': 1 }, routeReasons: { 'al-muizz:hot': 1 } };
     expect(routeRatings(total, ['al-muizz', 'coptic-cairo'])).toEqual([{ id: 'al-muizz', count: 3, average: 4, reasons: { hot: 1 } }]);
+  });
+});
+
+describe('languages', () => {
+  it('keeps a known language on plays and route opens only', () => {
+    const raw = [
+      { t: 'play', id: 1, l: 'fr' },
+      { t: 'route', id: 'ahl-al-bayt', l: 'ar' },
+      { t: 'play', id: 2, l: 'de' }, // unknown language: counted, without it
+      { t: 'arrive', id: 2, l: 'es' }, // arrivals don't carry one
+    ];
+    expect(cleanEvents(raw, known)).toEqual([{ t: 'play', id: 1, l: 'fr' }, { t: 'route', id: 'ahl-al-bayt', l: 'ar' }, { t: 'play', id: 2 }, { t: 'arrive', id: 2 }]);
+  });
+
+  it('counts them per language, and reads days stored before languages', () => {
+    const day = addEvents(emptyDay(), [{ t: 'play', id: 1, l: 'fr' }, { t: 'play', id: 2, l: 'fr' }, { t: 'route', id: 'r', l: 'en' }, { t: 'play', id: 1 }]);
+    expect(day.langs).toEqual({ 'play:fr': 2, 'route:en': 1 });
+    expect(day.plays).toEqual({ 1: 2, 2: 1 });
+    expect(parseDay({ langs: { 'play:fr': 2, 'play:de': 1, 'arrive:en': 1, 'route:ar': 0 } }).langs).toEqual({ 'play:fr': 2 });
+    expect(parseDay({ plays: { 1: 1 } }).langs).toEqual({});
+  });
+
+  it('gives each language its share, most used first, and says how much was counted', () => {
+    const old = addEvents(emptyDay(), [{ t: 'play', id: 1 }, { t: 'route', id: 'r' }]);
+    const recent = addEvents(emptyDay(), [
+      ...Array(5).fill({ t: 'play', id: 1, l: 'en' }),
+      { t: 'route', id: 'r', l: 'en' },
+      { t: 'play', id: 2, l: 'ar' },
+      { t: 'route', id: 'r', l: 'ar' },
+      { t: 'play', id: 2, l: 'es' },
+    ]);
+    const shares = languageShares(sumDays([old, recent]));
+    expect(shares.rows).toEqual([
+      { lang: 'en', plays: 5, routes: 1, total: 6, pct: 67 },
+      { lang: 'ar', plays: 1, routes: 1, total: 2, pct: 22 },
+      { lang: 'es', plays: 1, routes: 0, total: 1, pct: 11 },
+    ]);
+    expect([shares.counted, shares.all]).toEqual([9, 11]);
+    expect(languageShares(emptyDay())).toEqual({ rows: [], counted: 0, all: 0 });
+    // Totals from a server without languages.
+    const { langs: _, ...noLangs } = old;
+    expect(languageShares(noLangs as typeof old).rows).toEqual([]);
   });
 });
