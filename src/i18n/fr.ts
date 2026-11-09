@@ -318,6 +318,7 @@ export const FR: Record<string, string> = {
   'Save all': 'Tout enregistrer',
   'These places are no longer in the app.': 'Ces lieux ne sont plus dans l’application.',
   'Recently viewed': 'Vus récemment',
+  'Nearby on other routes': 'À proximité sur d’autres parcours',
   'Through the ages': 'À travers les âges',
   'Places on every route, from the oldest.': 'Les lieux de tous les parcours, du plus ancien au plus récent.',
   'Era': 'Époque',

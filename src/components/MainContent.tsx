@@ -482,7 +482,7 @@ export const MainContent: React.FC = () => {
                     onClick={(e) => e.stopPropagation()}
                   >
                     <div className="pt-8 mt-8 border-t border-chalk">
-                      <PlaceDetails place={loc} />
+                      <PlaceDetails place={loc} onOpenPlace={openPlace} />
                       <LiveLocationInfo locationId={loc.id} />
                       <HelpfulPrompt placeId={loc.id} className="mt-6" />
 
@@ -957,7 +957,7 @@ export const MainContent: React.FC = () => {
                               </div>
                             )}
                             
-                            <PlaceDetails place={loc} />
+                            <PlaceDetails place={loc} onOpenPlace={openPlace} />
                             <LiveLocationInfo locationId={loc.id} />
                             <HelpfulPrompt placeId={loc.id} className="mt-6" />
                             

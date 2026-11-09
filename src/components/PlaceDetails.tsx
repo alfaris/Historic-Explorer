@@ -9,6 +9,7 @@ import { PrayerNotice } from './PrayerTimes';
 import { SpotIt } from './SpotIt';
 import { VisitorTips } from './VisitorTips';
 import { Notices } from './Notices';
+import { Nearby } from './Nearby';
 
 // The parts of a place's card shared by the list, the map and the admin's
 // preview, so the preview shows exactly what visitors see.
@@ -29,7 +30,7 @@ export function PlaceBadges({ place }: { place: Location }) {
  * guide, hours and fee, visitor tips and Spot it. `audioNote` shows instead of
  * the audio guide (the admin's preview of a description not yet recorded).
  */
-export function PlaceDetails({ place, audioNote }: { place: Location; audioNote?: string }) {
+export function PlaceDetails({ place, audioNote, onOpenPlace }: { place: Location; audioNote?: string; /** Opens another place's card (Nearby); without it, Nearby isn't shown. */ onOpenPlace?: (id: number) => void }) {
   const description = descriptionOf(place);
   return (
     <>
@@ -47,6 +48,7 @@ export function PlaceDetails({ place, audioNote }: { place: Location; audioNote?
       <PlaceHours place={place} />
       <VisitorTips place={place} />
       <SpotIt place={place} className="mt-4" />
+      {onOpenPlace && <Nearby place={place} onOpen={onOpenPlace} className="mt-4" />}
     </>
   );
 }
