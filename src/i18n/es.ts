@@ -319,6 +319,7 @@ export const ES: Record<string, string> = {
   'All saved on this phone': 'Todos guardados en este teléfono',
   'Save all': 'Guardar todos',
   'These places are no longer in the app.': 'Estos lugares ya no están en la app.',
+  'Recently viewed': 'Vistos recientemente',
   'Through the ages': 'A través de los siglos',
   'Places on every route, from the oldest.': 'Los lugares de todas las rutas, del más antiguo al más reciente.',
   'Era': 'Época',
