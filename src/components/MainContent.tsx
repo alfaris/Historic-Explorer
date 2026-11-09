@@ -31,7 +31,7 @@ import { PlaceBadges, PlaceDetails } from './PlaceDetails';
 import { breakCount } from '../lib/weather';
 import { nextQuarter } from '../lib/visit-plan';
 import { PrayerNotice } from './PrayerTimes';
-import { SaveToggle, SavedButton } from './Saved';
+import { SaveToggle, SavedButton, SharedListSheet } from './Saved';
 import { PassportButton, PassportSheet } from './Passport';
 import { stampRoute } from '../lib/passport';
 import { cairoDate } from '../lib/special-hours';
@@ -47,7 +47,7 @@ import { Notices } from './Notices';
 import { accessSummary, hasAccessInfo, routeAccess } from '../lib/step-free';
 import { ContinueWalk } from './ContinueWalk';
 import { PlanVisit } from './PlanVisit';
-import { isPlaceLink, isRouteLink, placeFromLocation, routeFromLocation } from '../lib/share';
+import { isPlaceLink, isRouteLink, placeFromLocation, routeFromLocation, savedFromLocation } from '../lib/share';
 import { askForCompass } from '../lib/useWalkSensors';
 import { LazyBoundary } from './LazyBoundary';
 
@@ -280,6 +280,12 @@ export const MainContent: React.FC = () => {
   const [finishedRoute, setFinishedRoute] = useState<string | null>(null);
   // The passport, opened from the finish screen's "See my passport".
   const [passportOpen, setPassportOpen] = useState(false);
+  // A shared list of places (a `?saved=` link): shown once, then the address goes back to the home page.
+  const [sharedIds, setSharedIds] = useState<number[] | null>(() => savedFromLocation(window.location));
+  const closeShared = () => {
+    setSharedIds(null);
+    if (savedFromLocation(window.location)) window.history.replaceState({}, '', '/');
+  };
   const finishAfterWalk = React.useRef<string | null>(null);
   const walkingRef = React.useRef(false);
   walkingRef.current = walking;
@@ -1063,6 +1069,7 @@ export const MainContent: React.FC = () => {
           }}
         />
       )}
+      {sharedIds && <SharedListSheet ids={sharedIds} places={locations} routes={routes} onOpen={openPlace} onClose={closeShared} />}
       {passportOpen && <PassportSheet routes={routes} places={locations} onClose={() => setPassportOpen(false)} onShowRoute={id => { setPassportOpen(false); showRoute(id); }} />}
       {walking && (
         <LazyBoundary
