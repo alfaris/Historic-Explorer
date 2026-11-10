@@ -62,6 +62,37 @@ describe('versionDiff', () => {
   });
 });
 
+describe('walking order', () => {
+  it('lists a route whose stops were reordered, though every place is unchanged', () => {
+    const a = base();
+    const b = base();
+    const route = a.routes[0].id;
+    const stops = b.places.filter(p => p.routeId === route && p.category === 'monument');
+    // Swap the first two stops' positions in the list (what the route editor's reorder saves).
+    const i = b.places.indexOf(stops[0]);
+    const j = b.places.indexOf(stops[1]);
+    [b.places[i], b.places[j]] = [b.places[j], b.places[i]];
+    const routes = versionDiff(a, b).find(s => s.section === 'Routes')!;
+    expect(routes.items).toHaveLength(1);
+    const edit = routes.items[0];
+    expect(edit).toMatchObject({ kind: 'edited', name: a.routes[0].nameEn });
+    if (edit.kind === 'edited') {
+      expect(edit.fields[0].field).toBe('stop order');
+      expect(edit.fields[0].before.startsWith(`${stops[0].nameEn} → ${stops[1].nameEn}`)).toBe(true);
+      expect(edit.fields[0].after.startsWith(`${stops[1].nameEn} → ${stops[0].nameEn}`)).toBe(true);
+    }
+    expect(versionDiff(a, b).find(s => s.section === 'Places')).toBeUndefined();
+  });
+
+  it("doesn't call an added or deleted stop a reorder", () => {
+    const a = base();
+    const b = base();
+    const route = a.routes[0].id;
+    b.places = b.places.filter(p => p.id !== b.places.find(q => q.routeId === route && q.category === 'monument')!.id);
+    expect(versionDiff(a, b).find(s => s.section === 'Routes')).toBeUndefined();
+  });
+});
+
 describe('shortValue', () => {
   it('writes empty, text, numbers and objects', () => {
     expect(shortValue(undefined)).toBe('(empty)');

@@ -7,6 +7,7 @@
 
 import { glossaryOf, type Content } from '../data/content';
 import { distanceMeters } from '../lib/geo';
+import { walkStops } from '../lib/walk';
 
 /** Longer text is shortened to this many characters, with "…". */
 export const TEXT_MAX = 80;
@@ -68,11 +69,34 @@ function compareNotices(before: Content['notices'] = [], after: Content['notices
   ];
 }
 
+/**
+ * Routes whose walking order changed: the stops both versions have, in a
+ * different order (the order is the places' order in the content, see
+ * applyStopOrder). Added or deleted stops are listed under Places.
+ */
+function stopOrderChanges(before: Content, after: Content): ItemChange[] {
+  const changes: ItemChange[] = [];
+  for (const route of after.routes) {
+    if (!before.routes.some(r => r.id === route.id)) continue;
+    const was = walkStops(before.places, route.id);
+    const now = walkStops(after.places, route.id);
+    const nowIds = new Set(now.map(p => p.id));
+    const wasIds = new Set(was.map(p => p.id));
+    const common = (list: typeof was, other: Set<number>) => list.filter(p => other.has(p.id));
+    const a = common(was, nowIds);
+    const b = common(now, wasIds);
+    if (a.every((p, i) => p.id === b[i].id)) continue;
+    const names = (list: typeof was) => list.map(p => p.nameEn).join(' → ');
+    changes.push({ kind: 'edited', name: route.nameEn, fields: [{ field: 'stop order', before: shortValue(names(a)), after: shortValue(names(b)) }] });
+  }
+  return changes;
+}
+
 /** What changed from `before` to `after`, by section; sections with no change are left out. */
 export function versionDiff(before: Content, after: Content): SectionChanges[] {
   const sections: SectionChanges[] = [
     { section: 'Places', items: compareById(before.places as unknown as Keyed[], after.places as unknown as Keyed[], p => p.id as number, p => `${p.nameEn} (ID ${p.id})`, true) },
-    { section: 'Routes', items: compareById(before.routes as unknown as Keyed[], after.routes as unknown as Keyed[], r => r.id as string, r => String(r.nameEn)) },
+    { section: 'Routes', items: [...compareById(before.routes as unknown as Keyed[], after.routes as unknown as Keyed[], r => r.id as string, r => String(r.nameEn)), ...stopOrderChanges(before, after)] },
     // Content without a saved glossary uses the built-in one.
     { section: 'Glossary terms', items: compareById(glossaryOf(before) as unknown as Keyed[], glossaryOf(after) as unknown as Keyed[], t => t.id as string, t => String(t.termEn)) },
     { section: 'Special hours', items: compareById((before.specialPeriods ?? []) as unknown as Keyed[], (after.specialPeriods ?? []) as unknown as Keyed[], s => s.id as string, s => String(s.nameEn)) },

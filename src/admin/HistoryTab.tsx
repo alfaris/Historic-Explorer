@@ -156,6 +156,13 @@ export function HistoryTab({ content, save }: { content: Content; save: SaveFn }
   // "What changed" / "Compare with now", for one version at a time.
   const [shown, setShown] = useState<Shown | null>(null);
   const [comparing, setComparing] = useState<string | null>(null);
+  // The current content, read when a comparison finishes (it may have been restored meanwhile).
+  const current = useRef(content);
+  current.current = content;
+  // A "Compare with now" was against the content as it was: when that changes (a restore, a save), it's closed.
+  useEffect(() => {
+    setShown(s => (s?.mode === 'now' ? null : s));
+  }, [content]);
   // Versions already fetched (they never change), by pathname.
   const versions = useRef(new Map<string, Content>());
   const fetchVersion = async (pathname: string) => {
@@ -175,7 +182,7 @@ export function HistoryTab({ content, save }: { content: Content; save: SaveFn }
     setError(null);
     try {
       const version = await fetchVersion(entry.pathname);
-      const diff = mode === 'changed' ? versionDiff(await fetchVersion(history[i + 1].pathname), version) : versionDiff(content, version);
+      const diff = mode === 'changed' ? versionDiff(await fetchVersion(history[i + 1].pathname), version) : versionDiff(current.current, version);
       setShown({ pathname: entry.pathname, mode, diff });
     } catch (err) {
       setError((err as Error).message);
