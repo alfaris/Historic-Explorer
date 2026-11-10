@@ -1,10 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle2, ChevronRight } from 'lucide-react';
 import { glossaryOf, type Content } from '../data/content';
 import { LANGS, LANGUAGES, OPTIONAL_LANGS, type Lang, type OptionalLang } from '../i18n/lang';
 import { draftLang, draftSection, draftsToReview, markReviewed, GAPS, glossaryGaps, periodGaps, placeGaps, progress, routeGaps, translationPriority, type DraftRow, type Gap, type PlaceSection } from './content-health';
 import { draftLabel } from './DraftReview';
 import { distanceLabel, pinsToCheck, withPinConfirmed } from './pin-check';
+import { importTranslations, missingRows, translationSheet, type ImportResult } from './translation-sheet';
+import { downloadFile } from './backup';
 import { inputClass } from './ui';
 import type { SaveFn } from './AdminApp';
 import { isExpired } from '../lib/notices';
@@ -99,6 +101,7 @@ export function ContentTab({ content, onEditPlace, onEditRoute, onEditTerm, onEd
         </p>
       )}
 
+      <TranslationSheets content={content} save={save} />
       <DraftsList
         content={content}
         save={save}
@@ -194,6 +197,89 @@ function MissingList({ title, rows, onEdit }: { title: string; rows: { id: strin
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+/**
+ * "Spreadsheets for translators": the texts still missing in French or
+ * Spanish as a CSV, and importing it back once filled in (see translation-sheet).
+ */
+function TranslationSheets({ content, save }: { content: Content; save?: SaveFn }) {
+  const input = useRef<HTMLInputElement>(null);
+  const [pending, setPending] = useState<(ImportResult & { ok: true; name: string }) | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const counts = OPTIONAL_LANGS.map(lang => ({ lang, missing: missingRows(content, lang).length }));
+  if (counts.every(c => c.missing === 0) && !pending) return null;
+  const choose = async (file: File | undefined) => {
+    setPending(null);
+    setProblem(null);
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) return setProblem('This file is too large to be a translation spreadsheet.');
+    const res = importTranslations(content, await file.text());
+    if (res.ok === false) return setProblem(res.message);
+    setPending({ ...res, name: file.name });
+  };
+  const apply = async () => {
+    if (!pending || !save) return;
+    setBusy(true);
+    const name = LANGUAGES[pending.lang].english;
+    if (await save(pending.content, `Imported ${pending.filled} ${name} ${pending.filled === 1 ? 'translation' : 'translations'} from ${pending.name}`)) setPending(null);
+    setBusy(false);
+  };
+  const btn = 'min-h-11 px-4 rounded-xl border border-sand text-xs font-bold text-ink hover:border-nile disabled:opacity-40';
+  return (
+    <div className="bg-white rounded-2xl border border-sand/50 p-4">
+      <p className="text-xs font-bold uppercase tracking-widest text-stone-500">Spreadsheets for translators</p>
+      <p className="mt-1 text-xs text-stone-500">
+        Every text still missing in a language, with its English and Arabic, for a translator to fill in the last column. Importing it fills only fields that are still empty, so nothing translated meanwhile is overwritten.
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {counts.map(({ lang, missing }) => (
+          <button key={lang} type="button" disabled={missing === 0} onClick={() => downloadFile(translationSheet(content, lang))} className={btn}>
+            {missing === 0 ? `${LANGUAGES[lang].english}: all translated` : `Download ${LANGUAGES[lang].english} (${missing} missing)`}
+          </button>
+        ))}
+        {save && (
+          <button type="button" disabled={busy} onClick={() => input.current?.click()} className={btn}>
+            Import a filled-in spreadsheet
+          </button>
+        )}
+        <input
+          ref={input}
+          type="file"
+          accept=".csv,text/csv"
+          className="sr-only"
+          tabIndex={-1}
+          aria-label="Translation spreadsheet to import"
+          onChange={e => {
+            const file = e.target.files?.[0];
+            e.target.value = '';
+            choose(file);
+          }}
+        />
+      </div>
+      {problem && <p className="mt-2 text-xs text-red-700" role="alert">{problem}</p>}
+      {pending && (
+        <div className="mt-3 rounded-xl border border-sand/60 p-3 text-sm" role="region" aria-label="Import translations">
+          <p>
+            <strong>{pending.name}</strong> ({LANGUAGES[pending.lang].english}): {pending.filled} to fill
+            {pending.alreadyFilled > 0 && `, ${pending.alreadyFilled} skipped (already translated)`}
+            {pending.unknown > 0 && `, ${pending.unknown} skipped (item or field not found)`}.
+          </p>
+          <div className="mt-2 flex gap-2">
+            {pending.filled > 0 && (
+              <button type="button" disabled={busy} onClick={apply} className={btn}>
+                {busy ? 'Saving…' : `Import ${pending.filled}`}
+              </button>
+            )}
+            <button type="button" disabled={busy} onClick={() => setPending(null)} className={btn}>
+              {pending.filled > 0 ? 'Cancel' : 'Close'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
