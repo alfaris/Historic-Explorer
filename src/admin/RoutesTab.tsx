@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, Plus, Star } from 'lucide-react';
 import { SHORT_WALK_MIN } from '../lib/short-walk';
+import { suggestMustSee, type Suggestion } from './must-see-suggest';
+import { api } from './api';
 import type { Content, Route } from '../data/content';
 import type { SaveFn } from './AdminApp';
 import { Button, Field, inputClass, sameValue } from './ui';
@@ -55,12 +57,15 @@ export function RoutesTab({ content, save, initialRouteId = null, onSelected, on
   highlightsNow.current = highlights;
   // The stops' walking order, as place IDs. Applied to the places when saving.
   const [order, setOrder] = useState<number[]>([]);
+  // Stops ticked Must-see from "Suggest from stats", not saved yet. Applied to the places when saving.
+  const [mustAdds, setMustAdds] = useState<number[]>([]);
 
   const lines = (text: string) => text.split('\n').map(s => s.trim()).filter(Boolean);
   const open = (route: Route, asNew: boolean) => {
     setDraft({ ...route, highlightsEn: [...route.highlightsEn], highlightsAr: [...route.highlightsAr] });
     setHighlights(Object.fromEntries(LANGS.map(l => [l, (route[fieldKey('highlights', l)] ?? []).join('\n')])) as Record<Lang, string>);
     setOrder(asNew ? [] : walkStops(content.places, route.id).map(p => p.id));
+    setMustAdds([]);
     setIsNew(asNew);
   };
   // Opened from the Content checklist: select that route.
@@ -83,7 +88,9 @@ export function RoutesTab({ content, save, initialRouteId = null, onSelected, on
   const original = draft && !isNew ? content.routes.find(r => r.id === draft.id) : undefined;
   const savedOrder = draft && !isNew ? walkStops(content.places, draft.id).map(p => p.id) : [];
   const orderChanged = order.join() !== savedOrder.join();
-  const changed = finalDraft && (isNew || orderChanged || !sameValue(original, finalDraft));
+  // Suggested must-see stops that aren't ticked already.
+  const newMust = mustAdds.filter(id => !content.places.find(p => p.id === id)?.mustSee);
+  const changed = finalDraft && (isNew || orderChanged || newMust.length > 0 || !sameValue(original, finalDraft));
   // Walking times for the order being edited, so the effect of a move shows straight away.
   const orderedPlaces = draft && !isNew ? applyStopOrder(content.places, draft.id, order) : [];
   const plan = draft && !isNew ? walkPlan(orderedPlaces, draft.id) : new Map();
@@ -141,7 +148,7 @@ export function RoutesTab({ content, save, initialRouteId = null, onSelected, on
       : {
           ...content,
           routes: content.routes.map(r => (r.id === finalDraft.id ? finalDraft : r)),
-          places: applyStopOrder(content.places, finalDraft.id, order),
+          places: applyStopOrder(content.places, finalDraft.id, order).map(p => (newMust.includes(p.id) ? { ...p, mustSee: true } : p)),
         };
     const detailsChanged = isNew || !sameValue(original, finalDraft);
     const message = isNew
@@ -149,7 +156,12 @@ export function RoutesTab({ content, save, initialRouteId = null, onSelected, on
       : !detailsChanged
         ? `Reordered the stops of "${finalDraft.nameEn}"`
         : `Edited route "${finalDraft.nameEn}"${orderChanged ? ' and its stop order' : ''}`;
-    if (await save(next, message)) setIsNew(false);
+    const marked = `${newMust.length} must-see ${newMust.length === 1 ? 'stop' : 'stops'}`;
+    const note = !newMust.length ? message : !detailsChanged && !orderChanged ? `Marked ${marked} on "${finalDraft.nameEn}"` : `${message} (marked ${marked})`;
+    if (await save(next, note)) {
+      setIsNew(false);
+      setMustAdds([]);
+    }
     setBusy(false);
   };
 
@@ -387,16 +399,12 @@ export function RoutesTab({ content, save, initialRouteId = null, onSelected, on
                 })}
               </ol>
               <p className="text-[11px] text-stone-400 mt-1">Cafés, shops and meeting points aren't stops; they're shown as nearby extras.</p>
-              {(() => {
-                const must = order.filter(id => content.places.find(p => p.id === id)?.mustSee).length;
-                return (
-                  <p className="text-xs text-stone-600 mt-2">
-                    <Star className="inline w-3.5 h-3.5 text-gold fill-gold me-1 -mt-0.5" aria-hidden="true" />
-                    {must} must-see {must === 1 ? 'stop' : 'stops'}.{' '}
-                    {must >= SHORT_WALK_MIN ? 'Visitors can choose a Short walk of just these.' : `Tick Must-see on at least ${SHORT_WALK_MIN} stops (in Places) to offer a Short walk.`}
-                  </p>
-                );
-              })()}
+              <MustSee
+                order={order}
+                places={content.places}
+                pending={newMust}
+                onApply={ids => setMustAdds(a => [...new Set([...a, ...ids])])}
+              />
             </div>
           )}
           <div className="flex flex-wrap gap-2 pt-2">
@@ -418,6 +426,90 @@ export function RoutesTab({ content, save, initialRouteId = null, onSelected, on
         </form>
       )}
     </section>
+  );
+}
+
+/**
+ * The route's must-see count, and "Suggest from stats": the stops visitors play
+ * the audio for and arrive at most over the last 90 days (see must-see-suggest).
+ * Apply ticks them in the draft; nothing is saved until the route is.
+ */
+function MustSee({ order, places, pending, onApply }: {
+  order: number[];
+  places: Content['places'];
+  /** Ticked by Apply, not saved yet. */
+  pending: number[];
+  onApply: (ids: number[]) => void;
+}) {
+  const [suggestion, setSuggestion] = useState<Suggestion | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const isMust = (id: number) => pending.includes(id) || !!places.find(p => p.id === id)?.mustSee;
+  const must = order.filter(isMust).length;
+  const name = (id: number) => places.find(p => p.id === id)?.nameEn ?? `#${id}`;
+  const suggest = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setSuggestion(suggestMustSee(order, (await api.stats(90)).total));
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+  return (
+    <div className="mt-2 text-xs text-stone-600">
+      <p className="flex flex-wrap items-center gap-x-2">
+        <span>
+          <Star className="inline w-3.5 h-3.5 text-gold fill-gold me-1 -mt-0.5" aria-hidden="true" />
+          {must} must-see {must === 1 ? 'stop' : 'stops'}{pending.length > 0 && ` (${pending.length} not saved yet)`}.{' '}
+          {must >= SHORT_WALK_MIN ? 'Visitors can choose a Short walk of just these.' : `Tick Must-see on at least ${SHORT_WALK_MIN} stops to offer a Short walk.`}
+        </span>
+        {order.length >= 2 && (
+          <button type="button" onClick={suggest} disabled={loading} className="min-h-11 px-2 font-bold text-nile hover:underline disabled:opacity-40">
+            {loading ? 'Loading stats…' : 'Suggest from stats'}
+          </button>
+        )}
+      </p>
+      {error && <p className="text-red-700" role="alert">{error}</p>}
+      {suggestion?.kind === 'tooLittle' && (
+        <p role="status" className="mt-1 text-stone-500">
+          Too little data to suggest: {suggestion.plays} audio {suggestion.plays === 1 ? 'play' : 'plays'} on this route's stops in the last 90 days (at least 20 needed).
+        </p>
+      )}
+      {suggestion?.kind === 'ok' && (
+        <div className="mt-2 rounded-xl border border-sand/60 p-3" role="region" aria-label="Suggested must-see stops">
+          <p className="mb-1 text-stone-500">Most played and visited in the last 90 days:</p>
+          <ol className="mb-2 list-decimal ps-5 space-y-0.5">
+            {suggestion.picks.map(c => (
+              <li key={c.id}>
+                {name(c.id)} <span className="text-stone-400">· {c.plays} {c.plays === 1 ? 'play' : 'plays'}, {c.arrivals} {c.arrivals === 1 ? 'arrival' : 'arrivals'}</span>
+                {isMust(c.id) && <span className="ms-1 text-nile">(already must-see)</span>}
+              </li>
+            ))}
+          </ol>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              className="!py-1.5 !px-3"
+              disabled={suggestion.picks.every(c => isMust(c.id))}
+              onClick={() => {
+                onApply(suggestion.picks.map(c => c.id));
+                setSuggestion(null);
+              }}
+            >
+              Apply
+            </Button>
+            <Button type="button" variant="secondary" className="!py-1.5 !px-3" onClick={() => setSuggestion(null)}>
+              Close
+            </Button>
+          </div>
+          <p className="mt-2 text-[11px] text-stone-400">Apply ticks them here; save the route to keep it. Stops already ticked stay ticked.</p>
+        </div>
+      )}
+    </div>
   );
 }
 
