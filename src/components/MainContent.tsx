@@ -20,7 +20,7 @@ import { Logo } from './Logo';
 import { RouteDownload } from './RouteDownload';
 import { NextStop, StopNumber, stopOfLabel } from './WalkInfo';
 import { STOP_CATEGORIES, walkPlan, walkStops } from '../lib/walk';
-import { hasShortWalk, shortWalkPlaces, shortWalkStats, useShortWalks } from '../lib/short-walk';
+import { hasShortWalk, setShortWalk, shortWalkPlaces, shortWalkStats, useShortWalks } from '../lib/short-walk';
 import { ShortWalkToggle, shortWalkMeta } from './ShortWalkToggle';
 import { track } from '../lib/track';
 import { matchScore, searchPlaces } from '../lib/search';
@@ -52,7 +52,7 @@ import { NoteMark } from './PlaceNote';
 import { accessSummary, hasAccessInfo, routeAccess } from '../lib/step-free';
 import { ContinueWalk } from './ContinueWalk';
 import { PlanVisit } from './PlanVisit';
-import { isPlaceLink, isRouteLink, placeFromLocation, routeFromLocation, savedFromLocation } from '../lib/share';
+import { isPlaceLink, isRouteLink, placeFromLocation, routeFromLocation, savedFromLocation, shortWalkFromLocation } from '../lib/share';
 import { askForCompass } from '../lib/useWalkSensors';
 import { LazyBoundary } from './LazyBoundary';
 
@@ -128,6 +128,17 @@ export const MainContent: React.FC = () => {
   // The places the list, map and walk work from: with the short walk on, the route's other stops are left out.
   const walkPlaces = useMemo(() => (shortOn ? shortWalkPlaces(locations, selectedRoute) : locations), [shortOn, locations, selectedRoute]);
   const shortStats = useMemo(() => (canShort ? shortWalkStats(locations, selectedRoute) : null), [canShort, locations, selectedRoute]);
+  // A shared short walk (`/r/<id>?short=1`): read once, before the link leaves the
+  // address, and applied when the route has a short walk, which may only be known
+  // once the live content (with its must-see stops) arrives. Otherwise it's ignored.
+  const shortLink = React.useRef(shortWalkFromLocation(window.location));
+  useEffect(() => {
+    const id = shortLink.current;
+    if (id && hasShortWalk(locations, id)) {
+      setShortWalk(id, true);
+      shortLink.current = null;
+    }
+  }, [locations]);
 
   // Fetch the map code in the background so switching to the map is instant.
   useEffect(() => {
@@ -737,7 +748,7 @@ export const MainContent: React.FC = () => {
                 </button>
               )}
               {plan.size > 0 && <PlanVisit route={currentRouteData} places={locations} walkPlaces={shortOn ? walkPlaces : undefined} onOpenPlace={openPlace} compactOnPhone />}
-              <ShareRoute route={currentRouteData} isArabic={isArabic} compactOnPhone />
+              <ShareRoute route={currentRouteData} isArabic={isArabic} short={shortOn} compactOnPhone />
               </div>
 
               {plan.size > 0 && (

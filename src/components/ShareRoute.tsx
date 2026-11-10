@@ -41,11 +41,18 @@ export function useCopied() {
  * `compactOnPhone`: an icon-only square on phones (the label stays the
  * button's accessible name), so it fits beside "Start the walk".
  */
-export function ShareRoute({ route, compactOnPhone = false }: { route: Route; isArabic?: boolean; compactOnPhone?: boolean }) {
+export function ShareRoute({ route, short = false, compactOnPhone = false }: {
+  route: Route;
+  isArabic?: boolean;
+  /** The short walk is on: the link opens it, and the text says so. */
+  short?: boolean;
+  compactOnPhone?: boolean;
+}) {
   const [copied, flash] = useCopied();
   const share = async () => {
-    const text = `${nameOf(route)}: ${L('a walk through historic Cairo', 'جولة سير في القاهرة التاريخية')}`;
-    if (await shareLink(routeShareUrl(window.location.origin, route.id), nameOf(route), text)) flash();
+    const what = short ? L('Short walk', 'جولة قصيرة') : L('a walk through historic Cairo', 'جولة سير في القاهرة التاريخية');
+    const text = `${nameOf(route)}: ${what}`;
+    if (await shareLink(routeShareUrl(window.location.origin, route.id, short), nameOf(route), text)) flash();
   };
   return (
     <button

@@ -10,6 +10,7 @@ import { join } from 'node:path';
 import { photoForPlace, photoForRoute } from '../../src/data/photo-resolve.js';
 import type { Photo } from '../../src/data/photos.js';
 import type { Location, Route } from '../../src/data/locations.js';
+import { hasShortWalk, shortWalkStats } from '../../src/lib/short-walk-core.js';
 import { byLang, descriptionOf, isLang, LANGUAGES, nameOf, type Lang } from '../../src/i18n/lang.js';
 import { getContent } from './content.js';
 
@@ -19,14 +20,26 @@ const escapeHtml = (s: string) =>
 type Preview = { title: string; description: string; url: string; photo: Photo | undefined; locale?: string };
 
 
-/** Adds the preview tags for a route to the app's HTML, and names the page after it. */
-export function withRoutePreview(html: string, route: Route, origin: string): string {
-  return withPreview(html, origin, {
-    url: `${origin}/r/${encodeURIComponent(route.id)}`,
-    title: `${route.nameEn} · ${route.nameAr} | Cairo Historic Explorer`,
-    description: `${route.descriptionEn}. ${route.distance}, ${route.duration}. Self-guided walk with audio guides that work offline.`,
-    photo: photoForRoute(route),
-  });
+/**
+ * Adds the preview tags for a route to the app's HTML, and names the page
+ * after it. `short`: the link asks for the route's short walk, which it has
+ * (its must-see stops, distance and time).
+ */
+export function withRoutePreview(html: string, route: Route, origin: string, short?: { stops: number; meters: number; minutes: number }): string {
+  const url = `${origin}/r/${encodeURIComponent(route.id)}`;
+  return withPreview(html, origin, short
+    ? {
+        url: `${url}?short=1`,
+        title: `${route.nameEn} (short walk) · ${route.nameAr} | Cairo Historic Explorer`,
+        description: `Short walk: the ${short.stops} must-see stops, ${Math.round(short.meters / 100) / 10} km, about ${short.minutes} min of walking. ${route.descriptionEn}. Self-guided, with audio guides that work offline.`,
+        photo: photoForRoute(route),
+      }
+    : {
+        url,
+        title: `${route.nameEn} · ${route.nameAr} | Cairo Historic Explorer`,
+        description: `${route.descriptionEn}. ${route.distance}, ${route.duration}. Self-guided walk with audio guides that work offline.`,
+        photo: photoForRoute(route),
+      });
 }
 
 // About two lines in a chat preview; cut at a word.
@@ -105,10 +118,14 @@ export async function handleShare(request: Request): Promise<Response> {
   const placeParam = url.searchParams.get('place');
   if (placeParam !== null) return handlePlace(url, placeParam);
   let html = await appHtml(url.origin);
-  if (html === null) return Response.redirect(new URL(`/?route=${encodeURIComponent(url.searchParams.get('route') ?? '')}`, url.origin), 302);
+  const wantsShort = url.searchParams.get('short') === '1';
+  if (html === null) return Response.redirect(new URL(`/?route=${encodeURIComponent(url.searchParams.get('route') ?? '')}${wantsShort ? '&short=1' : ''}`, url.origin), 302);
   const id = url.searchParams.get('route');
-  const route = id ? (await getContent()).routes.find(r => r.id === id) : undefined;
-  if (route) html = withRoutePreview(html, route, url.origin);
+  const content = await getContent();
+  const route = id ? content.routes.find(r => r.id === id) : undefined;
+  // A short walk only for a route that has one; otherwise the route's own preview.
+  const short = route && wantsShort && hasShortWalk(content.places, route.id) ? shortWalkStats(content.places, route.id) : undefined;
+  if (route) html = withRoutePreview(html, route, url.origin, short);
   return htmlResponse(html);
 }
 

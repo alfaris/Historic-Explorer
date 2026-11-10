@@ -6,7 +6,7 @@
 // from straight-line distance, so they work offline and need no routing
 // service.
 
-import { distanceMeters, type Point } from './geo';
+import { distanceMeters, type Point } from './geo.js';
 
 export const STOP_CATEGORIES = new Set(['monument']);
 
