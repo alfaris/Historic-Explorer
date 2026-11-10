@@ -158,9 +158,11 @@ export function RoutesTab({ content, save, initialRouteId = null, onSelected, on
         : `Edited route "${finalDraft.nameEn}"${orderChanged ? ' and its stop order' : ''}`;
     const marked = `${newMust.length} must-see ${newMust.length === 1 ? 'stop' : 'stops'}`;
     const note = !newMust.length ? message : !detailsChanged && !orderChanged ? `Marked ${marked} on "${finalDraft.nameEn}"` : `${message} (marked ${marked})`;
+    // Only the stops this save marked: any applied while it was in flight stay pending.
+    const saved = newMust;
     if (await save(next, note)) {
       setIsNew(false);
-      setMustAdds([]);
+      setMustAdds(a => a.filter(id => !saved.includes(id)));
     }
     setBusy(false);
   };
@@ -405,6 +407,7 @@ export function RoutesTab({ content, save, initialRouteId = null, onSelected, on
                 order={order}
                 places={content.places}
                 pending={newMust}
+                saving={busy}
                 onApply={ids => setMustAdds(a => [...new Set([...a, ...ids.filter(id => order.includes(id))])])}
               />
             </div>
@@ -436,8 +439,10 @@ export function RoutesTab({ content, save, initialRouteId = null, onSelected, on
  * the audio for and arrive at most over the last 90 days (see must-see-suggest).
  * Apply ticks them in the draft; nothing is saved until the route is.
  */
-function MustSee({ order, places, pending, onApply }: {
+function MustSee({ order, places, pending, saving, onApply }: {
   order: number[];
+  /** A save is in flight: Apply waits for it. */
+  saving: boolean;
   places: Content['places'];
   /** Ticked by Apply, not saved yet. */
   pending: number[];
@@ -496,7 +501,7 @@ function MustSee({ order, places, pending, onApply }: {
               type="button"
               variant="secondary"
               className="!py-1.5 !px-3"
-              disabled={suggestion.picks.every(c => isMust(c.id))}
+              disabled={saving || suggestion.picks.every(c => isMust(c.id))}
               onClick={() => {
                 onApply(suggestion.picks.map(c => c.id));
                 setSuggestion(null);
