@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { CalendarClock, CheckCircle2, Clock, MoonStar, TriangleAlert, X } from 'lucide-react';
+import { CalendarClock, CheckCircle2, Clock, MoonStar, TriangleAlert, X, Zap } from 'lucide-react';
 import type { Location, Route } from '../data/locations';
 import { cairoTime, dayName, formatTime, statusText, toMinutes } from '../lib/opening-hours';
 import { prayerText } from '../lib/prayer-times';
@@ -84,9 +84,10 @@ function FlagLine({ flag, at, lang }: { flag: PlanFlag; at: Date; lang: Lang }) 
   );
 }
 
-function PlanDialog({ route, places, onClose, onOpenPlace }: {
+function PlanDialog({ route, places, walkPlaces = places, onClose, onOpenPlace }: {
   route: Route;
   places: Location[];
+  walkPlaces?: Location[];
   onClose: () => void;
   onOpenPlace: (id: number) => void;
 }) {
@@ -101,8 +102,10 @@ function PlanDialog({ route, places, onClose, onOpenPlace }: {
 
   const start = useMemo(() => cairoInstant(now, day, /^\d\d:\d\d$/.test(time) ? toMinutes(time) : 9 * 60), [now, day, time]);
   const { specialPeriods } = useContent();
-  const plan = useMemo(() => visitPlan(places, route.id, start, stay, undefined, specialPeriods), [places, route.id, start, stay, specialPeriods]);
-  const suggestion = useMemo(() => suggestStart(places, route.id, start, stay, now, specialPeriods), [places, route.id, start, stay, now, specialPeriods]);
+  // The stops come from the walk as chosen (the short walk leaves some out); breaks and the time per stop from every place.
+  const plan = useMemo(() => visitPlan(walkPlaces, route.id, start, stay, undefined, specialPeriods), [walkPlaces, route.id, start, stay, specialPeriods]);
+  const suggestion = useMemo(() => suggestStart(walkPlaces, route.id, start, stay, now, specialPeriods), [walkPlaces, route.id, start, stay, now, specialPeriods]);
+  const short = walkPlaces !== places;
 
   const dayLabel = (k: number) =>
     k === 0 ? L('Today', 'اليوم') : k === 1 ? L('Tomorrow', 'غدًا') : dayName(cairoTime(cairoInstant(now, k, 12 * 60)).day, lang).replace(/^./, c => c.toUpperCase());
@@ -154,6 +157,12 @@ function PlanDialog({ route, places, onClose, onOpenPlace }: {
 
         <div className="px-5 py-4">
           <div aria-live="polite" className="mb-4 space-y-2">
+            {short && (
+              <p className="flex items-center gap-2 text-xs font-bold text-nile">
+                <Zap className="w-3.5 h-3.5 shrink-0 text-gold-ink" aria-hidden="true" />
+                {L('Short walk: the must-see stops only', 'جولة قصيرة: المحطات التي لا تفوّت فقط')}
+              </p>
+            )}
             {plan.finish && (
               <p className="flex items-center gap-2 text-sm font-bold text-ink">
                 <Clock className="w-4 h-4 shrink-0 text-gold" aria-hidden="true" />
@@ -231,9 +240,11 @@ function PlanDialog({ route, places, onClose, onOpenPlace }: {
  * start time, flagging closures and prayer pauses, with a better start time
  * when there is one. Works offline.
  */
-export function PlanVisit({ route, places, onOpenPlace, compactOnPhone = false }: {
+export function PlanVisit({ route, places, walkPlaces, onOpenPlace, compactOnPhone = false }: {
   route: Route;
   places: Location[];
+  /** The places the walk's stops come from, when the short walk leaves some out. */
+  walkPlaces?: Location[];
   onOpenPlace: (id: number) => void;
   compactOnPhone?: boolean;
 }) {
@@ -248,7 +259,7 @@ export function PlanVisit({ route, places, onOpenPlace, compactOnPhone = false }
         <CalendarClock className="w-4 h-4 text-stone-500" aria-hidden="true" />
         <span className={compactOnPhone ? 'sr-only sm:not-sr-only' : undefined}>{L('Plan my visit', 'خطط لزيارتك')}</span>
       </button>
-      {open && <PlanDialog route={route} places={places} onClose={() => setOpen(false)} onOpenPlace={onOpenPlace} />}
+      {open && <PlanDialog route={route} places={places} walkPlaces={walkPlaces} onClose={() => setOpen(false)} onOpenPlace={onOpenPlace} />}
     </>
   );
 }

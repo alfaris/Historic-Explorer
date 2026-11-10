@@ -8,11 +8,12 @@ import { formatDistance, formatDuration } from '../lib/route-format';
 import { compactWeek, oneLine, sheetMap } from '../lib/route-sheet';
 import { routeShareUrl } from '../lib/share';
 import { walkPlan, walkStops } from '../lib/walk';
+import { shortWalkMeta } from './ShortWalkToggle';
 import { L, LANGUAGES, currentLang, descriptionOf, fallbackLang, nameOf } from '../i18n/lang';
 import { minutesLabel } from './WalkInfo';
 import { accessSummary, hasAccessInfo, routeAccess } from '../lib/step-free';
 import { accessText } from '../lib/visitor-tips';
-import { gettingThere } from '../lib/getting-there';
+import { gettingThereFor } from '../lib/getting-there';
 
 /**
  * The printable route sheet (A4): the route, a schematic map of the stops,
@@ -20,11 +21,19 @@ import { gettingThere } from '../lib/getting-there';
  * it, and a QR code that opens the route in the app. Rendered off screen for
  * the browser's print dialog only (see #print-sheet in index.css), then removed.
  */
-export default function RouteSheet({ route, places, onDone }: { route: Route; places: Location[]; onDone: () => void }) {
+export default function RouteSheet({ route, places, walkPlaces = places, short, onDone }: {
+  route: Route;
+  places: Location[];
+  /** The places the walk's stops come from, when the short walk leaves some out. */
+  walkPlaces?: Location[];
+  /** The short walk's length and time, when it's on. */
+  short?: { meters: number; minutes: number };
+  onDone: () => void;
+}) {
   const lang = currentLang();
   const ar = lang === 'ar';
-  const stops = useMemo(() => walkStops(places, route.id), [places, route.id]);
-  const plan = useMemo(() => walkPlan(places, route.id), [places, route.id]);
+  const stops = useMemo(() => walkStops(walkPlaces, route.id), [walkPlaces, route.id]);
+  const plan = useMemo(() => walkPlan(walkPlaces, route.id), [walkPlaces, route.id]);
   const map = useMemo(() => sheetMap(stops), [stops]);
   const url = routeShareUrl(window.location.origin, route.id);
   // Hours as they stand for the coming week, special hours (Ramadan, closures) included, as on screen.
@@ -73,10 +82,14 @@ export default function RouteSheet({ route, places, onDone }: { route: Route; pl
     };
   }, [qr]);
 
-  const meta = [formatDistance(route.distanceKm, lang), formatDuration(route.hoursMin, route.hoursMax, lang)].filter(Boolean).join(' · ');
-  const access = routeAccess(places, route.id);
+  const meta = short
+    ? `${L('Short walk', 'جولة قصيرة')} · ${shortWalkMeta(short.meters, short.minutes)}`
+    : [formatDistance(route.distanceKm, lang), formatDuration(route.hoursMin, route.hoursMax, lang)].filter(Boolean).join(' · ');
+  // Access and the start, for the stops on this sheet.
+  const access = routeAccess(walkPlaces, route.id);
   const showAccess = hasAccessInfo(access);
-  const there = gettingThere(route, places, lang);
+  // The short walk may start at another stop: then only its name, not the route start's directions.
+  const there = gettingThereFor(route, places, walkPlaces, lang);
   // "Start: Bab Zuweila (باب زويلة) · Nearest metro: Attaba · Ask for …": the Arabic name to show a driver.
   const startLine = there && [
     `${L('Start', 'البداية')}: ${nameOf(there.start)}${ar ? '' : ` (${there.start.nameAr})`}`,

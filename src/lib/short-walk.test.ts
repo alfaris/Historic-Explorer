@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Category } from '../data/locations';
 import { DETOUR_FACTOR, walkMinutes, walkPlan } from './walk';
 import { distanceMeters } from './geo';
 
-const place = (id: number, lat: number, mustSee = false, category = 'monument', routeId = 'r') => ({ id, routeId, category, lat, lng: 31.26, mustSee });
+const place = (id: number, lat: number, mustSee = false, category: Category = 'monument', routeId = 'r') => ({ id, routeId, category, lat, lng: 31.26, mustSee, nameEn: `P${id}`, nameAr: `م${id}` });
 // 0.001° of latitude is about 111 m.
 const places = [
   place(1, 30.04, true),
@@ -62,6 +63,20 @@ describe('short walk', () => {
     expect(stats.stops).toBe(3);
     expect(stats.meters).toBe(Math.round(((legs[0] + legs[1]) * DETOUR_FACTOR) / 100) * 100);
     expect(stats.minutes).toBe(walkMinutes(legs[0]) + walkMinutes(legs[1]));
+  });
+});
+
+describe('planning and printing a short walk', () => {
+  it('times only the must-see stops, walking straight between them', async () => {
+    const { shortWalkPlaces, shortWalkStats } = await import('./short-walk');
+    const { visitPlan } = await import('./visit-plan');
+    const start = new Date('2027-01-05T08:00:00Z');
+    const plan = visitPlan(shortWalkPlaces(places, 'r'), 'r', start, 20, []);
+    expect(plan.stops.map(s => [s.place.id, s.number])).toEqual([[1, 1], [3, 2], [5, 3]]);
+    expect(plan.stops[1].walkMinutes).toBe(walkMinutes(distanceMeters(places[0], places[2])));
+    // Three stays of 20 minutes plus the walking the header shows.
+    const { minutes } = shortWalkStats(places, 'r');
+    expect((plan.finish!.getTime() - start.getTime()) / 60_000).toBe(3 * 20 + minutes);
   });
 });
 

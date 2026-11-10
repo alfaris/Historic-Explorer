@@ -736,7 +736,7 @@ export const MainContent: React.FC = () => {
                   {L('Start the walk', 'ابدأ الجولة')}
                 </button>
               )}
-              {plan.size > 0 && <PlanVisit route={currentRouteData} places={locations} onOpenPlace={openPlace} compactOnPhone />}
+              {plan.size > 0 && <PlanVisit route={currentRouteData} places={locations} walkPlaces={shortOn ? walkPlaces : undefined} onOpenPlace={openPlace} compactOnPhone />}
               <ShareRoute route={currentRouteData} isArabic={isArabic} compactOnPhone />
               </div>
 
@@ -749,7 +749,7 @@ export const MainContent: React.FC = () => {
                 />
               )}
               <GettingThere route={currentRouteData} places={locations} className="mb-3" />
-              <RouteDownload route={currentRouteData} places={routePlaces} />
+              <RouteDownload route={currentRouteData} places={routePlaces} short={shortOn} />
               {plan.size > 0 && (
                 <button
                   type="button"
@@ -762,7 +762,7 @@ export const MainContent: React.FC = () => {
               )}
               {printing > 0 && (
                 <React.Suspense fallback={null}>
-                  <RouteSheet key={printing} route={currentRouteData} places={locations} onDone={() => setPrinting(0)} />
+                  <RouteSheet key={printing} route={currentRouteData} places={locations} walkPlaces={walkPlaces} short={shortOn && shortStats ? shortStats : undefined} onDone={() => setPrinting(0)} />
                 </React.Suspense>
               )}
             </div>

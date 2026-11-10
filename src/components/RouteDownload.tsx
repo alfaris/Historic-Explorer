@@ -20,7 +20,12 @@ import { downloadError, formatSize, useOnline } from './offline-ui';
  * Saves a route (audio guides in the current language, photos and map) so it
  * works with no connection, and shows whether the saved copy is up to date.
  */
-export function RouteDownload({ route, places }: { route: Route; places: Location[] }) {
+export function RouteDownload({ route, places, short = false }: {
+  route: Route;
+  places: Location[];
+  /** The short walk is on: the download still saves every stop, and says so. */
+  short?: boolean;
+}) {
   const { language } = useLanguage();
   const ar = language === 'ar';
   const lang = currentLang();
@@ -134,6 +139,7 @@ export function RouteDownload({ route, places }: { route: Route; places: Locatio
       {!progress && !savedRoute && (
         <p className="text-xs text-stone-400">
           {L('Audio guides, photos and map, so the walk works with no signal.', 'الأدلة الصوتية والصور والخريطة، لتعمل دون اتصال.')}
+          {short && ` ${L('Every stop is saved, not only the short walk, so the full route works offline too.', 'تُحفظ كل المحطات، لا الجولة القصيرة فقط، لتعمل الجولة الكاملة دون اتصال أيضًا.')}`}
         </p>
       )}
       {error && <p className="text-xs text-red-700" role="alert">{error}</p>}
