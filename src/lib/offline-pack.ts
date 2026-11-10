@@ -5,6 +5,7 @@
 import type { Location, Route } from '../data/locations';
 import { photoForPlace, photoForRoute, smallPhotoSrc, thumbPhotoSrc } from '../data/photo-resolve';
 import { audioVersion } from './text-hash';
+import { narrationSource } from './guide-kind';
 import type { OfflineCacheKind } from './offline-caches';
 
 import { descriptionOf, type Lang } from '../i18n/lang.js';
@@ -17,12 +18,14 @@ export const audioText = (place: Pick<Location, 'descriptionEn' | 'descriptionAr
   descriptionOf(place, lang);
 
 /**
- * The audio guide URL. It carries a hash of the narrated text, so editing a
- * description in the admin gives it a new URL instead of a stale recording.
- * AudioGuide and the offline download must build exactly the same URL.
+ * The audio guide URL. It carries a hash of what the recording is made from
+ * (narrationSource: the description and how the place is told), so editing a
+ * description, a name or a category in the admin gives it a new URL instead
+ * of a stale recording. AudioGuide and the offline download must build
+ * exactly the same URL.
  */
-export const audioGuideUrl = (id: number, lang: Lang, text: string) =>
-  `/api/audio-guide?id=${id}&lang=${lang}&v=${audioVersion(text)}`;
+export const audioGuideUrl = (id: number, lang: Lang, source: string) =>
+  `/api/audio-guide?id=${id}&lang=${lang}&v=${audioVersion(source)}`;
 
 // Tile maths for the Web Mercator tiles OpenStreetMap serves.
 export const lngToTileX = (lng: number, z: number) => Math.floor(((lng + 180) / 360) * 2 ** z);
@@ -87,7 +90,7 @@ export function routePack(route: Pick<Route, 'id' | 'photo'>, places: Location[]
   };
   for (const p of places) {
     const text = audioText(p, lang);
-    if (text) add(audioGuideUrl(p.id, lang, text), 'audio');
+    if (text) add(audioGuideUrl(p.id, lang, narrationSource(p, lang, text)), 'audio');
   }
   // Every size of each photo: the browser may pick the small or thumbnail copy
   // (srcset), and offline it won't fall back to the full one if that's all that's saved.

@@ -3,6 +3,7 @@ import { ChevronDown, Gauge, Loader2, Play, Sparkles } from 'lucide-react';
 import { textHash } from '../lib/text-hash';
 import { useDisplay } from '../lib/display';
 import { audioGuideUrl } from '../lib/offline-pack';
+import { narrationSource } from '../lib/guide-kind';
 import { track } from '../lib/track';
 import { guidePlayer, nextSpeed, speedLabel, type GuideTrack } from '../lib/guide-player';
 import { useContent } from '../data/ContentContext';
@@ -50,12 +51,12 @@ const guideCache = new Map<string, Promise<GuideAudio>>();
 
 // The URL includes a hash of the narrated text, so editing a description in
 // the admin dashboard gives it a new URL instead of a stale cached recording.
-const loadGuideAudio = (locationId: number, langCode: Lang, text: string) => {
-  const version = textHash(text);
+const loadGuideAudio = (locationId: number, langCode: Lang, source: string) => {
+  const version = textHash(source);
   const key = `${locationId}:${langCode}:${version}`;
   let pending = guideCache.get(key);
   if (!pending) {
-    pending = fetch(audioGuideUrl(locationId, langCode, text)).then(async (res) => {
+    pending = fetch(audioGuideUrl(locationId, langCode, source)).then(async (res) => {
       if (!res.ok) throw new Error(`Audio guide request failed (${res.status})`);
       if (res.headers.get('Content-Type')?.includes('application/json')) {
         const { script } = await res.json();
@@ -85,7 +86,10 @@ export function AudioGuide({ locationId, text, langCode, onNext, onPrevious, aut
   // The guide this component shows now: a late answer for an earlier stop (walk mode) is ignored.
   const currentKey = useRef('');
   const { places, routes } = useContent();
-  const key = `${locationId}:${langCode}:${textHash(text)}`;
+  // What the recording is made from (description and how the place is told): its URL's version.
+  const place = places.find(p => p.id === locationId);
+  const source = place ? narrationSource(place, langCode, text) : text;
+  const key = `${locationId}:${langCode}:${textHash(source)}`;
   currentKey.current = key;
   const mine = state.key === key;
   const status = mine ? state.status : 'idle';
@@ -101,7 +105,7 @@ export function AudioGuide({ locationId, text, langCode, onNext, onPrevious, aut
     if (!text || dataSaver) return;
     let active = true;
     const timer = setTimeout(() => {
-      loadGuideAudio(locationId, langCode, text)
+      loadGuideAudio(locationId, langCode, source)
         .then(result => {
           if (active && result.script) setTranscript({ key, text: result.script });
         })
@@ -137,7 +141,7 @@ export function AudioGuide({ locationId, text, langCode, onNext, onPrevious, aut
     // Started without a tap and the browser said no: ask for one rather than fail silently.
     const onBlocked = auto ? () => { if (currentKey.current === key) setBlocked(key); } : undefined;
     try {
-      const result = await loadGuideAudio(locationId, langCode, text);
+      const result = await loadGuideAudio(locationId, langCode, source);
       if (result.script) {
         spoken = result.script;
         if (currentKey.current === key) setTranscript({ key, text: result.script });

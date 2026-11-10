@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { locations } from '../../src/data/locations';
 import { audioVersion } from '../../src/lib/text-hash';
+import { narrationSource } from '../../src/lib/guide-style';
 
 // Stand-ins for Blob storage, the live content and Gemini.
 const blobs = new Map<string, string | Buffer>();
 let failWav = false;
 let geminiCalls = 0;
+const prompts: string[] = [];
 const SCRIPT = 'Stand here, traveller: these walls have watched Cairo for a thousand years — «ألف عام».';
 
 vi.mock('@vercel/blob', () => {
@@ -33,8 +35,9 @@ vi.mock('@google/genai', () => ({
   ThinkingLevel: { MINIMAL: 'MINIMAL' },
   GoogleGenAI: class {
     models = {
-      generateContent: async (req: { model: string }) => {
+      generateContent: async (req: { model: string; contents: unknown }) => {
         geminiCalls++;
+        if (typeof req.contents === 'string') prompts.push(req.contents);
         if (req.model.includes('tts')) return { candidates: [{ content: { parts: [{ inlineData: { data: Buffer.from([1, 2, 3, 4]).toString('base64') } }] } }] };
         return { text: SCRIPT };
       },
@@ -47,7 +50,7 @@ const { audioStatus, generateAndStoreAudio, handleAudioGuide, TRANSCRIPT_HEADER 
 const place = locations[0];
 const request = (ip: string) =>
   handleAudioGuide(
-    new Request(`https://x/api/audio-guide?id=${place.id}&lang=en&v=${audioVersion(place.descriptionEn!)}`, { headers: { 'x-real-ip': ip } }),
+    new Request(`https://x/api/audio-guide?id=${place.id}&lang=en&v=${audioVersion(narrationSource(place, 'en', place.descriptionEn!))}`, { headers: { 'x-real-ip': ip } }),
   );
 const wavPath = () => [...blobs.keys()].find(k => k.endsWith('.wav'))!;
 
@@ -56,7 +59,25 @@ beforeEach(() => {
   process.env.GEMINI_API_KEY = 'test';
   blobs.clear();
   geminiCalls = 0;
+  prompts.length = 0;
   failWav = false;
+});
+
+describe('narration brief', () => {
+  it("tells each kind of place its own way, and stores it under a key that includes the brief", async () => {
+    const mosque = locations.find(l => /Sultan Hassan/.test(l.nameEn))!;
+    const tomb = locations.find(l => /Shajar al-Durr/.test(l.nameEn))!;
+    await generateAndStoreAudio(mosque, 'en');
+    await generateAndStoreAudio(tomb, 'ar');
+    expect(prompts[0]).toMatch(/place of prayer/);
+    expect(prompts[0]).toContain('Sultan Hassan Mosque');
+    expect(prompts[1]).toMatch(/person buried here/);
+    expect(prompts[1]).toContain(tomb.nameAr);
+    for (const prompt of prompts) expect(prompt).toMatch(/Never begin with these.*"Imagine"/);
+    // Same description, told as another kind of place: a different recording.
+    expect(await audioStatus({ ...mosque, category: 'coffee' }, 'en')).toBe('missing');
+    expect(await audioStatus(mosque, 'en')).toBe('stored');
+  });
 });
 
 describe('audio guide transcripts', () => {

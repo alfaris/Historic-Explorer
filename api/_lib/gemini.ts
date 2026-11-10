@@ -5,6 +5,7 @@ import type { Location } from '../../src/data/locations.js';
 import { getContent } from './content.js';
 import { parseCanonicalQuery, rateLimit } from './guard.js';
 import { audioVersion } from '../../src/lib/text-hash.js';
+import { guideBrief, narrationSource } from '../../src/lib/guide-style.js';
 import { descriptionOf, LANGUAGES, nameOf, type Lang } from '../../src/i18n/lang.js';
 
 // Server-only: the key is read at request time and never shipped to the browser.
@@ -81,9 +82,17 @@ const AUDIO_VERSION = 'v1';
 // Without a connected store (e.g. local dev) audio is generated on every cold request.
 const hasBlobStore = () => Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID);
 
-// Keyed by content, so editing a description (in locations.ts or the admin dashboard) produces fresh audio.
-const audioBlobPath = (text: string, lang: Lang) =>
-  `audio-guide/${createHash('sha256').update(`${AUDIO_VERSION}|${lang}|${text}`).digest('hex').slice(0, 32)}.wav`;
+/**
+ * What a place's narration is made from: its description, and the source
+ * (that description with how the place is told, see guide-style), which keys
+ * the recording and versions its URL.
+ */
+type GuideInput = { text: string; brief: string; source: string };
+
+// Keyed by content, so editing a description (in locations.ts or the admin
+// dashboard), or a change to how the place is told, produces fresh audio.
+const audioBlobPath = ({ source }: GuideInput, lang: Lang) =>
+  `audio-guide/${createHash('sha256').update(`${AUDIO_VERSION}|${lang}|${source}`).digest('hex').slice(0, 32)}.wav`;
 /** The narration script, next to the recording under the same key. */
 export const scriptBlobPath = (audioPath: string) => audioPath.replace(/\.wav$/, '.txt');
 
@@ -116,10 +125,10 @@ const storeBlob = async (pathname: string, body: Uint8Array | string, contentTyp
   }
 };
 
-const loadOrGenerateAudio = async (text: string, lang: Lang, pathname: string): Promise<GuideAudio> => {
+const loadOrGenerateAudio = async (input: GuideInput, lang: Lang, pathname: string): Promise<GuideAudio> => {
   const [stored, storedScript] = await Promise.all([readStoredBlob(pathname), readStoredBlob(scriptBlobPath(pathname))]);
   if (stored) return { wav: stored, script: storedScript ? new TextDecoder().decode(storedScript) : null };
-  const { wav, script } = await generateAudio(text, lang);
+  const { wav, script } = await generateAudio(input, lang);
   await storeGuide(pathname, wav, script);
   return { wav, script };
 };
@@ -134,6 +143,10 @@ const storeGuide = async (pathname: string, wav: Uint8Array, script: string) =>
 // and the pre-generation script must both use this, or their keys won't match.
 const audioText = (location: Location, lang: Lang) =>
   descriptionOf(location, lang) || null; // French and Spanish fall back to the English text, narrated in that language
+const guideInput = (location: Location, lang: Lang): GuideInput | null => {
+  const text = audioText(location, lang);
+  return text ? { text, brief: guideBrief(location, nameOf(location, lang)), source: narrationSource(location, lang, text) } : null;
+};
 
 /**
  * Whether this place's audio and its script are already in Blob for the
@@ -142,9 +155,9 @@ const audioText = (location: Location, lang: Lang) =>
  */
 export async function audioStatus(location: Location, lang: Lang): Promise<'stored' | 'missing' | 'no-text'> {
   if (!hasBlobStore()) throw new Error('BLOB_READ_WRITE_TOKEN is not set');
-  const text = audioText(location, lang);
-  if (!text) return 'no-text';
-  const pathname = audioBlobPath(text, lang);
+  const input = guideInput(location, lang);
+  if (!input) return 'no-text';
+  const pathname = audioBlobPath(input, lang);
   try {
     await Promise.all([head(pathname), head(scriptBlobPath(pathname))]);
     return 'stored';
@@ -156,16 +169,16 @@ export async function audioStatus(location: Location, lang: Lang): Promise<'stor
 
 /** Generates this place's audio and stores it in Blob. Throws if either step fails. */
 export async function generateAndStoreAudio(location: Location, lang: Lang): Promise<void> {
-  const text = audioText(location, lang);
-  if (!text) throw new Error('Place has no description in this language');
+  const input = guideInput(location, lang);
+  if (!input) throw new Error('Place has no description in this language');
   let guide: { wav: Uint8Array; script: string };
   try {
-    guide = await generateAudio(text, lang);
+    guide = await generateAudio(input, lang);
   } catch (err) {
     if (err instanceof ScriptOnlyError) throw new Error('Text-to-speech failed (the app would fall back to the browser voice)');
     throw err;
   }
-  const pathname = audioBlobPath(text, lang);
+  const pathname = audioBlobPath(input, lang);
   if (!(await storeGuide(pathname, guide.wav, guide.script))) throw new Error('Storing the audio in Blob failed');
   // This instance may hold the old recording (without a script) in memory.
   audioCache.delete(pathname);
@@ -232,13 +245,17 @@ class ScriptOnlyError extends Error {
   }
 }
 
-const generateAudio = async (text: string, lang: Lang) => {
+/** The narration prompt: shared rules, then this place's brief (kind, tone, opening), then its description. */
+export const narrationPrompt = ({ text, brief }: GuideInput, lang: Lang) =>
+  `You are an audio guide narrator in historic Cairo, speaking to a visitor standing at this place. Tell its story so it fits this particular place, following the brief below. Do NOT include any formatting, markdown, or sound effect markers. Keep it to about 90 words. Speak directly to the listener as if you are standing next to them. The response MUST be ONLY the spoken text, in ${LANGUAGE_NAME(lang)}.\n\n${brief}\n\nHere is the information:\n${text}`;
+
+const generateAudio = async (input: GuideInput, lang: Lang) => {
   const ai = getClient();
 
   // A lite model with minimal thinking and a short script keeps both steps fast.
   const scriptResponse = await ai.models.generateContent({
     model: 'gemini-3.1-flash-lite-preview',
-    contents: `You are an immersive audio guide narrator for the historical city of Cairo. Make this historical fact sound like a captivating, slightly dramatic story for a tourist standing right there. Do NOT include any formatting, markdown, or sound effect markers. Keep it to about 90 words. Speak directly to the listener as if you are standing next to them. The response MUST be ONLY the spoken text, in ${LANGUAGE_NAME(lang)}. Here is the information:\n${text}`,
+    contents: narrationPrompt(input, lang),
     config: { thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL } },
   });
   const script = scriptResponse.text?.trim();
@@ -285,17 +302,18 @@ export async function handleAudioGuide(request: Request): Promise<Response> {
   const checked = await checkRequest(request, true);
   if (checked instanceof Response) return checked;
   const { location, lang, version } = checked;
-  const text = audioText(location, lang);
-  if (!text) return json({ error: 'Unknown location' }, 404);
-  const key = audioBlobPath(text, lang);
+  const input = guideInput(location, lang);
+  if (!input) return json({ error: 'Unknown location' }, 404);
+  const { source } = input;
+  const key = audioBlobPath(input, lang);
   try {
     // Without a script, look again later: the admin may regenerate it with one.
-    const { wav, script } = await memoize(audioCache, key, () => loadOrGenerateAudio(text, lang, key), g =>
+    const { wav, script } = await memoize(audioCache, key, () => loadOrGenerateAudio(input, lang, key), g =>
       g.script ? Infinity : Date.now() + 10 * 60_000,
     );
     const transcript = script && script.length <= MAX_TRANSCRIPT ? { [TRANSCRIPT_HEADER]: encodeURIComponent(script) } : {};
     return new Response(wav, {
-      headers: { 'Content-Type': 'audio/wav', 'Cache-Control': audioCacheControl(version, text, Boolean(script)), ...transcript },
+      headers: { 'Content-Type': 'audio/wav', 'Cache-Control': audioCacheControl(version, source, Boolean(script)), ...transcript },
     });
   } catch (err) {
     // The client reads the script aloud with the browser voice instead.
