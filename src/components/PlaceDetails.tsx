@@ -10,6 +10,7 @@ import { SpotIt } from './SpotIt';
 import { VisitorTips } from './VisitorTips';
 import { Notices } from './Notices';
 import { Nearby } from './Nearby';
+import { PlaceNote } from './PlaceNote';
 
 // The parts of a place's card shared by the list, the map and the admin's
 // preview, so the preview shows exactly what visitors see.
@@ -48,6 +49,7 @@ export function PlaceDetails({ place, audioNote, onOpenPlace }: { place: Locatio
       <PlaceHours place={place} />
       <VisitorTips place={place} />
       <SpotIt place={place} className="mt-4" />
+      {onOpenPlace && <PlaceNote placeId={place.id} />}
       {onOpenPlace && <Nearby place={place} onOpen={onOpenPlace} className="mt-4" />}
     </>
   );

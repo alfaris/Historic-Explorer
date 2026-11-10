@@ -46,6 +46,7 @@ import { RouteFinder } from './RouteFinder';
 import { GettingThere } from './GettingThere';
 import { Notices } from './Notices';
 import { RouteOpenNow } from './RouteOpenNow';
+import { NoteMark } from './PlaceNote';
 import { accessSummary, hasAccessInfo, routeAccess } from '../lib/step-free';
 import { ContinueWalk } from './ContinueWalk';
 import { PlanVisit } from './PlanVisit';
@@ -400,6 +401,7 @@ export const MainContent: React.FC = () => {
               <VisitedBadge placeId={loc.id} isArabic={isArabic} />
               <HoursBadge place={loc} />
               <PrayerNotice place={loc} compact />
+              <NoteMark placeId={loc.id} />
             </span>
           </span>
           <ChevronRight className={`w-5 h-5 shrink-0 text-stone-300 ${isArabic ? 'rotate-180' : ''}`} aria-hidden="true" />

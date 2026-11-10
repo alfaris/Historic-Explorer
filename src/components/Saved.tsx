@@ -6,6 +6,7 @@ import { photoForPlace } from '../data/photo-resolve';
 import { addSaved, removeSaved, savedByRoute, toggleSaved, useSaved } from '../lib/saved';
 import { savedShareUrl } from '../lib/share';
 import { clearRecent, recentPlaces, useRecent } from '../lib/recent';
+import { useNotes } from '../lib/notes';
 import { shareLink, useCopied } from './ShareRoute';
 import { useDialog } from '../lib/useDialog';
 import { L, byLang, currentLang, fallbackLang, nameOf } from '../i18n/lang';
@@ -177,6 +178,37 @@ export function SharedListSheet({ ids, places, routes, onOpen, onClose }: {
   );
 }
 
+/** "Places with notes": places with a note that aren't saved (saved ones show their note in the list above). */
+function NotesList({ places, routes, saved, onOpen }: { places: Location[]; routes: Route[]; saved: Set<number>; onOpen: (id: number) => void }) {
+  const notes = useNotes();
+  const items = places.filter(p => notes[String(p.id)] && !saved.has(p.id));
+  const ar = currentLang() === 'ar';
+  if (!items.length) return null;
+  const routeName = (id: string) => {
+    const r = routes.find(x => x.id === id);
+    return r ? nameOf(r) : '';
+  };
+  return (
+    <section aria-labelledby="notes-title" className="px-5 pb-5 pt-1">
+      <h3 id="notes-title" className="border-t border-sand/50 pt-4 mb-2 text-xs font-bold uppercase tracking-widest text-stone-500">{L('Places with notes', 'أماكن عليها ملاحظات')}</h3>
+      <ul className="divide-y divide-sand/40">
+        {items.map(place => (
+          <li key={place.id}>
+            <button onClick={() => onOpen(place.id)} className="flex w-full min-h-11 items-center gap-3 py-2 text-start hover:text-nile">
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm text-ink" lang={fallbackLang(place, 'name')}>{nameOf(place)}</span>
+                <span className="block truncate text-xs text-stone-500">{routeName(place.routeId)}</span>
+                <span className="block truncate text-xs italic text-stone-600" dir="auto">“{notes[String(place.id)]}”</span>
+              </span>
+              <ChevronRight className={`w-4 h-4 shrink-0 text-stone-300 ${ar ? 'rotate-180' : ''}`} aria-hidden="true" />
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 /** "Recently viewed": the last places whose card was opened, newest first, with Clear. Nothing when there are none. */
 function RecentList({ places, routes, onOpen }: { places: Location[]; routes: Route[]; onOpen: (id: number) => void }) {
   const items = recentPlaces(useRecent(), places);
@@ -217,6 +249,7 @@ function SavedSheet({ places, routes, onOpen, onClose }: {
   onOpen: (id: number) => void;
   onClose: () => void;
 }) {
+  const notes = useNotes();
   const saved = useSaved();
   const groups = savedByRoute(saved, places, routes);
   const total = groups.reduce((n, g) => n + g.places.length, 0);
@@ -283,6 +316,7 @@ function SavedSheet({ places, routes, onOpen, onClose }: {
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-base text-ink" lang={fallbackLang(place, 'name')}>{nameOf(place)}</span>
                             {category && <span className="block truncate text-xs text-stone-500">{nameOf(category)}</span>}
+                            {notes[String(place.id)] && <span className="block truncate text-xs italic text-stone-600" dir="auto">“{notes[String(place.id)]}”</span>}
                           </span>
                           <ChevronRight className={`w-4 h-4 shrink-0 text-stone-300 ${ar ? 'rotate-180' : ''}`} aria-hidden="true" />
                         </button>
@@ -301,6 +335,10 @@ function SavedSheet({ places, routes, onOpen, onClose }: {
             ))}
           </div>
         )}
+        <NotesList places={places} routes={routes} saved={saved} onOpen={id => {
+          onClose();
+          onOpen(id);
+        }} />
         <RecentList places={places} routes={routes} onOpen={id => {
           onClose();
           onOpen(id);
