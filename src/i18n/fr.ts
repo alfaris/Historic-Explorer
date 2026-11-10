@@ -328,6 +328,8 @@ export const FR: Record<string, string> = {
   'Undo skip': 'Annuler',
   'Short walk': 'Parcours court',
   'Must-see': 'Incontournable',
+  'Short walk: the must-see stops only': 'Parcours court : les étapes incontournables seulement',
+  'Every stop is saved, not only the short walk, so the full route works offline too.': 'Toutes les étapes sont enregistrées, pas seulement le parcours court : le parcours complet fonctionne aussi hors ligne.',
   'Through the ages': 'À travers les âges',
   'Places on every route, from the oldest.': 'Les lieux de tous les parcours, du plus ancien au plus récent.',
   'Era': 'Époque',
