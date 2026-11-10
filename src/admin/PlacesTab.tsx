@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Clock, Languages, Plus, Search } from 'lucide-react';
+import { Clock, Copy, Languages, Plus, Search } from 'lucide-react';
 import { categories } from '../data/locations';
 import { nextPlaceId, type Content, type Location } from '../data/content';
 import type { SaveFn } from './AdminApp';
@@ -15,6 +15,7 @@ import { BulkHours } from './BulkHours';
 import { withoutPlace } from '../lib/special-hours';
 import { withNoticesFor } from '../lib/notices';
 import { TipsEditor } from './TipsEditor';
+import { duplicatePlace } from './duplicate-place';
 import { withDrafted } from '../lib/drafted';
 import { PlacePreview } from './PlacePreview';
 import { DraftReview } from './DraftReview';
@@ -90,6 +91,14 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
 
   const original = draft && !isNew ? content.places.find(p => p.id === draft.id) : undefined;
   const changed = draft && (isNew || !sameValue(original, draft));
+
+  // A new, unsaved place copied from the saved one (see duplicate-place.ts).
+  const duplicate = () => {
+    if (!original) return;
+    if (changed && !window.confirm(`Duplicate the saved "${original.nameEn}"? Your unsaved changes to it will be discarded.`)) return;
+    setDraft(duplicatePlace(original, nextPlaceId(content)));
+    setIsNew(true);
+  };
 
   const submit = async () => {
     if (!draft) return;
@@ -477,6 +486,11 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
             <Button type="button" variant="secondary" onClick={() => setPreviewing(true)} title="See the card as visitors will, in each language, before saving">
               Preview
             </Button>
+            {!isNew && original && (
+              <Button type="button" variant="secondary" onClick={duplicate} disabled={busy} title="Start a new place copied from this one: same route, category, hours, tips and text, without its photo, Spot it or drafts">
+                <Copy className="w-4 h-4" aria-hidden="true" /> Duplicate
+              </Button>
+            )}
             {changed && !isNew && original && (
               <Button type="button" variant="secondary" onClick={() => setDraft({ ...original })}>
                 Discard changes
