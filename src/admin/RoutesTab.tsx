@@ -9,7 +9,7 @@ import { PHOTO_ALT_KEYS, PhotoAltFields, withoutPhotoAlts } from './PhotoAltFiel
 import { builtInPhoto } from '../data/photo-resolve';
 import { applyStopOrder, walkPlan, walkStops } from '../lib/walk';
 import { RouteQr } from './RouteQr';
-import { RouteAudio } from './RouteAudio';
+import { AllRoutesAudio, RouteAudio } from './RouteAudio';
 import { DraftReview } from './DraftReview';
 import { fieldKey, FillMissingButton, withOptional, fillEmpty, typedField } from './translations';
 import { LANGS, LANGUAGES, OPTIONAL_LANGS, type Lang, type OptionalLang } from '../i18n/lang';
@@ -188,7 +188,11 @@ export function RoutesTab({ content, save, initialRouteId = null, onSelected, on
       </div>
 
       {!draft ? (
-        <p className="text-stone-500 bg-white rounded-2xl border border-sand/50 p-8 text-center">Choose a route to edit, or add a new one.</p>
+        <div className="space-y-6">
+          <p className="text-stone-500 bg-white rounded-2xl border border-sand/50 p-8 text-center">Choose a route to edit, or add a new one.</p>
+          {/* Places in route order, so the run goes route by route. */}
+          <AllRoutesAudio places={content.routes.flatMap(r => content.places.filter(p => p.routeId === r.id))} />
+        </div>
       ) : (
         <form
           className="bg-white rounded-2xl border border-sand/50 p-6 space-y-4"
