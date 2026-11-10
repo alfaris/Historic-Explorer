@@ -96,7 +96,7 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
   const duplicate = () => {
     if (!original) return;
     if (changed && !window.confirm(`Duplicate the saved "${original.nameEn}"? Your unsaved changes to it will be discarded.`)) return;
-    setDraft(duplicatePlace(original, nextPlaceId(content)));
+    setDraft(duplicatePlace(original, nextPlaceId(content), content.places));
     setIsNew(true);
   };
 
