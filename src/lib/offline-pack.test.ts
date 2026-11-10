@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { locations, routes } from '../data/locations';
+import { narrationSource } from './guide-style';
 import { audioGuideUrl, latToTileY, lngToTileX, MAX_TILES, routePack, tilesForPlaces, tileUrl } from './offline-pack';
 import { audioVersion } from './text-hash';
 
@@ -50,11 +51,17 @@ describe('routePack', () => {
   const route = routes.find(r => r.id === 'ahl-al-bayt')!;
   const places = locations.filter(l => l.routeId === route.id);
 
-  it('includes an audio guide per place in the chosen language, versioned by its text', () => {
+  it('includes an audio guide per place in the chosen language, versioned by its text and how it is told', () => {
     const audio = routePack(route, places, 'ar').filter(f => f.kind === 'audio').map(f => f.url);
     expect(audio).toHaveLength(places.length);
-    expect(audio[0]).toBe(`/api/audio-guide?id=${places[0].id}&lang=ar&v=${audioVersion(places[0].descriptionAr)}`);
-    expect(audio[0]).toBe(audioGuideUrl(places[0].id, 'ar', places[0].descriptionAr));
+    const source = narrationSource(places[0], 'ar', places[0].descriptionAr!);
+    expect(audio[0]).toBe(`/api/audio-guide?id=${places[0].id}&lang=ar&v=${audioVersion(source)}`);
+    expect(audio[0]).toBe(audioGuideUrl(places[0].id, 'ar', source));
+    // Renaming or re-categorising a place gives its guide a new URL, like editing its description.
+    const [renamed] = routePack(route, [{ ...places[0], nameAr: `${places[0].nameAr} الكبير` }], 'ar').filter(f => f.kind === 'audio');
+    const [recategorised] = routePack(route, [{ ...places[0], category: 'coffee' }], 'ar').filter(f => f.kind === 'audio');
+    expect(renamed.url).not.toBe(audio[0]);
+    expect(recategorised.url).not.toBe(audio[0]);
   });
 
   it('includes photos and tiles, with no duplicates', () => {

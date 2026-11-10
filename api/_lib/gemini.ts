@@ -5,7 +5,7 @@ import type { Location } from '../../src/data/locations.js';
 import { getContent } from './content.js';
 import { parseCanonicalQuery, rateLimit } from './guard.js';
 import { audioVersion } from '../../src/lib/text-hash.js';
-import { guideBrief } from '../../src/lib/guide-style.js';
+import { guideBrief, narrationSource } from '../../src/lib/guide-style.js';
 import { descriptionOf, LANGUAGES, nameOf, type Lang } from '../../src/i18n/lang.js';
 
 // Server-only: the key is read at request time and never shipped to the browser.
@@ -82,13 +82,17 @@ const AUDIO_VERSION = 'v1';
 // Without a connected store (e.g. local dev) audio is generated on every cold request.
 const hasBlobStore = () => Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID);
 
-/** What a place's narration is made from: its description and how it's told (see guide-style). */
-type GuideInput = { text: string; brief: string };
+/**
+ * What a place's narration is made from: its description, and the source
+ * (that description with how the place is told, see guide-style), which keys
+ * the recording and versions its URL.
+ */
+type GuideInput = { text: string; brief: string; source: string };
 
 // Keyed by content, so editing a description (in locations.ts or the admin
 // dashboard), or a change to how the place is told, produces fresh audio.
-const audioBlobPath = ({ text, brief }: GuideInput, lang: Lang) =>
-  `audio-guide/${createHash('sha256').update(`${AUDIO_VERSION}|${lang}|${brief}|${text}`).digest('hex').slice(0, 32)}.wav`;
+const audioBlobPath = ({ source }: GuideInput, lang: Lang) =>
+  `audio-guide/${createHash('sha256').update(`${AUDIO_VERSION}|${lang}|${source}`).digest('hex').slice(0, 32)}.wav`;
 /** The narration script, next to the recording under the same key. */
 export const scriptBlobPath = (audioPath: string) => audioPath.replace(/\.wav$/, '.txt');
 
@@ -141,7 +145,7 @@ const audioText = (location: Location, lang: Lang) =>
   descriptionOf(location, lang) || null; // French and Spanish fall back to the English text, narrated in that language
 const guideInput = (location: Location, lang: Lang): GuideInput | null => {
   const text = audioText(location, lang);
-  return text ? { text, brief: guideBrief(location, nameOf(location, lang)) } : null;
+  return text ? { text, brief: guideBrief(location, nameOf(location, lang)), source: narrationSource(location, lang, text) } : null;
 };
 
 /**
@@ -300,7 +304,7 @@ export async function handleAudioGuide(request: Request): Promise<Response> {
   const { location, lang, version } = checked;
   const input = guideInput(location, lang);
   if (!input) return json({ error: 'Unknown location' }, 404);
-  const { text } = input;
+  const { source } = input;
   const key = audioBlobPath(input, lang);
   try {
     // Without a script, look again later: the admin may regenerate it with one.
@@ -309,7 +313,7 @@ export async function handleAudioGuide(request: Request): Promise<Response> {
     );
     const transcript = script && script.length <= MAX_TRANSCRIPT ? { [TRANSCRIPT_HEADER]: encodeURIComponent(script) } : {};
     return new Response(wav, {
-      headers: { 'Content-Type': 'audio/wav', 'Cache-Control': audioCacheControl(version, text, Boolean(script)), ...transcript },
+      headers: { 'Content-Type': 'audio/wav', 'Cache-Control': audioCacheControl(version, source, Boolean(script)), ...transcript },
     });
   } catch (err) {
     // The client reads the script aloud with the browser voice instead.

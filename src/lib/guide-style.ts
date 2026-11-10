@@ -1,61 +1,13 @@
 // How each place's audio guide is told. Without this every narration came out
 // in the same voice and opened with the same line ("Imagine…"). The kind of
-// place sets the tone and how the guide opens (a mosque isn't a mausoleum, a
-// café isn't a city gate), and each place gets one of several opening moves,
-// picked by its ID, so neighbouring stops of the same kind still start
-// differently. Pure; the server builds the narration prompt from it.
+// place (guide-kind.ts) sets the tone and how the guide opens (a mosque isn't
+// a mausoleum, a café isn't a city gate), and each place gets one of several
+// opening moves, picked by its ID, so neighbouring stops of the same kind
+// still start differently. Pure; the server builds the narration prompt from it.
 
-import type { Location } from '../data/locations';
-import { isActiveMosque } from './prayer-times.js';
+import { guideKind, openingIndex, OPENING_COUNT, type GuideKind, type GuidePlace } from './guide-kind.js';
 
-export type GuideKind =
-  | 'mosque'
-  | 'mausoleum'
-  | 'charity'
-  | 'church'
-  | 'synagogue'
-  | 'house'
-  | 'museum'
-  | 'gate'
-  | 'water'
-  | 'monument'
-  | 'coffee'
-  | 'restaurant'
-  | 'craft'
-  | 'shop'
-  | 'meeting';
-
-type Place = Pick<Location, 'id' | 'nameEn' | 'nameAr' | 'category' | 'mosque'>;
-
-/** The kind of place, from its category and its name (English or Arabic). */
-export function guideKind(place: Place): GuideKind {
-  const en = place.nameEn;
-  const ar = place.nameAr;
-  const has = (re: RegExp, reAr?: RegExp) => re.test(en) || (!!reAr && reAr.test(ar));
-  switch (place.category) {
-    case 'coffee':
-      return 'coffee';
-    case 'restaurant':
-      return 'restaurant';
-    case 'workshop':
-      return 'craft';
-    case 'stationary':
-      return 'shop';
-    case 'meeting':
-      return 'meeting';
-  }
-  // Mausoleums before mosques: a "Mosque and Mausoleum" is told as a tomb's story only when the name leads with it.
-  if (has(/^[^(]*\b(mausoleum|tomb|dome|qubba|mashhad)\b/i, /^(ضريح|قبة|مشهد|مقام)/)) return 'mausoleum';
-  if (isActiveMosque(place) || has(/\bmosque\b/i, /جامع|مسجد/)) return 'mosque';
-  if (has(/\b(sabil|kuttab|madrasa|khanqah|complex|wikala|bimaristan)\b/i, /سبيل|كتاب|مدرسة|خانقاه|مجموعة|وكالة/)) return 'charity';
-  if (has(/\b(church|monastery|cathedral|convent)\b/i, /كنيسة|دير/)) return 'church';
-  if (has(/\bsynagogue\b/i, /معبد|كنيس/)) return 'synagogue';
-  if (has(/\bmuseum\b/i, /متحف/)) return 'museum';
-  if (has(/\b(house|palace|bayt|beit|qasr)\b/i, /بيت|قصر|منزل/)) return 'house';
-  if (has(/\b(bab|gate|wall|street|citadel)\b/i, /باب|سور|شارع|قلعة/)) return 'gate';
-  if (has(/\b(nilometer|aqueduct|bridge|canal)\b/i, /مقياس|سور مجرى|قناطر|كوبري/)) return 'water';
-  return 'monument';
-}
+export { guideKind, narrationSource, type GuideKind } from './guide-kind.js';
 
 /** Tone and how to open, for each kind of place. */
 const STYLE: Record<GuideKind, { tone: string; open: string }> = {
@@ -130,19 +82,20 @@ export const OPENINGS = [
   'Start with a sound, smell or feeling of the place.',
   'Start with its most surprising fact.',
 ] as const;
+if (OPENINGS.length !== OPENING_COUNT) throw new Error('OPENING_COUNT must match OPENINGS');
 
 /** Stock openings the narrations kept using; the guide is told never to start with them. */
 export const BANNED_OPENINGS = ['Imagine', 'Welcome', 'Close your eyes', 'Step back in time', 'Picture this', 'As you stand', 'Listen', 'تخيل', 'أهلاً', 'مرحباً', 'أغمض عينيك'];
 
 /** The opening move for this place. */
-export const openingFor = (id: number) => OPENINGS[((id % OPENINGS.length) + OPENINGS.length) % OPENINGS.length];
+export const openingFor = (id: number) => OPENINGS[openingIndex(id)];
 
 /**
  * The narration brief for this place: its name and kind, the tone and opening
  * to use, and the openings to avoid. Part of the audio's storage key, so a
  * change here (or to the place's name or category) makes fresh audio.
  */
-export function guideBrief(place: Place, name: string): string {
+export function guideBrief(place: GuidePlace, name: string): string {
   const kind = guideKind(place);
   const { tone, open } = STYLE[kind];
   return [
@@ -152,3 +105,4 @@ export function guideBrief(place: Place, name: string): string {
     `Never begin with these or their translations: ${BANNED_OPENINGS.map(o => `"${o}"`).join(', ')}. Do not begin by greeting the listener or by saying the place's name.`,
   ].join('\n');
 }
+

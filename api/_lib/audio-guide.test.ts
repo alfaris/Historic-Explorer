@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { locations } from '../../src/data/locations';
 import { audioVersion } from '../../src/lib/text-hash';
+import { narrationSource } from '../../src/lib/guide-style';
 
 // Stand-ins for Blob storage, the live content and Gemini.
 const blobs = new Map<string, string | Buffer>();
@@ -49,7 +50,7 @@ const { audioStatus, generateAndStoreAudio, handleAudioGuide, TRANSCRIPT_HEADER 
 const place = locations[0];
 const request = (ip: string) =>
   handleAudioGuide(
-    new Request(`https://x/api/audio-guide?id=${place.id}&lang=en&v=${audioVersion(place.descriptionEn!)}`, { headers: { 'x-real-ip': ip } }),
+    new Request(`https://x/api/audio-guide?id=${place.id}&lang=en&v=${audioVersion(narrationSource(place, 'en', place.descriptionEn!))}`, { headers: { 'x-real-ip': ip } }),
   );
 const wavPath = () => [...blobs.keys()].find(k => k.endsWith('.wav'))!;
 
