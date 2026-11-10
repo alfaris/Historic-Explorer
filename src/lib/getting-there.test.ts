@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { bundledContent, normalizeContent, validateContent } from '../data/content';
 import { walkStops } from './walk';
-import { directionsUrl, gettingThere, startPlace } from './getting-there';
+import { directionsUrl, gettingThere, gettingThereFor, startPlace } from './getting-there';
 
 const route = bundledContent.routes[0];
 const places = bundledContent.places;
@@ -51,5 +51,18 @@ describe('content', () => {
     const problems = validateContent(n).join(' ');
     expect(problems).toContain('whole minutes, from 1 to 60');
     expect(problems).toContain('gettingThereEn is longer than 300 characters');
+  });
+});
+
+describe('gettingThereFor (the short walk)', () => {
+  const withMetro = { ...route, metroEn: 'Sayeda Zeinab', metroAr: 'السيدة زينب', metroMinutes: 12, gettingThereEn: 'Ask for the mosque' };
+  it("is the route's own directions when the walk starts at the route's start", () => {
+    const walk = places.filter(p => p.routeId !== route.id || p.id !== second.id);
+    expect(gettingThereFor(withMetro, places, walk, 'en')).toEqual(gettingThere(withMetro, places, 'en'));
+  });
+  it("gives only the stop's name when the walk starts elsewhere", () => {
+    const walk = places.filter(p => p.id !== first.id);
+    expect(gettingThereFor(withMetro, places, walk, 'en')).toEqual({ start: second, metro: null, minutes: null, note: null });
+    expect(gettingThere(withMetro, walk, 'en')?.metro?.text).toBe('Sayeda Zeinab');
   });
 });

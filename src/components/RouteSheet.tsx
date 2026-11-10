@@ -13,7 +13,7 @@ import { L, LANGUAGES, currentLang, descriptionOf, fallbackLang, nameOf } from '
 import { minutesLabel } from './WalkInfo';
 import { accessSummary, hasAccessInfo, routeAccess } from '../lib/step-free';
 import { accessText } from '../lib/visitor-tips';
-import { gettingThere } from '../lib/getting-there';
+import { gettingThereFor } from '../lib/getting-there';
 
 /**
  * The printable route sheet (A4): the route, a schematic map of the stops,
@@ -88,7 +88,8 @@ export default function RouteSheet({ route, places, walkPlaces = places, short, 
   // Access and the start, for the stops on this sheet.
   const access = routeAccess(walkPlaces, route.id);
   const showAccess = hasAccessInfo(access);
-  const there = gettingThere(route, walkPlaces, lang);
+  // The short walk may start at another stop: then only its name, not the route start's directions.
+  const there = gettingThereFor(route, places, walkPlaces, lang);
   // "Start: Bab Zuweila (باب زويلة) · Nearest metro: Attaba · Ask for …": the Arabic name to show a driver.
   const startLine = there && [
     `${L('Start', 'البداية')}: ${nameOf(there.start)}${ar ? '' : ` (${there.start.nameAr})`}`,
