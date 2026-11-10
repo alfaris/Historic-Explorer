@@ -65,6 +65,22 @@ describe('short walk', () => {
   });
 });
 
+describe('continuing a short walk', () => {
+  it("picks the next stop from the short walk when it's on, as the walk it opens does", async () => {
+    const { walkedPlaces } = await import('./short-walk');
+    const { routeToContinue } = await import('./walk-summary');
+    const routes = [{ id: 'r' }, { id: 'other' }];
+    // Stop 1 (must-see) visited; stop 2 isn't must-see.
+    const visited = new Set([1]);
+    expect(routeToContinue(routes, places, visited)?.next.id).toBe(2);
+    expect(routeToContinue(routes, walkedPlaces(places, new Set(['r'])), visited)?.next.id).toBe(3);
+    // Every must-see stop visited: the short walk is done, so there's nothing to continue on it.
+    expect(routeToContinue(routes, walkedPlaces(places, new Set(['r'])), new Set([1, 3, 5]))).toBeNull();
+    // A route without a short walk (one must-see stop) is walked in full.
+    expect(walkedPlaces(places, new Set(['other']))).toEqual(places);
+  });
+});
+
 describe('the short walk switch', () => {
   it('is remembered per route on the device', async () => {
     const { setShortWalk, parseRouteIds } = await import('./short-walk');

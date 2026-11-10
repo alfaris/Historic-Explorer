@@ -1131,7 +1131,8 @@ export const MainContent: React.FC = () => {
         >
           <WalkMode
             route={currentRouteData}
-            places={walkPlaces}
+            places={locations}
+            walkPlaces={walkPlaces}
             nearMe={nearMe}
             isArabic={isArabic}
             onClose={endWalk}
