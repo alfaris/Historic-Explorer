@@ -237,6 +237,7 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
         ) : tab === 'content' ? (
           <ContentTab
             content={content}
+            save={save}
             onEditPlace={(id, section) => {
               setEditPlaceId(id);
               setEditSection(section);
