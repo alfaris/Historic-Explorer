@@ -2,7 +2,7 @@ import React from 'react';
 import { Check, CircleCheck, RotateCcw } from 'lucide-react';
 import { clearVisited, toggleVisited, useVisited } from '../lib/visited';
 
-import { removeSkipped } from '../lib/skipped';
+import { removeSkipped, useSkipped } from '../lib/skipped';
 import { L, currentLang, byLang } from '../i18n/lang';
 /** Button to mark the place as visited, or undo it. */
 export function VisitedToggle({ placeId, isArabic, className = '' }: { placeId: number; isArabic: boolean; className?: string }) {
@@ -42,6 +42,7 @@ export function VisitedBadge({ placeId, isArabic }: { placeId: number; isArabic:
  */
 export function RouteProgress({ placeIds, clearIds = placeIds, isArabic }: { placeIds: number[]; clearIds?: number[]; isArabic: boolean }) {
   const visited = useVisited();
+  const skipped = useSkipped();
   const done = placeIds.filter(id => visited.has(id)).length;
   const total = placeIds.length;
   if (total === 0) return null;
@@ -53,7 +54,7 @@ export function RouteProgress({ placeIds, clearIds = placeIds, isArabic }: { pla
           {byLang({ en: `${done} / ${total} stops visited`, ar: `زرت ${done} من ${total} محطة`, fr: `${done} / ${total} étapes visitées`, es: `${done} / ${total} paradas visitadas` })}
         </span>
         {/* Reset whenever anything on the route is marked, extras included, even with no stop visited yet. */}
-        {clearIds.some(id => visited.has(id)) && (
+        {clearIds.some(id => visited.has(id) || skipped.has(id)) && (
           <button
             onClick={() => {
               const message = L('Clear your visited places on this route?', 'مسح تقدم الزيارة لهذا المسار؟');

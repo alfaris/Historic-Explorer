@@ -214,11 +214,8 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
     );
   }
 
-  // Visiting a stop undoes a skip of it.
-  const visit = (id: number) => {
-    markVisited(id);
-    if (skipped.has(id)) removeSkipped([id]);
-  };
+  // Visiting a stop undoes a skip of it (markVisited sees to that).
+  const visit = markVisited;
   const skip = () => {
     addSkipped(stop.id);
     if (next) go(nextIndex);

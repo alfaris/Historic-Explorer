@@ -59,6 +59,8 @@ export function routeToContinue<R extends { id: string }, P extends Place>(
   places: P[],
   visited: Set<number>,
   preferredRouteId?: string,
+  /** Stops skipped in walk mode: the next stop is the first neither visited nor skipped, as walk mode resumes. */
+  skipped: Set<number> = new Set(),
 ): { route: R; summary: WalkSummary; next: P } | null {
   const partial = routes
     .map(route => ({ route, summary: walkSummary(places, route.id, visited) }))
@@ -67,6 +69,7 @@ export function routeToContinue<R extends { id: string }, P extends Place>(
   const pick =
     partial.find(p => p.route.id === preferredRouteId) ??
     [...partial].sort((a, b) => b.summary.visited - a.summary.visited || routes.indexOf(a.route) - routes.indexOf(b.route))[0];
-  const nextId = pick.summary.stopIds.find(id => !visited.has(id))!;
+  const ids = pick.summary.stopIds;
+  const nextId = ids.find(id => !visited.has(id) && !skipped.has(id)) ?? ids.find(id => !visited.has(id))!;
   return { ...pick, next: places.find(p => p.id === nextId)! };
 }

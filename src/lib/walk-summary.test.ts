@@ -72,4 +72,9 @@ describe('routeToContinue', () => {
   it('the next stop is the first unvisited one, even after skipping ahead', () => {
     expect(routeToContinue(routes, places, new Set([1, 3]))!.next.id).toBe(2);
   });
+  it('passes over stops skipped in walk mode, as walk mode resumes', () => {
+    expect(routeToContinue(routes, places, new Set([1]), undefined, new Set([2]))!.next.id).toBe(3);
+    // Only a skipped stop left: that one.
+    expect(routeToContinue(routes, places, new Set([1, 3]), undefined, new Set([2]))!.next.id).toBe(2);
+  });
 });

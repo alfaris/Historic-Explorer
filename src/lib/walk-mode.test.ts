@@ -91,7 +91,9 @@ describe('skipping stops', () => {
   it('starts at the first stop neither visited nor skipped', async () => {
     const { startIndex } = await import('./walk-mode');
     expect(startIndex([1, 2, 3], new Set([1]), new Set([2]))).toBe(2);
-    expect(startIndex([1, 2, 3], new Set([1, 3]), new Set([2]))).toBe(0);
+    // Only a skipped stop is left: start there, as Continue your walk does.
+    expect(startIndex([1, 2, 3], new Set([1, 3]), new Set([2]))).toBe(1);
+    expect(startIndex([1, 2, 3], new Set([1, 2, 3]), new Set())).toBe(0);
   });
   it('finds the next stop that is not skipped', async () => {
     const { nextUnskipped } = await import('./walk-mode');

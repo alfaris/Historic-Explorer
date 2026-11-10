@@ -37,10 +37,16 @@ export const compassPoint = (bearing: number, lang: Lang | boolean) => {
 export const arrowRotation = (bearing: number, heading: number | null) =>
   heading === null ? bearing : (((bearing - heading) % 360) + 360) % 360;
 
-/** Start at the first stop not yet visited (or skipped), or the first stop if all are. */
+/**
+ * Where to start: the first stop neither visited nor skipped, else the first
+ * not visited (only skipped ones are left), else the first stop. The same
+ * choice as "Continue your walk".
+ */
 export function startIndex(stopIds: number[], visited: Set<number>, skipped: Set<number> = new Set()): number {
   const i = stopIds.findIndex(id => !visited.has(id) && !skipped.has(id));
-  return i === -1 ? 0 : i;
+  if (i !== -1) return i;
+  const j = stopIds.findIndex(id => !visited.has(id));
+  return j === -1 ? 0 : j;
 }
 
 /** The next stop after `from` that isn't skipped, as an index into `stopIds`; -1 when there's none. */
