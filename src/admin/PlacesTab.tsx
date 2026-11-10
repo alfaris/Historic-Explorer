@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Clock, Copy, Languages, Plus, Search } from 'lucide-react';
+import { CheckSquare, Clock, Copy, Languages, Plus, Search } from 'lucide-react';
 import { categories } from '../data/locations';
 import { nextPlaceId, type Content, type Location } from '../data/content';
 import type { SaveFn } from './AdminApp';
@@ -12,6 +12,7 @@ import { api } from './api';
 import { AudioPanel } from './AudioPanel';
 import { HoursEditor } from './HoursEditor';
 import { BulkHours } from './BulkHours';
+import { BulkEdit } from './BulkEdit';
 import { withoutPlace } from '../lib/special-hours';
 import { withNoticesFor } from '../lib/notices';
 import { TipsEditor } from './TipsEditor';
@@ -44,11 +45,17 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
   const [bulk, setBulk] = useState<{ text: string; error: boolean } | null>(null);
   // "Set hours for several places" in the editor pane, instead of one place.
   const [bulkHours, setBulkHours] = useState(false);
+  // "Edit several places": ticking places in the list instead of opening one.
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<number[]>([]);
   // The visitor card for the draft, before saving.
   const [previewing, setPreviewing] = useState(false);
   // Opening (or adding) a place leaves it.
   useEffect(() => {
-    if (draft) setBulkHours(false);
+    if (draft) {
+      setBulkHours(false);
+      setSelecting(false);
+    }
   }, [draft]);
 
   // Opened from a report: select that place.
@@ -209,6 +216,7 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
           variant="secondary"
           onClick={() => {
             setBulkHours(true);
+            setSelecting(false);
             setDraft(null);
           }}
           disabled={busy || !!changed}
@@ -217,10 +225,40 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
         >
           <Clock className="w-4 h-4" /> Set hours for several places
         </Button>
+        <Button
+          variant="secondary"
+          onClick={() => {
+            setSelecting(true);
+            setSelected([]);
+            setBulkHours(false);
+            setDraft(null);
+          }}
+          disabled={busy || !!changed}
+          title={changed ? 'Save or discard the open place first.' : undefined}
+          className="w-full mb-3 flex items-center justify-center gap-2"
+        >
+          <CheckSquare className="w-4 h-4" /> Edit several places
+        </Button>
         {bulk && <p className={`text-xs mb-3 ${bulk.error ? 'text-red-700' : 'text-stone-500'}`} role={bulk.error ? 'alert' : 'status'}>{bulk.text}</p>}
         <ul className="max-h-[60vh] overflow-y-auto -mx-2">
           {list.map(p => (
             <li key={p.id}>
+              {selecting ? (
+                <label className="flex items-start gap-2 px-3 py-2 rounded-lg text-sm hover:bg-chalk cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={selected.includes(p.id)}
+                    onChange={e => setSelected(s => (e.target.checked ? [...s, p.id] : s.filter(id => id !== p.id)))}
+                  />
+                  <span className="min-w-0">
+                    <span className="block truncate">{p.nameEn}</span>
+                    <span className="block text-[11px] text-stone-400 truncate">
+                      {categories.find(c => c.id === p.category)?.nameEn} · {routeName(p.routeId)}
+                    </span>
+                  </span>
+                </label>
+              ) : (
               <button
                 onClick={() => {
                   setDraft({ ...p });
@@ -233,12 +271,24 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
                   {categories.find(c => c.id === p.category)?.nameEn} · {routeName(p.routeId)}
                 </span>
               </button>
+              )}
             </li>
           ))}
         </ul>
       </div>
 
-      {bulkHours && !draft ? (
+      {selecting && !draft ? (
+        <BulkEdit
+          content={content}
+          save={save}
+          selected={selected}
+          onClear={() => setSelected([])}
+          onDone={() => {
+            setSelecting(false);
+            setSelected([]);
+          }}
+        />
+      ) : bulkHours && !draft ? (
         <BulkHours content={content} save={save} onClose={() => setBulkHours(false)} />
       ) : !draft ? (
         <p className="text-stone-500 bg-white rounded-2xl border border-sand/50 p-8 text-center">Choose a place to edit, or add a new one.</p>
