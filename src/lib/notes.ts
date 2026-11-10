@@ -51,22 +51,27 @@ const storageWorks = () => {
     return false;
   }
 };
-// Set when the last write failed (storage full or blocked for writing): this
-// tab's notes are then newer than the stored ones and are kept until a write works.
-let unsaved = false;
-const latest = () => (storageWorks() && !unsaved ? read() : current());
+// This tab's edits not yet written (storage full or blocked for writing), by
+// place: they're laid over the stored notes, so another tab's notes for other
+// places are kept when a write works again.
+const pending = new Map<number, string>();
+const withPending = (base: Notes) => [...pending].reduce((n, [id, text]) => withNote(n, id, text), base);
+// The latest notes: the stored ones (another tab may have changed them while
+// nothing here was listening) with this tab's unsaved edits, or this tab's own
+// when storage can't be read.
+const latest = () => withPending(storageWorks() ? read() : current());
 
 /** Sets (or, when empty, removes) this place's note. */
 export function setNote(id: number, text: string) {
-  const next = withNote(latest(), id, text);
+  pending.set(id, text);
+  const next = latest();
   notes = next;
   try {
     if (Object.keys(next).length) window.localStorage.setItem(KEY, JSON.stringify(next));
     else window.localStorage.removeItem(KEY);
-    unsaved = false;
+    pending.clear();
   } catch {
-    // Not kept after the page closes; still shown now.
-    unsaved = true;
+    // Not kept after the page closes; still shown now, and written with the next edit that can be.
   }
   listeners.forEach(l => l());
 }
@@ -77,8 +82,8 @@ function subscribe(listener: () => void) {
   const fresh = latest();
   if (JSON.stringify(fresh) !== JSON.stringify(current())) notes = fresh;
   const onStorage = (e: StorageEvent) => {
-    if ((e.key === KEY || e.key === null) && !unsaved) {
-      notes = read();
+    if (e.key === KEY || e.key === null) {
+      notes = withPending(read());
       listener();
     }
   };

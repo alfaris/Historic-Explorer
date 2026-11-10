@@ -64,3 +64,53 @@ describe('notes store', () => {
     expect(notesNow()).toEqual({ 1: 'a', 2: 'b' });
   });
 });
+
+describe('notes store after a failed write', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.resetModules();
+  });
+  it("keeps another tab's notes when writes work again", async () => {
+    vi.resetModules();
+    const data = new Map<string, string>();
+    let fail = true;
+    vi.stubGlobal('window', {
+      localStorage: {
+        getItem: (k: string) => data.get(k) ?? null,
+        setItem: (k: string, v: string) => {
+          if (fail) throw new Error('QuotaExceeded');
+          data.set(k, v);
+        },
+        removeItem: (k: string) => data.delete(k),
+      },
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    });
+    const { setNote, notesNow } = await import('./notes');
+    setNote(1, 'unsaved here');
+    data.set('cairo-walks:notes', JSON.stringify({ 2: 'other tab' })); // another tab
+    fail = false;
+    setNote(3, 'now it saves');
+    expect(JSON.parse(data.get('cairo-walks:notes')!)).toEqual({ 1: 'unsaved here', 2: 'other tab', 3: 'now it saves' });
+    expect(notesNow()).toEqual({ 1: 'unsaved here', 2: 'other tab', 3: 'now it saves' });
+  });
+});
+
+describe('notes store without storage', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.resetModules();
+  });
+  it('keeps notes in memory when storage is blocked', async () => {
+    vi.resetModules();
+    const blocked = () => {
+      throw new Error('blocked');
+    };
+    vi.stubGlobal('window', { localStorage: { getItem: blocked, setItem: blocked, removeItem: blocked }, addEventListener: () => {}, removeEventListener: () => {} });
+    const { setNote, notesNow } = await import('./notes');
+    setNote(1, 'a');
+    setNote(2, 'b');
+    setNote(1, '');
+    expect(notesNow()).toEqual({ 2: 'b' });
+  });
+});

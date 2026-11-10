@@ -29,7 +29,11 @@ export function PlaceNote({ placeId, className = 'mt-4' }: { placeId: number; cl
         rows={2}
         dir="auto"
         onFocus={() => (editing.current = true)}
-        onBlur={() => (editing.current = false)}
+        onBlur={() => {
+          editing.current = false;
+          // A change made in another tab while this box was being edited shows now.
+          setText(stored);
+        }}
         onChange={e => {
           setText(e.target.value);
           setNote(placeId, e.target.value);
