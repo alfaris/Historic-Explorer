@@ -2,9 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, ChevronRight } from 'lucide-react';
 import { glossaryOf, type Content } from '../data/content';
 import { LANGS, LANGUAGES, OPTIONAL_LANGS, type Lang, type OptionalLang } from '../i18n/lang';
-import { draftLang, draftSection, draftsToReview, GAPS, glossaryGaps, periodGaps, placeGaps, progress, routeGaps, translationPriority, type DraftRow, type Gap, type PlaceSection } from './content-health';
+import { draftLang, draftSection, draftsToReview, markReviewed, GAPS, glossaryGaps, periodGaps, placeGaps, progress, routeGaps, translationPriority, type DraftRow, type Gap, type PlaceSection } from './content-health';
 import { draftLabel } from './DraftReview';
 import { inputClass } from './ui';
+import type { SaveFn } from './AdminApp';
 import { isExpired } from '../lib/notices';
 import { cairoDate } from '../lib/special-hours';
 import { languageShares } from '../lib/stats';
@@ -14,7 +15,7 @@ import { api } from './api';
  * What content is still missing: progress per item, and the places (and
  * routes) that need something, each linking to the right part of its editor.
  */
-export function ContentTab({ content, onEditPlace, onEditRoute, onEditTerm, onEditPeriod, onEditHelp, onEditNotices }: {
+export function ContentTab({ content, onEditPlace, onEditRoute, onEditTerm, onEditPeriod, onEditHelp, onEditNotices, save }: {
   content: Content;
   onEditPlace: (placeId: number, section: PlaceSection) => void;
   onEditRoute: (routeId: string) => void;
@@ -22,6 +23,8 @@ export function ContentTab({ content, onEditPlace, onEditRoute, onEditTerm, onEd
   onEditPeriod: (periodId: string) => void;
   onEditHelp?: () => void;
   onEditNotices?: () => void;
+  /** Saves the content (Mark reviewed from the list); without it, only Edit is offered. */
+  save?: SaveFn;
 }) {
   const [filter, setFilter] = useState<Gap | 'all'>('all');
   const [routeFilter, setRouteFilter] = useState<string>('all');
@@ -97,6 +100,7 @@ export function ContentTab({ content, onEditPlace, onEditRoute, onEditTerm, onEd
 
       <DraftsList
         content={content}
+        save={save}
         onEdit={row => {
           if (row.kind === 'place') onEditPlace(Number(row.id), row.keys.map(draftSection).find(Boolean) ?? 'lang-fr');
           else if (row.kind === 'route') onEditRoute(row.id);
@@ -195,17 +199,32 @@ function MissingList({ title, rows, onEdit }: { title: string; rows: { id: strin
 const KIND: Record<DraftRow['kind'], string> = { place: 'Place', route: 'Route', term: 'Glossary term', period: 'Special hours', help: 'Help sheet', notice: 'Notice' };
 
 /** "Translations to review": what Gemini drafted and no one has checked yet, by language. Nothing when there's none. */
-function DraftsList({ content, onEdit }: { content: Content; onEdit: (row: DraftRow) => void }) {
+function DraftsList({ content, onEdit, save }: { content: Content; onEdit: (row: DraftRow) => void; save?: SaveFn }) {
   const [lang, setLang] = useState<Lang | 'all'>('all');
+  const [busy, setBusy] = useState(false);
   const all = useMemo(() => draftsToReview(content), [content]);
   if (all.length === 0) return null;
   const count = (l: Lang) => all.reduce((n, r) => n + r.keys.filter(k => draftLang(k) === l).length, 0);
   const rows = lang === 'all' ? all : draftsToReview(content, lang);
+  const langNames = (keys: string[]) => [...new Set(keys.map(k => draftLang(k)).filter(Boolean))].map(l => LANGUAGES[l!].english).join(', ');
+  // Marks drafts reviewed without opening their editors: one row, or every row shown in one language.
+  const mark = async (marked: DraftRow[], note: string) => {
+    if (!save || busy) return;
+    setBusy(true);
+    await save(markReviewed(content, marked), note);
+    setBusy(false);
+  };
+  const markAll = () => {
+    if (lang === 'all') return;
+    const n = rows.reduce((sum, r) => sum + r.keys.length, 0);
+    if (!window.confirm(`Mark all ${n} ${LANGUAGES[lang].english} drafts as reviewed? Only do this once you've checked them.`)) return;
+    mark(rows, `Marked ${LANGUAGES[lang].english} translations reviewed (${n})`);
+  };
   const chip = (active: boolean) => `min-h-9 px-3 rounded-full border text-xs font-bold ${active ? 'bg-nile/10 border-nile text-nile' : 'border-sand text-stone-600 hover:border-nile/50'}`;
   return (
     <div className="bg-white rounded-2xl border border-gold/50 p-4">
       <p className="text-xs font-bold uppercase tracking-widest text-stone-500">Translations to review ({all.reduce((n, r) => n + r.keys.length, 0)})</p>
-      <p className="mt-1 text-xs text-stone-500">Drafted by Gemini and not checked yet. Editing a field, or Mark reviewed in its editor, takes it off the list once saved.</p>
+      <p className="mt-1 text-xs text-stone-500">Drafted by Gemini and not checked yet. Editing a field, or Mark reviewed here or in its editor, takes it off the list.</p>
       <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Language">
         <button type="button" aria-pressed={lang === 'all'} onClick={() => setLang('all')} className={chip(lang === 'all')}>All</button>
         {LANGS.filter(l => count(l) > 0).map(l => (
@@ -214,6 +233,11 @@ function DraftsList({ content, onEdit }: { content: Content; onEdit: (row: Draft
           </button>
         ))}
       </div>
+      {save && lang !== 'all' && rows.length > 0 && (
+        <button type="button" disabled={busy} onClick={markAll} className="mt-3 min-h-11 px-4 rounded-xl border border-sand text-xs font-bold text-ink hover:border-nile disabled:opacity-40">
+          {busy ? 'Saving…' : `Mark all reviewed (${LANGUAGES[lang].english})`}
+        </button>
+      )}
       <ul className="mt-2 divide-y divide-sand/40">
         {rows.map(row => (
           <li key={`${row.kind}-${row.id}`} className="flex flex-wrap items-center gap-3 py-2 text-sm">
@@ -224,6 +248,17 @@ function DraftsList({ content, onEdit }: { content: Content; onEdit: (row: Draft
             <span className="flex flex-wrap gap-1.5">
               {row.keys.map(k => <span key={k} className="px-2 py-0.5 rounded-full text-xs bg-gold/15 text-ink">{draftLabel(k)}</span>)}
             </span>
+            {save && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => mark([row], `Marked ${langNames(row.keys)} reviewed: ${row.name || row.id}`)}
+                className="min-h-11 px-3 text-xs font-bold text-stone-600 hover:text-nile disabled:opacity-40"
+                aria-label={`Mark reviewed: ${row.name || row.id}`}
+              >
+                Mark reviewed
+              </button>
+            )}
             <button onClick={() => onEdit(row)} className="flex items-center gap-1 min-h-11 px-3 text-xs font-bold text-nile hover:underline" aria-label={`Edit ${row.name || row.id}`}>
               Edit <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
             </button>

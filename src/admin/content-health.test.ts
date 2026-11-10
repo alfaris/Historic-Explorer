@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { bundledContent } from '../data/content';
 import { walkPlan } from '../lib/walk';
-import { glossaryGaps, missingText, periodGaps, placeGaps, plannedKm, plannedWalk, progress, routeGaps, translationPriority } from './content-health';
+import { glossaryGaps, missingText, periodGaps, placeGaps, plannedKm, plannedWalk, progress, routeGaps, translationPriority, draftsToReview, markReviewed } from './content-health';
 
 const place = bundledContent.places[0];
 
@@ -118,5 +118,41 @@ describe('translationPriority', () => {
   it('suggests nothing without visitors or with nothing missing', () => {
     expect(translationPriority(items, { en: 100 })).toBeUndefined();
     expect(translationPriority([{ id: 'fr', done: 10, total: 10 }, { id: 'es', done: 10, total: 10 }], { fr: 50, es: 50 })).toBeUndefined();
+  });
+});
+
+describe('markReviewed', () => {
+  const base = structuredClone(bundledContent);
+  const p = base.places[0];
+  const r = base.routes[0];
+  const content = {
+    ...base,
+    places: base.places.map(x => (x.id === p.id ? { ...x, nameFr: 'Nom', nameEs: 'Nombre', descriptionFr: 'Desc', drafted: ['nameFr', 'nameEs', 'descriptionFr'] } : x)),
+    routes: base.routes.map(x => (x.id === r.id ? { ...x, nameFr: 'Route', drafted: ['nameFr'] } : x)),
+    help: { contacts: [], tips: [{ textEn: 'Tip', textAr: 'نصيحة', textEs: 'Consejo', drafted: ['textEs'] }], phrases: [] },
+    notices: [{ textEn: 'Note', textAr: 'ملاحظة', textFr: 'Avis', drafted: ['textFr'] }],
+  };
+
+  it('clears only the listed keys of one row', () => {
+    const row = draftsToReview(content, 'fr').find(x => x.kind === 'place')!;
+    const next = markReviewed(content, [row]);
+    expect(next.places.find(x => x.id === p.id)!.drafted).toEqual(['nameEs']);
+    expect(next.routes.find(x => x.id === r.id)!.drafted).toEqual(['nameFr']);
+    expect(next.places.find(x => x.id === p.id)!.nameFr).toBe('Nom');
+  });
+
+  it('clears every row in one language, across item kinds', () => {
+    const next = markReviewed(content, draftsToReview(content, 'fr'));
+    expect(draftsToReview(next, 'fr')).toEqual([]);
+    expect(draftsToReview(next, 'es').map(x => x.kind).sort()).toEqual(['help', 'place']);
+    expect(next.notices![0].drafted).toBeUndefined();
+    const all = markReviewed(content, draftsToReview(content));
+    expect(draftsToReview(all)).toEqual([]);
+  });
+
+  it('leaves the content alone without rows', () => {
+    const next = markReviewed(content, []);
+    expect(next.places).toBe(content.places);
+    expect(next.help).toBe(content.help);
   });
 });

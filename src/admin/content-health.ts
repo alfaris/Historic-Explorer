@@ -2,7 +2,7 @@
 // planned walk for the route editor. Pure, so it's easy to test.
 
 import { glossaryOf, type Content, type Location, type Route } from '../data/content';
-import { draftedOf } from '../lib/drafted';
+import { draftedOf, withoutDrafted } from '../lib/drafted';
 import { photoForPlace } from '../data/photo-resolve';
 import { LANGS, LANGUAGES, OPTIONAL_LANGS, type Lang, type OptionalLang } from '../i18n/lang';
 import { walkPlan } from '../lib/walk';
@@ -166,4 +166,38 @@ export function translationPriority(items: { id: Gap; done: number; total: numbe
     if (weight > 0 && (!best || weight > best.weight)) best = { lang, count, missing, weight };
   }
   return best && { lang: best.lang, pct: Math.round((best.count / all) * 100), missing: best.missing };
+}
+
+/**
+ * The content with these rows' drafts marked reviewed: each row's keys (only
+ * those listed, e.g. one language's) taken off its item. Everything else is
+ * left as it is.
+ */
+export function markReviewed(content: Content, rows: DraftRow[]): Content {
+  const keysFor = (kind: DraftKind, id: string) => rows.filter(r => r.kind === kind && r.id === id).flatMap(r => r.keys);
+  const clear = <T extends object>(kind: DraftKind, id: string | number, item: T): T => {
+    const keys = keysFor(kind, String(id));
+    return keys.length ? withoutDrafted(item, keys) : item;
+  };
+  const has = (kind: DraftKind) => rows.some(r => r.kind === kind);
+  let next: Content = {
+    ...content,
+    places: has('place') ? content.places.map(p => clear('place', p.id, p)) : content.places,
+    routes: has('route') ? content.routes.map(r => clear('route', r.id, r)) : content.routes,
+  };
+  if (has('term')) next = { ...next, glossary: glossaryOf(content).map(t => clear('term', t.id, t)) };
+  if (has('period') && content.specialPeriods) next = { ...next, specialPeriods: content.specialPeriods.map(p => clear('period', p.id, p)) };
+  if (has('help') && content.help) {
+    const h = content.help;
+    next = {
+      ...next,
+      help: {
+        contacts: h.contacts.map((c, i) => clear('help', `contacts-${i}`, c)),
+        tips: h.tips.map((t, i) => clear('help', `tips-${i}`, t)),
+        phrases: h.phrases.map((p, i) => clear('help', `phrases-${i}`, p)),
+      },
+    };
+  }
+  if (has('notice') && content.notices) next = { ...next, notices: content.notices.map((n, i) => clear('notice', i, n)) };
+  return next;
 }
