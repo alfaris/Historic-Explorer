@@ -13,7 +13,9 @@ export function textHash(text: string): string {
 }
 
 /**
- * The version in an audio guide's URL (?v=). It changed when transcripts were
- * added (the "t|" prefix), so no cache hands back a recording saved without one.
+ * The version in an audio guide's URL (?v=). Its prefix changes when every
+ * recording is remade, so no cache hands back an old one: "t|" when
+ * transcripts were added, "g1|" when each kind of place got its own way of
+ * being told (see guide-style.ts).
  */
-export const audioVersion = (text: string) => textHash(`t|${text}`);
+export const audioVersion = (text: string) => textHash(`g1|${text}`);
