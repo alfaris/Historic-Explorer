@@ -89,7 +89,7 @@ export function RoutesTab({ content, save, initialRouteId = null, onSelected, on
   const savedOrder = draft && !isNew ? walkStops(content.places, draft.id).map(p => p.id) : [];
   const orderChanged = order.join() !== savedOrder.join();
   // Suggested must-see stops that aren't ticked already.
-  const newMust = mustAdds.filter(id => !content.places.find(p => p.id === id)?.mustSee);
+  const newMust = mustAdds.filter(id => order.includes(id) && !content.places.find(p => p.id === id)?.mustSee);
   const changed = finalDraft && (isNew || orderChanged || newMust.length > 0 || !sameValue(original, finalDraft));
   // Walking times for the order being edited, so the effect of a move shows straight away.
   const orderedPlaces = draft && !isNew ? applyStopOrder(content.places, draft.id, order) : [];
@@ -400,10 +400,12 @@ export function RoutesTab({ content, save, initialRouteId = null, onSelected, on
               </ol>
               <p className="text-[11px] text-stone-400 mt-1">Cafés, shops and meeting points aren't stops; they're shown as nearby extras.</p>
               <MustSee
+                // A fresh panel per route: no suggestion (or late stats answer) for one route reaches another.
+                key={draft.id}
                 order={order}
                 places={content.places}
                 pending={newMust}
-                onApply={ids => setMustAdds(a => [...new Set([...a, ...ids])])}
+                onApply={ids => setMustAdds(a => [...new Set([...a, ...ids.filter(id => order.includes(id))])])}
               />
             </div>
           )}
