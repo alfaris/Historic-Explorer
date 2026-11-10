@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Category } from '../data/locations';
 import { DETOUR_FACTOR, walkMinutes, walkPlan } from './walk';
 import { distanceMeters } from './geo';
 
-const place = (id: number, lat: number, mustSee = false, category = 'monument', routeId = 'r') => ({ id, routeId, category, lat, lng: 31.26, mustSee });
+const place = (id: number, lat: number, mustSee = false, category: Category = 'monument', routeId = 'r') => ({ id, routeId, category, lat, lng: 31.26, mustSee, nameEn: `P${id}`, nameAr: `م${id}` });
 // 0.001° of latitude is about 111 m.
 const places = [
   place(1, 30.04, true),
