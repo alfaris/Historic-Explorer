@@ -45,6 +45,7 @@ import { SharePlace, ShareRoute } from './ShareRoute';
 import { RouteFinder } from './RouteFinder';
 import { GettingThere } from './GettingThere';
 import { Notices } from './Notices';
+import { RouteOpenNow } from './RouteOpenNow';
 import { accessSummary, hasAccessInfo, routeAccess } from '../lib/step-free';
 import { ContinueWalk } from './ContinueWalk';
 import { PlanVisit } from './PlanVisit';
@@ -677,6 +678,8 @@ export const MainContent: React.FC = () => {
                 {accessSummary(access)}
               </p>
             )}
+
+            <RouteOpenNow routeId={currentRouteData.id} places={locations} className="order-2 -mt-3 sm:-mt-4 mb-5 sm:mb-6" />
 
             <Notices scope={{ routeId: currentRouteData.id }} className="order-2 w-full max-w-md mb-5 sm:mb-6" />
 
