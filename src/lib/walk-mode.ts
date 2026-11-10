@@ -37,10 +37,16 @@ export const compassPoint = (bearing: number, lang: Lang | boolean) => {
 export const arrowRotation = (bearing: number, heading: number | null) =>
   heading === null ? bearing : (((bearing - heading) % 360) + 360) % 360;
 
-/** Start at the first stop not yet visited, or the first stop if all are. */
-export function startIndex(stopIds: number[], visited: Set<number>): number {
-  const i = stopIds.findIndex(id => !visited.has(id));
+/** Start at the first stop not yet visited (or skipped), or the first stop if all are. */
+export function startIndex(stopIds: number[], visited: Set<number>, skipped: Set<number> = new Set()): number {
+  const i = stopIds.findIndex(id => !visited.has(id) && !skipped.has(id));
   return i === -1 ? 0 : i;
+}
+
+/** The next stop after `from` that isn't skipped, as an index into `stopIds`; -1 when there's none. */
+export function nextUnskipped(stopIds: number[], from: number, skipped: Set<number>): number {
+  for (let i = from + 1; i < stopIds.length; i++) if (!skipped.has(stopIds[i])) return i;
+  return -1;
 }
 
 /** "Almost there" fires once per stop, inside this distance but before arrival (30 m). */

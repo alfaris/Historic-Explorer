@@ -2,6 +2,7 @@ import React from 'react';
 import { Check, CircleCheck, RotateCcw } from 'lucide-react';
 import { clearVisited, toggleVisited, useVisited } from '../lib/visited';
 
+import { removeSkipped } from '../lib/skipped';
 import { L, currentLang, byLang } from '../i18n/lang';
 /** Button to mark the place as visited, or undo it. */
 export function VisitedToggle({ placeId, isArabic, className = '' }: { placeId: number; isArabic: boolean; className?: string }) {
@@ -56,7 +57,10 @@ export function RouteProgress({ placeIds, clearIds = placeIds, isArabic }: { pla
           <button
             onClick={() => {
               const message = L('Clear your visited places on this route?', 'مسح تقدم الزيارة لهذا المسار؟');
-              if (window.confirm(message)) clearVisited(clearIds);
+              if (window.confirm(message)) {
+                clearVisited(clearIds);
+                removeSkipped(clearIds);
+              }
             }}
             className="flex items-center gap-1 text-stone-400 hover:text-nile transition-colors"
           >

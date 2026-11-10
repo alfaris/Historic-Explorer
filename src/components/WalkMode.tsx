@@ -1,12 +1,13 @@
 import React, { lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowUp, BellRing, ChevronDown, ChevronLeft, ChevronRight, CircleCheck, Footprints, Flag, LocateFixed, Map as MapIcon, X } from 'lucide-react';
+import { ArrowUp, BellRing, ChevronDown, ChevronLeft, ChevronRight, CircleCheck, Footprints, Flag, LocateFixed, Map as MapIcon, SkipForward, X } from 'lucide-react';
 import type { Location, Route } from '../data/locations';
 import { photoForPlace, photoAltOf } from '../data/photo-resolve';
 import { ARRIVE_METERS, distanceMeters, formatDistance, MAX_ACCURACY_METERS } from '../lib/geo';
 import { markVisited, useVisited } from '../lib/visited';
-import { walkMinutes, walkPlan, walkStops } from '../lib/walk';
-import { approachAlert, arrowRotation, bearingDegrees, compassPoint, shouldAutoPlay, startIndex } from '../lib/walk-mode';
+import { DETOUR_FACTOR, walkMinutes, walkPlan, walkStops } from '../lib/walk';
+import { approachAlert, arrowRotation, bearingDegrees, compassPoint, nextUnskipped, shouldAutoPlay, startIndex } from '../lib/walk-mode';
+import { addSkipped, removeSkipped, useSkipped } from '../lib/skipped';
 import { guidePlayer } from '../lib/guide-player';
 import { useDialog } from '../lib/useDialog';
 import { useHeading, useWakeLock } from '../lib/useWalkSensors';
@@ -79,7 +80,10 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
   const stops = useMemo(() => walkStops(places, route.id), [places, route.id]);
   const plan = useMemo(() => walkPlan(places, route.id), [places, route.id]);
   const visited = useVisited();
-  const [index, setIndex] = useState(() => startIndex(stops.map(s => s.id), visited));
+  const skipped = useSkipped();
+  const [index, setIndex] = useState(() => startIndex(stops.map(s => s.id), visited, skipped));
+  // The next stop that isn't skipped (or -1 on the last one).
+  const nextIndex = nextUnskipped(stops.map(s => s.id), Math.min(index, stops.length - 1), skipped);
   const [arrivedId, setArrivedId] = useState<number | null>(null);
   // "Take a break": the list (open or not) and the café or toilet stop being looked at.
   const [breaksOpen, setBreaksOpen] = useState(false);
@@ -153,7 +157,7 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
   }, [nearMe.arrivedPlace, stops, nearMe, autoPlayOn]);
 
   // Whenever the position or the next stop changes: announce the next stop once, when close.
-  const nextStop = stops.length ? plan.get(stops[Math.min(index, stops.length - 1)].id)?.leg?.next ?? null : null;
+  const nextStop = nextIndex >= 0 ? stops[nextIndex] : null;
   const liveFix = nearMe.fix && nearMe.fix.accuracy <= MAX_ACCURACY_METERS * 2 ? nearMe.fix : null;
   useEffect(() => {
     // A new next stop (or none): any banner was for the one before.
@@ -171,7 +175,14 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
   if (stops.length === 0) return null;
   const stop = stops[Math.min(index, stops.length - 1)];
   const info = plan.get(stop.id)!;
-  const next = info.leg?.next ?? null;
+  const next = nextIndex >= 0 ? stops[nextIndex] : null;
+  // The planned walk to it: the route's own leg, or, past skipped stops, straight there.
+  const leg = next
+    ? info.leg && info.leg.next.id === next.id
+      ? info.leg
+      : { meters: distanceMeters(stop, next) * DETOUR_FACTOR, minutes: walkMinutes(distanceMeters(stop, next)) }
+    : null;
+  const skippedCount = stops.filter(s => skipped.has(s.id) && !visited.has(s.id)).length;
   const name = (p: Location) => (nameOf(p));
   const fix = nearMe.fix && nearMe.fix.accuracy <= MAX_ACCURACY_METERS * 2 ? nearMe.fix : null;
   const done = stops.filter(s => visited.has(s.id)).length;
@@ -181,7 +192,7 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
   let way: React.ReactNode = null;
   if (next) {
     const live = fix ? { meters: distanceMeters(fix, next), bearing: bearingDegrees(fix, next) } : null;
-    const meters = live ? live.meters : info.leg!.meters;
+    const meters = live ? live.meters : leg!.meters;
     way = (
       <div className="flex items-center gap-4">
         {live && (
@@ -193,16 +204,26 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-stone-500">{L('Next stop', 'المحطة التالية')}</p>
           <p className="text-lg text-ink leading-tight truncate">{name(next)}</p>
           <p className="text-sm text-stone-600">
-            {formatDistance(meters, ar)} · {minutes(live ? walkMinutes(live.meters) : info.leg!.minutes)}
+            {formatDistance(meters, ar)} · {minutes(live ? walkMinutes(live.meters) : leg!.minutes)}
             {live && <span className="text-stone-500"> · {heading === null ? compassPoint(live.bearing, currentLang()) : L('follow the arrow', 'اتبع السهم')}</span>}
           </p>
-          <ArrivalWarning place={next} minutes={live ? walkMinutes(live.meters) : info.leg!.minutes} className="mt-1" />
-          <PrayerArrivalWarning place={next} minutes={live ? walkMinutes(live.meters) : info.leg!.minutes} className="mt-1" />
+          <ArrivalWarning place={next} minutes={live ? walkMinutes(live.meters) : leg!.minutes} className="mt-1" />
+          <PrayerArrivalWarning place={next} minutes={live ? walkMinutes(live.meters) : leg!.minutes} className="mt-1" />
         </div>
       </div>
     );
   }
 
+  // Visiting a stop undoes a skip of it.
+  const visit = (id: number) => {
+    markVisited(id);
+    if (skipped.has(id)) removeSkipped([id]);
+  };
+  const skip = () => {
+    addSkipped(stop.id);
+    if (next) go(nextIndex);
+    else onFinish();
+  };
   const go = (i: number) => {
     setArrivedId(null);
     setIndex(Math.max(0, Math.min(stops.length - 1, i)));
@@ -217,6 +238,7 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-gold-ink truncate">{nameOf(route)}</p>
             <p className="text-sm text-stone-600">
               {stopOfLabel(info.number, info.total)} · {byLang({ en: `${done} visited`, ar: `زرت ${done}`, fr: `${done} visitée${done > 1 ? 's' : ''}`, es: `${done} visitada${done === 1 ? '' : 's'}` })}
+              {skippedCount > 0 && ` · ${byLang({ en: `${skippedCount} skipped`, ar: `تخطيت ${skippedCount}`, fr: `${skippedCount} passée${skippedCount > 1 ? 's' : ''}`, es: `${skippedCount} omitida${skippedCount === 1 ? '' : 's'}` })}`}
             </p>
           </div>
           <button onClick={onClose} className="p-2.5 rounded-full bg-white border border-sand/60 text-stone-600 hover:text-ink" aria-label={L('End walk', 'إنهاء الجولة')}>
@@ -241,6 +263,15 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
                 fr: `Presque arrivé : ${name(approaching)}`,
                 es: `Casi has llegado: ${name(approaching)}`,
               })}
+            </p>
+          )}
+          {skipped.has(stop.id) && !visited.has(stop.id) && (
+            <p className="flex items-center gap-2 rounded-2xl bg-chalk border border-sand/60 px-4 py-2 text-sm text-stone-600">
+              <SkipForward className="w-4 h-4 shrink-0" aria-hidden="true" />
+              <span className="flex-1">{L('You skipped this stop.', 'تخطيت هذه المحطة.')}</span>
+              <button type="button" onClick={() => removeSkipped([stop.id])} className="min-h-11 px-2 text-xs font-bold text-nile underline underline-offset-4">
+                {L('Undo skip', 'تراجع عن التخطي')}
+              </button>
             </p>
           )}
           {arrivedId === stop.id && (
@@ -279,7 +310,7 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
                   text={(descriptionOf(stop)) || ''}
                   langCode={currentLang()}
                   // The lock screen's next button does what "Done here, next stop" does.
-                  onNext={next ? () => { markVisited(stop.id); go(index + 1); } : undefined}
+                  onNext={next ? () => { visit(stop.id); go(nextIndex); } : undefined}
                   onPrevious={index > 0 ? () => go(index - 1) : undefined}
                   autoPlay={autoPlayFor === stop.id}
                   onAutoPlayStarted={() => setAutoPlayFor(null)}
@@ -364,6 +395,14 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
           )}
         </main>
 
+        {!breakPlace && !visited.has(stop.id) && !skipped.has(stop.id) && (
+          <div className="px-4 pt-1 flex justify-end">
+            <button type="button" onClick={skip} className="inline-flex items-center gap-1.5 min-h-11 px-3 text-xs font-bold text-stone-600 hover:text-nile">
+              <SkipForward className="w-4 h-4" aria-hidden="true" />
+              {L('Skip this stop', 'تخطَّ هذه المحطة')}
+            </button>
+          </div>
+        )}
         {!breakPlace && <footer className="grid grid-cols-[auto_1fr] gap-3 px-4 pb-6 pt-2">
           <button
             onClick={() => go(index - 1)}
@@ -376,8 +415,8 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
           {next ? (
             <button
               onClick={() => {
-                markVisited(stop.id);
-                go(index + 1);
+                visit(stop.id);
+                go(nextIndex);
               }}
               className="flex items-center justify-center gap-2 py-4 rounded-2xl bg-nile text-white font-bold"
             >
@@ -387,7 +426,7 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
           ) : (
             <button
               onClick={() => {
-                markVisited(stop.id);
+                visit(stop.id);
                 onFinish();
               }}
               className="flex items-center justify-center gap-2 py-4 rounded-2xl bg-nile text-white font-bold"
