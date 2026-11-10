@@ -67,9 +67,11 @@ import { BreakView, TakeABreak } from './TakeABreak';
  * it visited and offers its audio guide, which plays by itself only when the
  * visitor turned on "Play the guide when I arrive".
  */
-export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = onClose }: {
+export function WalkMode({ route, places, walkPlaces = places, nearMe, isArabic, onClose, onFinish = onClose }: {
   route: Route;
   places: Location[];
+  /** The places the walk's stops come from (the short walk leaves some out); everything else (breaks nearby) uses all of `places`. */
+  walkPlaces?: Location[];
   nearMe: NearMeState;
   isArabic: boolean;
   onClose: () => void;
@@ -77,8 +79,8 @@ export function WalkMode({ route, places, nearMe, isArabic, onClose, onFinish = 
   onFinish?: () => void;
 }) {
   const ar = isArabic;
-  const stops = useMemo(() => walkStops(places, route.id), [places, route.id]);
-  const plan = useMemo(() => walkPlan(places, route.id), [places, route.id]);
+  const stops = useMemo(() => walkStops(walkPlaces, route.id), [walkPlaces, route.id]);
+  const plan = useMemo(() => walkPlan(walkPlaces, route.id), [walkPlaces, route.id]);
   const visited = useVisited();
   const skipped = useSkipped();
   const [index, setIndex] = useState(() => startIndex(stops.map(s => s.id), visited, skipped));

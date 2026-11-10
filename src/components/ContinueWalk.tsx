@@ -3,6 +3,7 @@ import { Footprints, X } from 'lucide-react';
 import type { Location, Route } from '../data/locations';
 import { useVisited } from '../lib/visited';
 import { useSkipped } from '../lib/skipped';
+import { useShortWalks, walkedPlaces } from '../lib/short-walk';
 import { routeToContinue } from '../lib/walk-summary';
 import { L, byLang, nameOf } from '../i18n/lang';
 
@@ -28,9 +29,11 @@ export function ContinueWalk({ routes, places, currentRouteId, onContinue }: {
 }) {
   const visited = useVisited();
   const skipped = useSkipped();
+  // A route with its short walk on continues among its must-see stops, as the walk it opens does.
+  const shortWalks = useShortWalks();
   const [dismissed, setDismissed] = useState(readDismissed);
   if (dismissed) return null;
-  const pick = routeToContinue(routes, places, visited, currentRouteId, skipped);
+  const pick = routeToContinue(routes, walkedPlaces(places, shortWalks), visited, currentRouteId, skipped);
   if (!pick) return null;
   const { route, summary, next } = pick;
 

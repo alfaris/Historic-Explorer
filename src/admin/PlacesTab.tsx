@@ -306,6 +306,27 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
             </span>
           </label>
 
+          {draft.category === 'monument' && (
+            <label className="flex items-start gap-3 rounded-xl border border-sand/60 p-4 text-sm">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={!!draft.mustSee}
+                onChange={e => setDraft(d => {
+                  if (!d) return d;
+                  const { mustSee: _, ...rest } = d;
+                  return e.target.checked ? { ...rest, mustSee: true } : rest;
+                })}
+              />
+              <span>
+                <span className="block font-bold text-stone-600">Must-see</span>
+                <span className="block text-[11px] text-stone-400">
+                  One of the route's highlights. A route with 2 or more offers visitors a Short walk of only these stops, and they get a star in the list.
+                </span>
+              </span>
+            </label>
+          )}
+
           <div id="built" className="rounded-xl border border-sand/60 p-4 space-y-3 scroll-mt-24">
             <p className="text-xs font-bold text-stone-600">When it was built (optional)</p>
             <p className="text-[11px] text-stone-400">

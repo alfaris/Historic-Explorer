@@ -32,6 +32,8 @@ interface MapViewProps {
   locations: Location[];
   selectedLocation: number | null;
   onSelectLocation: (id: number) => void;
+  /** The places the stop numbers come from (the short walk leaves some stops out); the live content by default. */
+  planPlaces?: Location[];
 }
 
 // Component to handle map center updates when selection changes
@@ -123,7 +125,7 @@ const LocateControl: React.FC<{ onLocate: () => void, isLocating: boolean, isAra
   );
 };
 
-export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, onSelectLocation }) => {
+export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, onSelectLocation, planPlaces }) => {
   const { language } = useLanguage();
   const isArabic = language === 'ar';
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
@@ -184,7 +186,7 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
   // the list), so a filter or search doesn't renumber them.
   const { places: allPlaces } = useContent();
   const routeId = locations[0]?.routeId;
-  const plan = React.useMemo(() => (routeId ? walkPlan(allPlaces, routeId) : new Map()), [allPlaces, routeId]);
+  const plan = React.useMemo(() => (routeId ? walkPlan(planPlaces ?? allPlaces, routeId) : new Map()), [planPlaces, allPlaces, routeId]);
   // Arrows along the route line, showing the walking direction.
   const arrows = React.useMemo(() => legArrows(routePoints.map(([lat, lng]) => ({ lat, lng }))), [routePoints]);
 
