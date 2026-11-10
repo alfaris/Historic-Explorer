@@ -63,3 +63,58 @@ export async function mapLimit<T, R>(items: T[], limit: number, task: (item: T) 
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
   return results;
 }
+
+/** How long a run across every route waits at the server's limit before trying again. */
+export const LIMIT_PAUSE_MS = 60_000;
+
+export type AllRunResult = { generated: number; cancelled: boolean; failures: { place: string; message: string }[] };
+
+/**
+ * "Generate all missing" across every route: like generateMissing, but a
+ * failure on one place is noted and the run carries on with the rest, and at
+ * the server's limit it waits (onPaused) and tries the same place again,
+ * instead of stopping. Cancel stops it, including during a wait.
+ */
+export async function generateAllMissing(
+  missing: PlaceAudio[],
+  lang: Lang,
+  generate: (placeId: number, lang: Lang, version: string) => Promise<unknown>,
+  {
+    cancelled,
+    onGenerated,
+    onPaused = () => {},
+    wait = (ms: number) => new Promise<void>(r => setTimeout(r, ms)),
+    pauseMs = LIMIT_PAUSE_MS,
+  }: {
+    cancelled: () => boolean;
+    onGenerated: (placeId: number) => void;
+    onPaused?: (paused: boolean) => void;
+    wait?: (ms: number) => Promise<void>;
+    pauseMs?: number;
+  },
+): Promise<AllRunResult> {
+  let generated = 0;
+  const failures: AllRunResult['failures'] = [];
+  for (const place of missing) {
+    for (;;) {
+      if (cancelled()) return { generated, cancelled: true, failures };
+      try {
+        await generate(place.id, lang, place.states[lang].version!);
+        generated++;
+        onGenerated(place.id);
+        break;
+      } catch (err) {
+        const e = err as Error & { status?: number };
+        if (e.status !== 429) {
+          failures.push({ place: place.name, message: e.message });
+          break;
+        }
+        // At the limit: wait a minute (in steps, so Cancel is quick) and try this place again.
+        onPaused(true);
+        for (let waited = 0; waited < pauseMs && !cancelled(); waited += 1000) await wait(Math.min(1000, pauseMs - waited));
+        onPaused(false);
+      }
+    }
+  }
+  return { generated, cancelled: false, failures };
+}

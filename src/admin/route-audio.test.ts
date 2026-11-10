@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { audioCount, generateMissing, mapLimit, type PlaceAudio } from './route-audio';
+import { audioCount, generateAllMissing, generateMissing, mapLimit, type PlaceAudio } from './route-audio';
 import type { AudioState } from './api';
 
 const st = (status: AudioState['status'], version: string | null = 'v'): AudioState => ({ status, version });
@@ -65,5 +65,45 @@ describe('mapLimit', () => {
     });
     expect(out).toEqual([50, 10, 40, 20, 30]);
     expect(most).toBe(2);
+  });
+});
+
+describe('generateAllMissing', () => {
+  const missing = [place(1, st('missing', 'a')), place(2, st('missing', 'b')), place(3, st('missing', 'c'))];
+  const noWait = async () => {};
+
+  it('carries on after a place fails, listing it', async () => {
+    const log: number[] = [];
+    const r = await generateAllMissing(missing, 'fr', async id => {
+      if (id === 2) throw new Error('Gemini said no');
+    }, { cancelled: () => false, onGenerated: id => log.push(id), wait: noWait });
+    expect(r).toEqual({ generated: 2, cancelled: false, failures: [{ place: 'Place 2', message: 'Gemini said no' }] });
+    expect(log).toEqual([1, 3]);
+  });
+
+  it('waits at the server limit and tries the same place again', async () => {
+    let limited = 2;
+    const calls: number[] = [];
+    const paused: boolean[] = [];
+    let waited = 0;
+    const r = await generateAllMissing(missing, 'fr', async id => {
+      calls.push(id);
+      if (id === 2 && limited-- > 0) throw Object.assign(new Error('Too many'), { status: 429 });
+    }, { cancelled: () => false, onGenerated: () => {}, onPaused: p => paused.push(p), wait: async ms => void (waited += ms), pauseMs: 3000 });
+    expect(r).toEqual({ generated: 3, cancelled: false, failures: [] });
+    expect(calls).toEqual([1, 2, 2, 2, 3]);
+    expect(paused).toEqual([true, false, true, false]);
+    expect(waited).toBe(6000);
+  });
+
+  it('stops when cancelled, also during a wait', async () => {
+    let stop = false;
+    const r = await generateAllMissing(missing, 'fr', async id => {
+      if (id === 2) {
+        stop = true;
+        throw Object.assign(new Error('Too many'), { status: 429 });
+      }
+    }, { cancelled: () => stop, onGenerated: () => {}, wait: noWait });
+    expect(r).toEqual({ generated: 1, cancelled: true, failures: [] });
   });
 });
