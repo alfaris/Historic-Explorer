@@ -10,7 +10,7 @@ import type { Location } from '../data/locations';
 /** How far the copy is moved each step (degrees, about 30 m north-east), so its pin isn't on top of another. */
 export const COPY_OFFSET = 0.0002;
 
-const DROPPED = /^(photo|image|photoAlt\w*|spot\w*|drafted)$/;
+const DROPPED = /^(photo|image|photoAlt\w*|spot\w*|drafted|pinChecked)$/;
 // Every place has these, so an unchecked draft of one stays, still marked for review.
 const REQUIRED = new Set(['id', 'routeId', 'nameEn', 'nameAr', 'category', 'lat', 'lng']);
 const withCopy = (name: string, suffix: string) => (name.trim() ? `${name.trim()} ${suffix}` : name);

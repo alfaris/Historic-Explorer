@@ -461,7 +461,7 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
             onDraft={texts => setDraft(d => (d ? fillEmpty(d, texts, PHOTO_ALT_KEYS) : d))}
           />
 
-          <div>
+          <div id="location" className="scroll-mt-24">
             <p className="text-xs font-bold text-stone-500 mb-1">Location</p>
             <p className="text-[11px] text-stone-400 mb-2">Drag the pin or tap the map. {original && 'The grey pin is the saved position.'}</p>
             <MapPicker

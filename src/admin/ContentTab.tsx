@@ -4,6 +4,7 @@ import { glossaryOf, type Content } from '../data/content';
 import { LANGS, LANGUAGES, OPTIONAL_LANGS, type Lang, type OptionalLang } from '../i18n/lang';
 import { draftLang, draftSection, draftsToReview, markReviewed, GAPS, glossaryGaps, periodGaps, placeGaps, progress, routeGaps, translationPriority, type DraftRow, type Gap, type PlaceSection } from './content-health';
 import { draftLabel } from './DraftReview';
+import { distanceLabel, pinsToCheck, withPinConfirmed } from './pin-check';
 import { inputClass } from './ui';
 import type { SaveFn } from './AdminApp';
 import { isExpired } from '../lib/notices';
@@ -110,6 +111,7 @@ export function ContentTab({ content, onEditPlace, onEditRoute, onEditTerm, onEd
           else onEditPeriod(row.id);
         }}
       />
+      <PinsList content={content} save={save} onEdit={id => onEditPlace(id, 'location')} />
       <MissingList title="Routes" rows={routesMissing.map(({ route, gaps }) => ({ id: route.id, name: route.nameEn, gaps }))} onEdit={onEditRoute} />
       <MissingList title="Glossary terms" rows={termsMissing} onEdit={onEditTerm} />
       <MissingList title="Special hours" rows={periodsMissing} onEdit={onEditPeriod} />
@@ -189,6 +191,46 @@ function MissingList({ title, rows, onEdit }: { title: string; rows: { id: strin
             <button onClick={() => onEdit(row.id)} className="flex items-center gap-1 min-h-11 px-3 text-xs font-bold text-nile hover:underline" aria-label={`Edit ${row.name}`}>
               Edit <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
             </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** "Pins to check": stops far from the rest of their route, likely misplaced. Nothing when there's none. */
+function PinsList({ content, onEdit, save }: { content: Content; onEdit: (placeId: number) => void; save?: SaveFn }) {
+  const [busy, setBusy] = useState(false);
+  const rows = useMemo(() => pinsToCheck(content), [content]);
+  if (rows.length === 0) return null;
+  const routeName = (id: string) => content.routes.find(r => r.id === id)?.nameEn ?? id;
+  const confirm = async (id: number, name: string) => {
+    if (!save || busy) return;
+    setBusy(true);
+    await save(withPinConfirmed(content, id), `Confirmed the pin of "${name}"`);
+    setBusy(false);
+  };
+  return (
+    <div className="bg-white rounded-2xl border border-gold/50 p-4">
+      <p className="text-xs font-bold uppercase tracking-widest text-stone-500">Pins to check ({rows.length})</p>
+      <p className="mt-1 text-xs text-stone-500">Far from every other place on their route, which often means a misplaced pin. Looks right keeps a place that really is on its own off this list until its pin is moved.</p>
+      <ul className="mt-2 divide-y divide-sand/40">
+        {rows.map(({ place, meters }) => (
+          <li key={place.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+            <div className="min-w-0">
+              <p className="text-sm text-ink truncate">{place.nameEn}</p>
+              <p className="text-xs text-stone-500">{routeName(place.routeId)} · {distanceLabel(meters)} from the nearest place on this route</p>
+            </div>
+            <div className="flex items-center gap-1">
+              {save && (
+                <button type="button" disabled={busy} onClick={() => confirm(place.id, place.nameEn)} className="min-h-11 px-3 text-xs font-bold text-stone-600 hover:text-ink disabled:opacity-40">
+                  Looks right
+                </button>
+              )}
+              <button type="button" onClick={() => onEdit(place.id)} className="flex items-center gap-1 min-h-11 px-3 text-xs font-bold text-nile hover:underline">
+                Check on map <ChevronRight className="w-4 h-4 rtl:rotate-180" aria-hidden="true" />
+              </button>
+            </div>
           </li>
         ))}
       </ul>

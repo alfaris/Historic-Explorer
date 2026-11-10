@@ -172,6 +172,8 @@ export function normalizeContent(input: unknown): Content {
       ...(normalizePhoto(p?.photo) ? { photo: normalizePhoto(p?.photo) } : {}),
       ...textFields(p, ['photoAlt'], LANGS),
       ...normalizeDrafted(p),
+      // Kept only while the pin is where it was confirmed: moving it asks again.
+      ...(p?.pinChecked && Number(p.pinChecked.lat) === Number(p?.lat) && Number(p.pinChecked.lng) === Number(p?.lng) ? { pinChecked: { lat: Number(p.lat), lng: Number(p.lng) } } : {}),
     })),
   };
   // A notice on a route or place that's been deleted is dropped with it.
