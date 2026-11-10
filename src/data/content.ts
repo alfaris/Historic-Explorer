@@ -163,6 +163,7 @@ export function normalizeContent(input: unknown): Content {
       descriptionAr: str(p?.descriptionAr),
       ...textFields(p, ['name', 'description'], OPTIONAL_LANGS),
       ...(typeof p?.mosque === 'boolean' ? { mosque: p.mosque } : {}),
+      ...(p?.mustSee === true ? { mustSee: true } : {}),
       ...(normalizeTips(p?.tips) ? { tips: normalizeTips(p?.tips) } : {}),
       ...(normalizeHours(p?.hours) ? { hours: normalizeHours(p?.hours) } : {}),
       ...normalizeBuilt(p),

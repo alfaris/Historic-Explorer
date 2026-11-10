@@ -326,6 +326,8 @@ export const FR: Record<string, string> = {
   'Skip this stop': 'Passer cette étape',
   'You skipped this stop.': 'Vous avez passé cette étape.',
   'Undo skip': 'Annuler',
+  'Short walk': 'Parcours court',
+  'Must-see': 'Incontournable',
   'Through the ages': 'À travers les âges',
   'Places on every route, from the oldest.': 'Les lieux de tous les parcours, du plus ancien au plus récent.',
   'Era': 'Époque',

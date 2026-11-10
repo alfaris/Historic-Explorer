@@ -19,7 +19,9 @@ import { LiveLocationInfo } from './LiveLocationInfo';
 import { Logo } from './Logo';
 import { RouteDownload } from './RouteDownload';
 import { NextStop, StopNumber, stopOfLabel } from './WalkInfo';
-import { walkPlan } from '../lib/walk';
+import { STOP_CATEGORIES, walkPlan, walkStops } from '../lib/walk';
+import { hasShortWalk, shortWalkPlaces, shortWalkStats, useShortWalks } from '../lib/short-walk';
+import { ShortWalkToggle, shortWalkMeta } from './ShortWalkToggle';
 import { track } from '../lib/track';
 import { matchScore, searchPlaces } from '../lib/search';
 import { formatDistance, formatDuration } from '../lib/route-format';
@@ -119,6 +121,13 @@ export const MainContent: React.FC = () => {
     );
   });
   const [viewMode, setViewMode] = useState<'list' | 'map' | 'near'>('list');
+  // "Short walk": only the route's must-see stops in the list, map and walk (see lib/short-walk).
+  const shortWalks = useShortWalks();
+  const canShort = useMemo(() => hasShortWalk(locations, selectedRoute), [locations, selectedRoute]);
+  const shortOn = canShort && shortWalks.has(selectedRoute);
+  // The places the list, map and walk work from: with the short walk on, the route's other stops are left out.
+  const walkPlaces = useMemo(() => (shortOn ? shortWalkPlaces(locations, selectedRoute) : locations), [shortOn, locations, selectedRoute]);
+  const shortStats = useMemo(() => (canShort ? shortWalkStats(locations, selectedRoute) : null), [canShort, locations, selectedRoute]);
 
   // Fetch the map code in the background so switching to the map is instant.
   useEffect(() => {
@@ -193,7 +202,8 @@ export const MainContent: React.FC = () => {
 
   const filteredRaw = useMemo(() => {
     return locations.filter(loc => {
-      const matchesRoute = loc.routeId === selectedRoute;
+      // The short walk hides the route's other stops (but never the place that's open).
+      const matchesRoute = loc.routeId === selectedRoute && !(shortOn && STOP_CATEGORIES.has(loc.category) && !loc.mustSee && loc.id !== selectedLocation);
       // Forgiving match (Arabic letter variants, vowel marks, punctuation); see lib/search.
       const matchesSearch = !searchQuery.trim() || matchScore(loc, searchQuery) > 0;
       const matchesCategory = selectedCategory === 'all' || loc.category === selectedCategory;
@@ -203,7 +213,7 @@ export const MainContent: React.FC = () => {
     });
     // `now` only matters while Open now is on.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, selectedCategory, selectedRoute, locations, filters, filters.openNow && now, specialPeriods, selectedLocation]);
+  }, [searchQuery, selectedCategory, selectedRoute, locations, filters, filters.openNow && now, specialPeriods, selectedLocation, shortOn]);
   // The same array while the same places match, so the minute's clock tick (Open now) or
   // opening a place doesn't make the map re-fit or fly back while the visitor pans it.
   const filteredLocations = useSameList(filteredRaw);
@@ -261,7 +271,7 @@ export const MainContent: React.FC = () => {
     if (routes.some(r => r.id === selectedRoute)) track({ t: 'route', id: selectedRoute });
   }, [selectedRoute, routes, locations]);
   // Stop numbers and the walk to the next stop, in the route's walking order.
-  const plan = useMemo(() => walkPlan(locations, selectedRoute), [locations, selectedRoute]);
+  const plan = useMemo(() => walkPlan(walkPlaces, selectedRoute), [walkPlaces, selectedRoute]);
 
   // Near me keeps watching location across all three tabs until stopped.
   const nearMe = useNearMe(isArabic, locations);
@@ -395,6 +405,9 @@ export const MainContent: React.FC = () => {
               {info ? stopOfLabel(info.number, info.total) : category ? nameOf(category) : ''}
             </span>
             <span className={`block text-lg leading-snug text-ink truncate ${headingFontClass}`} lang={fallbackLang(loc, 'name')}>
+              {canShort && loc.mustSee && plan.has(loc.id) && (
+                <Star className="inline w-4 h-4 me-1.5 -mt-1 text-gold fill-gold" role="img" aria-label={L('Must-see', 'لا تفوّت')} />
+              )}
               {nameOf(loc)}
             </span>
             <span className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
@@ -665,15 +678,27 @@ export const MainContent: React.FC = () => {
             </h2>
 
             <div className={`order-2 flex items-center gap-6 mb-5 sm:mb-6 text-xs font-bold uppercase tracking-widest text-nile`}>
-              <div className="flex items-center gap-2">
-                <RouteIcon className="w-3.5 h-3.5 text-gold" />
-                <span>{formatDistance(currentRouteData.distanceKm, currentLang())}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Clock className="w-3.5 h-3.5 text-gold" />
-                <span>{formatDuration(currentRouteData.hoursMin, currentRouteData.hoursMax, currentLang())}</span>
-              </div>
+              {shortOn && shortStats ? (
+                <div className="flex items-center gap-2">
+                  <Clock className="w-3.5 h-3.5 text-gold" />
+                  <span>{shortWalkMeta(shortStats.meters, shortStats.minutes)}</span>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2">
+                    <RouteIcon className="w-3.5 h-3.5 text-gold" />
+                    <span>{formatDistance(currentRouteData.distanceKm, currentLang())}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-3.5 h-3.5 text-gold" />
+                    <span>{formatDuration(currentRouteData.hoursMin, currentRouteData.hoursMax, currentLang())}</span>
+                  </div>
+                </>
+              )}
             </div>
+            {canShort && shortStats && (
+              <ShortWalkToggle routeId={currentRouteData.id} on={shortOn} stops={shortStats.stops} className="order-2 -mt-2 sm:-mt-3 mb-5 sm:mb-6" />
+            )}
             {hasAccessInfo(access) && (
               <p className="order-2 -mt-3 sm:-mt-4 mb-5 sm:mb-6 flex items-center gap-1.5 text-xs text-stone-600">
                 <Accessibility className="w-3.5 h-3.5 shrink-0 text-gold-ink" aria-hidden="true" />
@@ -699,7 +724,7 @@ export const MainContent: React.FC = () => {
             </div>
 
             <div className="order-3 sm:order-5 w-full flex flex-col items-center mb-6 sm:mb-0">
-              <RouteProgress placeIds={[...plan.keys()]} clearIds={routePlaces.map(l => l.id)} isArabic={isArabic} />
+              <RouteProgress placeIds={walkStops(locations, selectedRoute).map(l => l.id)} clearIds={routePlaces.map(l => l.id)} isArabic={isArabic} />
 
               <div className="mb-4 flex w-full sm:w-auto flex-wrap justify-center gap-3">
               {plan.size > 0 && (
@@ -898,8 +923,9 @@ export const MainContent: React.FC = () => {
                   </div>
                 }
               >
-                <MapView 
+ <MapView 
                   locations={filteredLocations} 
+                  planPlaces={walkPlaces}
                   selectedLocation={selectedLocation} 
                   onSelectLocation={setSelectedLocation} 
                 />
@@ -1105,7 +1131,7 @@ export const MainContent: React.FC = () => {
         >
           <WalkMode
             route={currentRouteData}
-            places={locations}
+            places={walkPlaces}
             nearMe={nearMe}
             isArabic={isArabic}
             onClose={endWalk}

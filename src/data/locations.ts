@@ -72,6 +72,8 @@ export interface Location {
   tips?: VisitorTips;
   /** Visits pause during prayers. Unset: worked out from the name (a mosque). See isActiveMosque. */
   mosque?: boolean;
+  /** One of the route's must-see stops: the short walk (see lib/short-walk) keeps only these. */
+  mustSee?: boolean;
   /** "Spot it": a small find-this challenge for families, and its answer (optional, per language). See lib/spot-it. */
   spotEn?: string;
   spotAr?: string;

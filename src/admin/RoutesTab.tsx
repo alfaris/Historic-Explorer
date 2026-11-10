@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, Plus } from 'lucide-react';
+import { ArrowDown, ArrowUp, Plus, Star } from 'lucide-react';
+import { SHORT_WALK_MIN } from '../lib/short-walk';
 import type { Content, Route } from '../data/content';
 import type { SaveFn } from './AdminApp';
 import { Button, Field, inputClass, sameValue } from './ui';
@@ -382,6 +383,16 @@ export function RoutesTab({ content, save, initialRouteId = null, onSelected, on
                 })}
               </ol>
               <p className="text-[11px] text-stone-400 mt-1">Cafés, shops and meeting points aren't stops; they're shown as nearby extras.</p>
+              {(() => {
+                const must = order.filter(id => content.places.find(p => p.id === id)?.mustSee).length;
+                return (
+                  <p className="text-xs text-stone-600 mt-2">
+                    <Star className="inline w-3.5 h-3.5 text-gold fill-gold me-1 -mt-0.5" aria-hidden="true" />
+                    {must} must-see {must === 1 ? 'stop' : 'stops'}.{' '}
+                    {must >= SHORT_WALK_MIN ? 'Visitors can choose a Short walk of just these.' : `Tick Must-see on at least ${SHORT_WALK_MIN} stops (in Places) to offer a Short walk.`}
+                  </p>
+                );
+              })()}
             </div>
           )}
           <div className="flex flex-wrap gap-2 pt-2">

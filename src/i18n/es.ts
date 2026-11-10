@@ -328,6 +328,8 @@ export const ES: Record<string, string> = {
   'Skip this stop': 'Omitir esta parada',
   'You skipped this stop.': 'Omitiste esta parada.',
   'Undo skip': 'Deshacer',
+  'Short walk': 'Paseo corto',
+  'Must-see': 'Imprescindible',
   'Through the ages': 'A través de los siglos',
   'Places on every route, from the oldest.': 'Los lugares de todas las rutas, del más antiguo al más reciente.',
   'Era': 'Época',
