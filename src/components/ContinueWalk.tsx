@@ -27,9 +27,9 @@ export function ContinueWalk({ routes, places, currentRouteId, onContinue }: {
   onContinue: (routeId: string) => void;
 }) {
   const visited = useVisited();
+  const skipped = useSkipped();
   const [dismissed, setDismissed] = useState(readDismissed);
   if (dismissed) return null;
-  const skipped = useSkipped();
   const pick = routeToContinue(routes, places, visited, currentRouteId, skipped);
   if (!pick) return null;
   const { route, summary, next } = pick;
