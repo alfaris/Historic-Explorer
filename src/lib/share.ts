@@ -3,7 +3,21 @@
 // the link-preview function (vercel.json). `/?route=<id>` and `/?loc=<id>`
 // are understood too.
 
-export const routeShareUrl = (origin: string, routeId: string) => `${origin}/r/${encodeURIComponent(routeId)}`;
+/** A link to a route; `short` asks for its short walk (the must-see stops). */
+export const routeShareUrl = (origin: string, routeId: string, short = false) =>
+  `${origin}/r/${encodeURIComponent(routeId)}${short ? '?short=1' : ''}`;
+
+/**
+ * The route whose short walk a link asks for (`/r/<id>?short=1`), whether or
+ * not that route is known yet (live content may still be on its way); null for
+ * any other link.
+ */
+export function shortWalkFromLocation(loc: { pathname: string; search: string }): string | null {
+  const params = new URLSearchParams(loc.search);
+  if (params.get('short') !== '1') return null;
+  const fromPath = /^\/r\/([^/]+)\/?$/.exec(loc.pathname)?.[1];
+  return (fromPath ? decodeURIComponent(fromPath) : params.get('route')) || null;
+}
 
 /** The route a `/r/<id>` or `?route=<id>` link points to, if it's one of these routes. */
 export function routeFromLocation(loc: { pathname: string; search: string }, routeIds: string[]): string | null {

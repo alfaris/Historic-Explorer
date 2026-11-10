@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isPlaceLink, isRouteLink, placeFromLocation, placeShareUrl, routeFromLocation, routeShareUrl } from './share';
+import { isPlaceLink, isRouteLink, placeFromLocation, placeShareUrl, routeFromLocation, routeShareUrl, shortWalkFromLocation } from './share';
 import { MAX_SHARED_PLACES, savedFromLocation, savedShareUrl } from './share';
 
 const at = (href: string) => new URL(href, 'https://x');
@@ -70,5 +70,24 @@ describe('shared lists of places', () => {
   it('round-trips', () => {
     const url = new URL(savedShareUrl('https://x.app', [3, 1, 2]));
     expect(savedFromLocation(url)).toEqual([1, 2, 3]);
+  });
+});
+
+describe('short walk links', () => {
+  const at = (url: string) => {
+    const u = new URL(url);
+    return { pathname: u.pathname, search: u.search };
+  };
+  it('adds short=1 to a route link, and reads the route back from it', () => {
+    expect(routeShareUrl('https://x', 'coptic-cairo', true)).toBe('https://x/r/coptic-cairo?short=1');
+    expect(shortWalkFromLocation(at(routeShareUrl('https://x', 'coptic-cairo', true)))).toBe('coptic-cairo');
+    expect(shortWalkFromLocation(at('https://x/?route=al-muizz&short=1'))).toBe('al-muizz');
+    // Still a route link, so the route opens as usual.
+    expect(routeFromLocation(at('https://x/r/coptic-cairo?short=1'), ['coptic-cairo'])).toBe('coptic-cairo');
+  });
+  it('is null for a plain route link or another link', () => {
+    expect(shortWalkFromLocation(at(routeShareUrl('https://x', 'coptic-cairo')))).toBeNull();
+    expect(shortWalkFromLocation(at('https://x/p/12?short=1'))).toBeNull();
+    expect(shortWalkFromLocation(at('https://x/?short=1'))).toBeNull();
   });
 });

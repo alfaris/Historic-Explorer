@@ -31,6 +31,16 @@ describe('withRoutePreview', () => {
   });
 });
 
+describe('withRoutePreview for a short walk', () => {
+  const route = routes.find(r => r.id === 'coptic-cairo')!;
+  const html = withRoutePreview(HTML, route, 'https://cairo.example', { stops: 3, meters: 1140, minutes: 25 });
+  it('says it is the short walk, with its stops, length and time, and links to it', () => {
+    expect(html).toContain('(short walk)');
+    expect(html).toMatch(/content="Short walk: the 3 must-see stops, 1\.1 km, about 25 min of walking\./);
+    expect(html).toContain('<meta property="og:url" content="https://cairo.example/r/coptic-cairo?short=1" />');
+  });
+});
+
 describe('handleShare', () => {
   afterEach(() => vi.unstubAllGlobals());
   const stubPage = () => vi.stubGlobal('fetch', async (u: URL) => (String(u).endsWith('/index.html') ? new Response(HTML) : new Response('', { status: 404 })));
@@ -47,6 +57,16 @@ describe('handleShare', () => {
     const res = await handleShare(new Request('https://cairo.example/r/al-muizz?route=al-muizz'));
     expect(res.status).toBe(302);
     expect(res.headers.get('location')).toBe('https://cairo.example/?route=al-muizz');
+  });
+
+  it("ignores short=1 for a route without a short walk, and keeps it on the fallback", async () => {
+    stubPage();
+    const text = await (await handleShare(new Request('https://cairo.example/?route=al-muizz&short=1'))).text();
+    expect(text).not.toContain('short walk');
+    expect(text).toContain('og:url" content="https://cairo.example/r/al-muizz"');
+    vi.stubGlobal('fetch', async () => new Response('<html><body>Log in</body></html>'));
+    const res = await handleShare(new Request('https://cairo.example/r/al-muizz?route=al-muizz&short=1'));
+    expect(res.headers.get('location')).toBe('https://cairo.example/?route=al-muizz&short=1');
   });
 
   it('serves the plain app for an unknown route', async () => {
