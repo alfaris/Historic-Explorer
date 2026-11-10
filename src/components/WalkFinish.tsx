@@ -16,6 +16,7 @@ import { RouteRating } from './RouteRating';
 import { StampBadge } from './Passport';
 import { stampRoute, useStamps } from '../lib/passport';
 import { cairoDate } from '../lib/special-hours';
+import { removeSkipped, useSkipped } from '../lib/skipped';
 import { NextWalk } from './NextWalk';
 
 /**
@@ -45,10 +46,15 @@ export function WalkFinish({ route, routes, places, onClose, onShowPassport, onS
     if (summary.complete) stampRoute(route.id, cairoDate(new Date()), spots);
   }, [summary.complete, route.id, spots.found, spots.total]); // eslint-disable-line react-hooks/exhaustive-deps
   const stamp = useStamps()[route.id];
+  // Stops skipped in walk mode and not visited since.
+  const skipped = useSkipped();
+  const skippedCount = summary.stopIds.filter(id => skipped.has(id) && !visited.has(id)).length;
 
   const walkAgain = () => {
     if (!window.confirm(L('Start this route again? Your visited marks on it will be cleared.', 'هل تريد بدء هذا المسار من جديد؟ سيتم مسح علامات الزيارة الخاصة به.'))) return;
-    clearVisited(places.filter(p => p.routeId === route.id).map(p => p.id));
+    const ids = places.filter(p => p.routeId === route.id).map(p => p.id);
+    clearVisited(ids);
+    removeSkipped(ids);
     onClose();
   };
 
@@ -106,6 +112,16 @@ export function WalkFinish({ route, routes, places, onClose, onShowPassport, onS
             </div>
           </dl>
           <p className="text-xs text-stone-400 mb-5">{L('Estimated from the walk between the stops you visited.', 'تقدير من المسافة بين المحطات التي زرتها.')}</p>
+          {skippedCount > 0 && (
+            <p className="text-sm text-stone-600 -mt-3 mb-5">
+              {byLang({
+                en: `${skippedCount} ${skippedCount === 1 ? 'stop' : 'stops'} skipped: visit ${skippedCount === 1 ? 'it' : 'them'} to get this route's stamp.`,
+                ar: `تخطيت ${skippedCount} ${skippedCount === 1 ? 'محطة' : skippedCount === 2 ? 'محطتين' : 'محطات'}: زرها لتحصل على ختم هذا المسار.`,
+                fr: `${skippedCount} étape${skippedCount > 1 ? 's' : ''} passée${skippedCount > 1 ? 's' : ''} : visitez-l${skippedCount > 1 ? 'es' : 'a'} pour obtenir le tampon de ce parcours.`,
+                es: `${skippedCount} parada${skippedCount > 1 ? 's' : ''} omitida${skippedCount > 1 ? 's' : ''}: visítala${skippedCount > 1 ? 's' : ''} para conseguir el sello de este recorrido.`,
+              })}
+            </p>
+          )}
 
           {spots.total > 0 && (
             <p className="flex items-center justify-center gap-2 text-sm font-bold text-ink mb-5">

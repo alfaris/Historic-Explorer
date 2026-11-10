@@ -86,3 +86,20 @@ describe('shouldAutoPlay', () => {
     for (const busy of ['loading', 'playing', 'paused'] as const) expect(shouldAutoPlay(true, 3, new Set(), busy)).toBe(false);
   });
 });
+
+describe('skipping stops', () => {
+  it('starts at the first stop neither visited nor skipped', async () => {
+    const { startIndex } = await import('./walk-mode');
+    expect(startIndex([1, 2, 3], new Set([1]), new Set([2]))).toBe(2);
+    // Only a skipped stop is left: start there, as Continue your walk does.
+    expect(startIndex([1, 2, 3], new Set([1, 3]), new Set([2]))).toBe(1);
+    expect(startIndex([1, 2, 3], new Set([1, 2, 3]), new Set())).toBe(0);
+  });
+  it('finds the next stop that is not skipped', async () => {
+    const { nextUnskipped } = await import('./walk-mode');
+    expect(nextUnskipped([1, 2, 3, 4], 0, new Set())).toBe(1);
+    expect(nextUnskipped([1, 2, 3, 4], 0, new Set([2, 3]))).toBe(3);
+    expect(nextUnskipped([1, 2, 3, 4], 1, new Set([3, 4]))).toBe(-1);
+    expect(nextUnskipped([1, 2, 3, 4], 3, new Set())).toBe(-1);
+  });
+});

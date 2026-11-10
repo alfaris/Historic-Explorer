@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Footprints, X } from 'lucide-react';
 import type { Location, Route } from '../data/locations';
 import { useVisited } from '../lib/visited';
+import { useSkipped } from '../lib/skipped';
 import { routeToContinue } from '../lib/walk-summary';
 import { L, byLang, nameOf } from '../i18n/lang';
 
@@ -26,9 +27,10 @@ export function ContinueWalk({ routes, places, currentRouteId, onContinue }: {
   onContinue: (routeId: string) => void;
 }) {
   const visited = useVisited();
+  const skipped = useSkipped();
   const [dismissed, setDismissed] = useState(readDismissed);
   if (dismissed) return null;
-  const pick = routeToContinue(routes, places, visited, currentRouteId);
+  const pick = routeToContinue(routes, places, visited, currentRouteId, skipped);
   if (!pick) return null;
   const { route, summary, next } = pick;
 
