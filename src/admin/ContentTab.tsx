@@ -5,7 +5,7 @@ import { LANGS, LANGUAGES, OPTIONAL_LANGS, type Lang, type OptionalLang } from '
 import { draftLang, draftSection, draftsToReview, markReviewed, GAPS, glossaryGaps, periodGaps, placeGaps, progress, routeGaps, translationPriority, type DraftRow, type Gap, type PlaceSection } from './content-health';
 import { draftLabel } from './DraftReview';
 import { distanceLabel, pinsToCheck, withPinConfirmed } from './pin-check';
-import { importTranslations, missingRows, translationSheet, type ImportResult } from './translation-sheet';
+import { importTranslations, missingRows, translationSheet } from './translation-sheet';
 import { downloadFile } from './backup';
 import { inputClass } from './ui';
 import type { SaveFn } from './AdminApp';
@@ -207,25 +207,33 @@ function MissingList({ title, rows, onEdit }: { title: string; rows: { id: strin
  */
 function TranslationSheets({ content, save }: { content: Content; save?: SaveFn }) {
   const input = useRef<HTMLInputElement>(null);
-  const [pending, setPending] = useState<(ImportResult & { ok: true; name: string }) | null>(null);
+  // The chosen file. Its summary, and what's saved, are worked out against the
+  // content as it is now, so nothing saved or reloaded meanwhile is overwritten.
+  const [file, setFile] = useState<{ name: string; csv: string } | null>(null);
+  const preview = useMemo(() => (file ? importTranslations(content, file.csv) : null), [file, content]);
+  const pending = preview?.ok ? { ...preview, name: file!.name } : null;
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const counts = OPTIONAL_LANGS.map(lang => ({ lang, missing: missingRows(content, lang).length }));
-  if (counts.every(c => c.missing === 0) && !pending) return null;
-  const choose = async (file: File | undefined) => {
-    setPending(null);
+  if (counts.every(c => c.missing === 0) && !file) return null;
+  const choose = async (chosen: File | undefined) => {
+    setFile(null);
     setProblem(null);
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) return setProblem('This file is too large to be a translation spreadsheet.');
-    const res = importTranslations(content, await file.text());
+    if (!chosen) return;
+    if (chosen.size > 5 * 1024 * 1024) return setProblem('This file is too large to be a translation spreadsheet.');
+    const csv = await chosen.text();
+    const res = importTranslations(content, csv);
     if (res.ok === false) return setProblem(res.message);
-    setPending({ ...res, name: file.name });
+    setFile({ name: chosen.name, csv });
   };
   const apply = async () => {
-    if (!pending || !save) return;
+    if (!file || !save) return;
+    // Applied to the content as it is at this moment.
+    const res = importTranslations(content, file.csv);
+    if (!res.ok || res.filled === 0) return;
     setBusy(true);
-    const name = LANGUAGES[pending.lang].english;
-    if (await save(pending.content, `Imported ${pending.filled} ${name} ${pending.filled === 1 ? 'translation' : 'translations'} from ${pending.name}`)) setPending(null);
+    const name = LANGUAGES[res.lang].english;
+    if (await save(res.content, `Imported ${res.filled} ${name} ${res.filled === 1 ? 'translation' : 'translations'} from ${file.name}`)) setFile(null);
     setBusy(false);
   };
   const btn = 'min-h-11 px-4 rounded-xl border border-sand text-xs font-bold text-ink hover:border-nile disabled:opacity-40';
@@ -274,7 +282,7 @@ function TranslationSheets({ content, save }: { content: Content; save?: SaveFn 
                 {busy ? 'Saving…' : `Import ${pending.filled}`}
               </button>
             )}
-            <button type="button" disabled={busy} onClick={() => setPending(null)} className={btn}>
+            <button type="button" disabled={busy} onClick={() => setFile(null)} className={btn}>
               {pending.filled > 0 ? 'Cancel' : 'Close'}
             </button>
           </div>
