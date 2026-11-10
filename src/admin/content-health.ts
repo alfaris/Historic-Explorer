@@ -23,7 +23,7 @@ export const GAPS: { id: Gap; label: string; section: PlaceSection }[] = [
 ];
 
 /** Sections of the place editor that can be scrolled to (element ids). */
-export type PlaceSection = 'photo' | 'hours' | 'built' | 'spot' | 'tips' | `lang-${OptionalLang}`;
+export type PlaceSection = 'photo' | 'hours' | 'built' | 'spot' | 'tips' | 'location' | `lang-${OptionalLang}`;
 
 const hasLang = (o: Record<string, unknown>, lang: OptionalLang, bases: string[]) =>
   bases.every(b => {

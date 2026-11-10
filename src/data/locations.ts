@@ -102,6 +102,8 @@ export interface Location {
   photoAltEs?: string;
   /** Fields Gemini drafted that no one has checked yet (admin only). See drafted.ts. */
   drafted?: string[];
+  /** The position the admin confirmed as right although it's far from the rest of its route (admin only). See admin/pin-check. */
+  pinChecked?: { lat: number; lng: number };
 }
 
 export const routes: Route[] = [
