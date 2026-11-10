@@ -5,6 +5,7 @@ import { api, type HistoryEntry } from './api';
 import type { SaveFn } from './AdminApp';
 import { backupDiff, backupFile, describeChange, downloadFile, parseBackup, placesCsv, type BackupDiff } from './backup';
 import { Button, ErrorBox, formatDate } from './ui';
+import { changeCount, versionDiff, type SectionChanges } from './version-diff';
 
 type Pending = { name: string; content: Content; savedAt: string | null; diff: BackupDiff };
 
@@ -111,11 +112,77 @@ function Backup({ content, save, onRestored }: { content: Content; save: SaveFn;
   );
 }
 
+/** The changes between two versions, by section: added, deleted, and edited fields (old → new). */
+function DiffList({ diff, empty }: { diff: SectionChanges[]; empty: string }) {
+  if (diff.length === 0) return <p className="text-sm text-stone-600">{empty}</p>;
+  return (
+    <div className="space-y-3">
+      {diff.map(s => (
+        <div key={s.section}>
+          <p className="text-xs font-bold uppercase tracking-widest text-stone-500 mb-1">{s.section} ({s.items.length})</p>
+          <ul className="space-y-1.5 text-sm">
+            {s.items.map((item, i) => (
+              <li key={i}>
+                <span className={`me-2 text-[10px] font-bold uppercase tracking-widest ${item.kind === 'added' ? 'text-nile' : item.kind === 'deleted' ? 'text-red-700' : 'text-gold-ink'}`}>
+                  {item.kind}
+                </span>
+                <span className="text-ink">{item.name}</span>
+                {item.kind === 'edited' && (
+                  <ul className="mt-1 ms-4 space-y-0.5 text-xs text-stone-600">
+                    {item.movedMeters !== undefined && <li>Pin moved {item.movedMeters} m</li>}
+                    {item.fields.map(f => (
+                      <li key={f.field} className="break-words">
+                        <span className="font-mono text-stone-500">{f.field}</span>: <del className="text-stone-400">{f.before}</del> → <ins className="no-underline text-ink">{f.after}</ins>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+type Shown = { pathname: string; mode: 'changed' | 'now'; diff: SectionChanges[] };
+
 /** Every save is kept; restoring publishes an old version as a new save. */
 export function HistoryTab({ content, save }: { content: Content; save: SaveFn }) {
   const [history, setHistory] = useState<HistoryEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  // "What changed" / "Compare with now", for one version at a time.
+  const [shown, setShown] = useState<Shown | null>(null);
+  const [comparing, setComparing] = useState<string | null>(null);
+  // Versions already fetched (they never change), by pathname.
+  const versions = useRef(new Map<string, Content>());
+  const fetchVersion = async (pathname: string) => {
+    const kept = versions.current.get(pathname);
+    if (kept) return kept;
+    const { content: c } = await api.version(pathname);
+    const { note: _note, ...rest } = c;
+    versions.current.set(pathname, rest);
+    return rest;
+  };
+  // What this save changed (from the one before it), or what restoring it would change now.
+  const compare = async (i: number, mode: Shown['mode']) => {
+    if (!history) return;
+    const entry = history[i];
+    if (shown?.pathname === entry.pathname && shown.mode === mode) return setShown(null);
+    setComparing(`${entry.pathname}:${mode}`);
+    setError(null);
+    try {
+      const version = await fetchVersion(entry.pathname);
+      const diff = mode === 'changed' ? versionDiff(await fetchVersion(history[i + 1].pathname), version) : versionDiff(content, version);
+      setShown({ pathname: entry.pathname, mode, diff });
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setComparing(null);
+    }
+  };
 
   const load = () =>
     api
@@ -153,21 +220,51 @@ export function HistoryTab({ content, save }: { content: Content; save: SaveFn }
         <p className="text-stone-500">No saves yet. The site is using the built-in content.</p>
       ) : (
         <ul className="divide-y divide-sand/40">
-          {history.map((h, i) => (
-            <li key={h.pathname} className="flex items-center justify-between gap-4 py-3">
-              <div>
-                <p className="text-sm text-ink">
-                  {formatDate(h.savedAt)} {i === 0 && <span className="text-[10px] font-bold uppercase tracking-widest text-nile ms-2">Current</span>}
-                </p>
-                <p className="text-[11px] text-stone-400">{Math.round(h.size / 1024)} KB</p>
-              </div>
-              {i > 0 && (
-                <Button variant="secondary" onClick={() => restore(h)} disabled={busy !== null}>
-                  {busy === h.pathname ? 'Restoring…' : 'Restore'}
-                </Button>
-              )}
-            </li>
-          ))}
+          {history.map((h, i) => {
+            const open = shown?.pathname === h.pathname ? shown : null;
+            const link = (mode: Shown['mode'], label: string) => (
+              <button
+                type="button"
+                onClick={() => compare(i, mode)}
+                aria-expanded={open?.mode === mode}
+                disabled={comparing !== null}
+                className="min-h-11 px-3 text-xs font-bold text-nile hover:underline disabled:opacity-40"
+              >
+                {comparing === `${h.pathname}:${mode}` ? 'Loading…' : label}
+              </button>
+            );
+            return (
+              <li key={h.pathname} className="py-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm text-ink">
+                      {formatDate(h.savedAt)} {i === 0 && <span className="text-[10px] font-bold uppercase tracking-widest text-nile ms-2">Current</span>}
+                    </p>
+                    <p className="text-[11px] text-stone-400">{Math.round(h.size / 1024)} KB</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1">
+                    {i < history.length - 1 && link('changed', 'What changed')}
+                    {i > 0 && link('now', 'Compare with now')}
+                    {i > 0 && (
+                      <Button variant="secondary" onClick={() => restore(h)} disabled={busy !== null}>
+                        {busy === h.pathname ? 'Restoring…' : 'Restore'}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                {open && (
+                  <div className="mt-3 rounded-xl border border-sand/60 bg-chalk/40 p-4" role="region" aria-label={open.mode === 'changed' ? 'What this save changed' : 'What restoring it would change'}>
+                    <p className="text-xs text-stone-500 mb-3">
+                      {open.mode === 'changed'
+                        ? `What this save changed, from the version before it (${changeCount(open.diff)} ${changeCount(open.diff) === 1 ? 'change' : 'changes'}).`
+                        : `What restoring this version would change in the current content (${changeCount(open.diff)} ${changeCount(open.diff) === 1 ? 'change' : 'changes'}).`}
+                    </p>
+                    <DiffList diff={open.diff} empty={open.mode === 'changed' ? 'No difference in the content.' : 'This version is the same as the current content.'} />
+                  </div>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>
