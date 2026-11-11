@@ -332,6 +332,7 @@ export const ES: Record<string, string> = {
   'Must-see': 'Imprescindible',
   'Short walk: the must-see stops only': 'Paseo corto: solo las paradas imprescindibles',
   'Every stop is saved, not only the short walk, so the full route works offline too.': 'Se guardan todas las paradas, no solo el paseo corto, así que la ruta completa también funciona sin conexión.',
+  'Add to calendar': 'Añadir al calendario',
   'Through the ages': 'A través de los siglos',
   'Places on every route, from the oldest.': 'Los lugares de todas las rutas, del más antiguo al más reciente.',
   'Era': 'Época',
