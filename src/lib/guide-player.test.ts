@@ -225,4 +225,87 @@ describe('guide player', () => {
     expect(player.takeAutoplay()).toBe(true);
     expect(player.takeAutoplay()).toBe(false);
   });
+
+  it('reports how far into the recording the visitor got, and the end when it finishes', async () => {
+    const { player, audio } = setup();
+    const seen: [number, number][] = [];
+    const id = player.begin(track('a', { onPosition: (at: number, d: number) => seen.push([at, d]) }));
+    await player.playAudio(id, wav);
+    audio.currentTime = 3;
+    audio.fire('timeupdate');
+    expect(seen).toEqual([]);
+    audio.currentTime = 12;
+    audio.fire('timeupdate');
+    audio.currentTime = 14;
+    audio.fire('timeupdate');
+    expect(seen).toEqual([[12, 60]]);
+    player.pause();
+    expect(seen.at(-1)).toEqual([14, 60]);
+    player.stop();
+    expect(seen.at(-1)).toEqual([14, 60]);
+
+    const id2 = player.begin(track('b', { onPosition: (at: number, d: number) => seen.push([at, d]) }));
+    await player.playAudio(id2, wav);
+    audio.currentTime = 60;
+    audio.ended = true;
+    audio.fire('ended');
+    expect(seen.at(-1)).toEqual([60, 60]);
+    audio.ended = false;
+  });
+
+  it("reports the guide that's replaced when another starts", async () => {
+    const { player, audio } = setup();
+    const seen: string[] = [];
+    const id = player.begin(track('a', { onPosition: (at: number) => seen.push(`a@${at}`) }));
+    await player.playAudio(id, wav);
+    audio.currentTime = 33;
+    player.begin(track('b', { onPosition: (at: number) => seen.push(`b@${at}`) }));
+    expect(seen).toEqual(['a@33']);
+  });
+
+  it('resumes a recording from a saved point, even before it can seek', async () => {
+    const { player, audio } = setup();
+    const seen: number[] = [];
+    const id = player.begin(track('a', { onPosition: (at: number) => seen.push(at) }));
+    await player.playAudio(id, wav, 42);
+    expect(audio.currentTime).toBe(42);
+    // A browser that dropped the early seek: applied once the recording has loaded.
+    audio.currentTime = 0;
+    audio.fire('loadedmetadata');
+    expect(audio.currentTime).toBe(42);
+
+    const id2 = player.begin(track('b', { onPosition: (at: number) => seen.push(at) }));
+    await player.playAudio(id2, wav, 50);
+    audio.currentTime = 0;
+    player.stop();
+    expect(seen.at(-1)).toBe(50);
+  });
+
+  it('reports nothing for the browser voice', () => {
+    const { player } = setup();
+    const seen: number[] = [];
+    const id = player.begin(track('a', { onPosition: (at: number) => seen.push(at) }));
+    player.playSpeech(id, 'Hello', 'en');
+    player.stop();
+    expect(seen).toEqual([]);
+  });
+
+  it('starts afresh when the recording was remade at another length since the point was saved', async () => {
+    const { player, audio } = setup();
+    const id = player.begin(track('a'));
+    await player.playAudio(id, wav, 42, 90);
+    audio.fire('loadedmetadata'); // the fake is 60 s long
+    expect(audio.currentTime).toBe(0);
+
+    const id2 = player.begin(track('a'));
+    await player.playAudio(id2, wav, 42, 60);
+    audio.currentTime = 0;
+    audio.fire('loadedmetadata');
+    expect(audio.currentTime).toBe(42);
+
+    const id3 = player.begin(track('a'));
+    await player.playAudio(id3, wav, 70);
+    audio.fire('loadedmetadata');
+    expect(audio.currentTime).toBe(0);
+  });
 });
