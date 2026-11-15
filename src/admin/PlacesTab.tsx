@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CheckSquare, Clock, Copy, Languages, Plus, Search } from 'lucide-react';
+import { CheckSquare, Clock, Copy, Flag, Languages, Plus, Search } from 'lucide-react';
 import { categories } from '../data/locations';
 import { nextPlaceId, type Content, type Location } from '../data/content';
 import type { SaveFn } from './AdminApp';
@@ -23,18 +23,28 @@ import { DraftReview } from './DraftReview';
 import { isActiveMosque } from '../lib/prayer-times';
 import { builtProblems, eraById, eraForYear, ERAS, isEraId, YEAR_MAX, YEAR_MIN } from '../lib/eras';
 import type { PlaceSection } from './content-health';
+import { PlaceReports } from './ReportsTab';
+import { reportsLabel } from './report-groups';
 import { fieldKey, FillMissingButton, missingPlaceText, withOptional, fillEmpty, typedField } from './translations';
 
 const CAIRO_CENTRE = { lat: 30.0444, lng: 31.2357 };
 
-export function PlacesTab({ content, save, initialPlaceId, initialSection = null, onSelected }: {
+export function PlacesTab({ content, save, initialPlaceId, initialSection = null, onSelected, onShowReports }: {
   content: Content;
   save: SaveFn;
   initialPlaceId: number | null;
   /** Scroll to this part of the editor once the place is open. */
   initialSection?: PlaceSection | null;
   onSelected: () => void;
+  /** Opens the Reports tab on this place's open reports. */
+  onShowReports?: (placeId: number) => void;
 }) {
+  // Open visitor reports per place, for the badges in the list.
+  const [reportCounts, setReportCounts] = useState<Record<number, number>>({});
+  const loadReportCounts = () => api.reportCounts().then(r => setReportCounts(r.open), () => {});
+  useEffect(() => {
+    loadReportCounts();
+  }, []);
   const [routeFilter, setRouteFilter] = useState<string>('all');
   const [query, setQuery] = useState('');
   const [draft, setDraft] = useState<Location | null>(null);
@@ -259,18 +269,30 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
                   </span>
                 </label>
               ) : (
-              <button
-                onClick={() => {
-                  setDraft({ ...p });
-                  setIsNew(false);
-                }}
-                className={`w-full text-start px-3 py-2 rounded-lg text-sm ${draft?.id === p.id && !isNew ? 'bg-nile/10 text-nile' : 'hover:bg-chalk'}`}
-              >
-                <span className="block truncate">{p.nameEn}</span>
-                <span className="block text-[11px] text-stone-400 truncate">
-                  {categories.find(c => c.id === p.category)?.nameEn} · {routeName(p.routeId)}
-                </span>
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => {
+                    setDraft({ ...p });
+                    setIsNew(false);
+                  }}
+                  className={`flex-1 min-w-0 text-start px-3 py-2 rounded-lg text-sm ${draft?.id === p.id && !isNew ? 'bg-nile/10 text-nile' : 'hover:bg-chalk'}`}
+                >
+                  <span className="block truncate">{p.nameEn}</span>
+                  <span className="block text-[11px] text-stone-400 truncate">
+                    {categories.find(c => c.id === p.category)?.nameEn} · {routeName(p.routeId)}
+                  </span>
+                </button>
+                {reportCounts[p.id] > 0 && (
+                  <button
+                    onClick={() => onShowReports?.(p.id)}
+                    className="shrink-0 inline-flex items-center gap-1 rounded-full bg-gold/15 border border-gold/40 px-2 py-0.5 text-[11px] font-bold text-ink hover:border-gold"
+                    title={`See the open reports about ${p.nameEn}`}
+                  >
+                    <Flag className="w-3 h-3 text-gold-ink" aria-hidden="true" />
+                    {reportsLabel(reportCounts[p.id])}
+                  </button>
+                )}
+              </div>
               )}
             </li>
           ))}
@@ -305,6 +327,16 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
             <DraftReview item={draft} onChange={next => setDraft(next)} />
             <span className="text-xs text-stone-400">ID {draft.id}</span>
           </div>
+
+          {!isNew && reportCounts[draft.id] > 0 && (
+            <PlaceReports
+              placeId={draft.id}
+              content={content}
+              save={save}
+              onUsePosition={pos => setDraft(d => (d ? { ...d, ...pos } : d))}
+              onChanged={loadReportCounts}
+            />
+          )}
 
           <div className="grid sm:grid-cols-2 gap-4">
             <Field label="Route">

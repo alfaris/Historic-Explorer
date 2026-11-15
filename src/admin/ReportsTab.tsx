@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Mail, RefreshCw } from 'lucide-react';
+import { Mail, RefreshCw, X } from 'lucide-react';
 import type { Content } from '../data/content';
 import { distanceMeters, formatDistance } from '../lib/geo';
 import { LANGUAGES } from '../i18n/lang';
@@ -7,6 +7,7 @@ import type { PlaceSection } from './content-health';
 import { api, ApiError, type Report } from './api';
 import type { SaveFn } from './AdminApp';
 import { Button, ErrorBox, formatDate, MapPicker } from './ui';
+import { filterPlaces, groupByPlace, reportsLabel, type ReportView } from './report-groups';
 
 const TYPE_LABEL: Record<Report['type'], string> = {
   location: 'Wrong location',
@@ -17,24 +18,45 @@ const TYPE_LABEL: Record<Report['type'], string> = {
 
 type Filter = Report['status'] | 'all';
 
-export function ReportsTab({ content, save, onEditPlace, onSignedOut }: {
+const ALL_VIEW: ReportView = { route: 'all', type: 'all', placeId: null };
+
+export function ReportsTab({ content, save, onEditPlace, onSignedOut, initialPlaceId = null, onPlaceShown }: {
   content: Content;
   save: SaveFn;
   onEditPlace: (placeId: number, section?: PlaceSection) => void;
   onSignedOut: () => void;
+  /** Opened from a place's badge in the Places tab: that place's open reports. */
+  initialPlaceId?: number | null;
+  onPlaceShown?: () => void;
 }) {
   const [reports, setReports] = useState<Report[] | null>(null);
   const [total, setTotal] = useState(0);
   const [counts, setCounts] = useState<Record<Report['status'], number> | null>(null);
   const [filter, setFilter] = useState<Filter>('open');
+  const [view, setView] = useState<ReportView>(() => (initialPlaceId !== null ? { ...ALL_VIEW, placeId: initialPlaceId } : ALL_VIEW));
   const [error, setError] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
+
+  useEffect(() => {
+    if (initialPlaceId === null) return;
+    setView({ ...ALL_VIEW, placeId: initialPlaceId });
+    setFilter('open');
+    onPlaceShown?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialPlaceId]);
+
+  // Which places the view covers: worked out from the content, but only when the view changes.
+  const placesKey = (filterPlaces(content, view) ?? []).join(',');
+  const places = view.route === 'all' && view.placeId === null ? undefined : placesKey;
 
   // Loads the first page for the filter, or the next page when appending.
   const load = useCallback(
     async (append = false, offset = 0) => {
       try {
-        const page = await api.reports(filter, offset);
+        const page = await api.reports(filter, offset, {
+          ...(places !== undefined ? { places: places ? places.split(',').map(Number) : [] } : {}),
+          ...(view.type !== 'all' ? { type: view.type } : {}),
+        });
         setReports(rs => (append && rs ? [...rs, ...page.reports] : page.reports));
         setTotal(page.total);
         setCounts(page.counts);
@@ -44,7 +66,7 @@ export function ReportsTab({ content, save, onEditPlace, onSignedOut }: {
         setError((err as Error).message);
       }
     },
-    [filter, onSignedOut],
+    [filter, places, view.type, onSignedOut],
   );
 
   useEffect(() => {
@@ -62,6 +84,9 @@ export function ReportsTab({ content, save, onEditPlace, onSignedOut }: {
   };
 
   const shown = reports ?? [];
+  const groups = groupByPlace(shown);
+  const placeName = (id: number) => content.places.find(p => p.id === id)?.nameEn ?? shown.find(r => r.placeId === id)?.placeName ?? `Place ${id}`;
+  const select = 'rounded-lg border border-sand/60 bg-white px-2 py-1.5 text-xs text-stone-700';
 
   return (
     <section>
@@ -82,18 +107,70 @@ export function ReportsTab({ content, save, onEditPlace, onSignedOut }: {
         </button>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        {view.placeId !== null ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-gold/15 border border-gold/40 ps-3 pe-1 py-0.5 text-xs font-bold text-ink">
+            Only {placeName(view.placeId)}
+            <button
+              onClick={() => setView(v => ({ ...v, placeId: null }))}
+              className="rounded-full p-1 hover:bg-gold/20"
+              aria-label="Show reports about every place"
+            >
+              <X className="w-3.5 h-3.5" aria-hidden="true" />
+            </button>
+          </span>
+        ) : (
+          <label className="flex items-center gap-1.5 text-xs text-stone-500">
+            Route
+            <select value={view.route} onChange={e => setView(v => ({ ...v, route: e.target.value }))} className={select}>
+              <option value="all">All routes</option>
+              {content.routes.map(r => (
+                <option key={r.id} value={r.id}>{r.nameEn}</option>
+              ))}
+            </select>
+          </label>
+        )}
+        <label className="flex items-center gap-1.5 text-xs text-stone-500">
+          Type
+          <select value={view.type} onChange={e => setView(v => ({ ...v, type: e.target.value as ReportView['type'] }))} className={select}>
+            <option value="all">All types</option>
+            {(Object.keys(TYPE_LABEL) as Report['type'][]).map(t => (
+              <option key={t} value={t}>{TYPE_LABEL[t]}</option>
+            ))}
+          </select>
+        </label>
+        {(view.route !== 'all' || view.type !== 'all' || view.placeId !== null) && (
+          <button onClick={() => setView(ALL_VIEW)} className="text-xs text-nile underline underline-offset-2">
+            Clear filters
+          </button>
+        )}
+      </div>
+
       <DigestSettings />
       {error && <ErrorBox message={error} />}
       {!reports ? (
         <p className="text-stone-500">Loading reports…</p>
       ) : shown.length === 0 ? (
-        <p className="text-stone-500 bg-white rounded-2xl border border-sand/50 p-8 text-center">No {filter === 'all' ? '' : filter} reports.</p>
+        <p className="text-stone-500 bg-white rounded-2xl border border-sand/50 p-8 text-center">
+          No {filter === 'all' ? '' : filter} reports{view.route !== 'all' || view.type !== 'all' || view.placeId !== null ? ' match these filters' : ''}.
+        </p>
       ) : (
-        <ul className="space-y-4">
-          {shown.map(r => (
-            <ReportCard key={r.id} report={r} content={content} save={save} setStatus={setStatus} onEditPlace={onEditPlace} />
+        <div className="space-y-6">
+          {groups.map(g => (
+            <section key={g.placeId} aria-label={placeName(g.placeId)}>
+              {g.reports.length > 1 && (
+                <h3 className="text-xs font-bold uppercase tracking-widest text-stone-500 mb-2">
+                  {placeName(g.placeId)} · {reportsLabel(g.reports.length)}
+                </h3>
+              )}
+              <ul className="space-y-4">
+                {g.reports.map(r => (
+                  <ReportCard key={r.id} report={r} content={content} save={save} setStatus={setStatus} onEditPlace={onEditPlace} />
+                ))}
+              </ul>
+            </section>
           ))}
-        </ul>
+        </div>
       )}
       {reports && shown.length < total && (
         <div className="text-center mt-4">
@@ -114,13 +191,19 @@ export function ReportsTab({ content, save, onEditPlace, onSignedOut }: {
   );
 }
 
-function ReportCard({ report, content, save, setStatus, onEditPlace }: {
+function ReportCard({ report, content, save, setStatus, onEditPlace, onUsePosition }: {
   report: Report;
   content: Content;
   save: SaveFn;
   setStatus: (r: Report, s: Report['status']) => Promise<void>;
-  onEditPlace: (id: number, section?: PlaceSection) => void;
+  onEditPlace?: (id: number, section?: PlaceSection) => void;
+  /**
+   * In the place editor: put the suggested spot in the open draft rather
+   * than saving it straight away, so the draft and the content don't differ.
+   */
+  onUsePosition?: (pos: { lat: number; lng: number }) => void;
 }) {
+  const inEditor = !!onUsePosition;
   const place = content.places.find(p => p.id === report.placeId);
   const [busy, setBusy] = useState(false);
   const run = async (fn: () => Promise<void>) => {
@@ -189,41 +272,98 @@ function ReportCard({ report, content, save, setStatus, onEditPlace }: {
 
       <div className="flex flex-wrap gap-2">
         {report.status === 'open' && report.type === 'location' && report.suggested && place && (
-          <Button onClick={applyLocation} disabled={busy}>
-            Apply new position
-          </Button>
+          inEditor ? (
+            <Button type="button" onClick={() => onUsePosition!({ lat: report.suggested!.lat, lng: report.suggested!.lng })} disabled={busy}>
+              Use this position
+            </Button>
+          ) : (
+            <Button onClick={applyLocation} disabled={busy}>
+              Apply new position
+            </Button>
+          )
         )}
-        {report.status === 'open' && report.type === 'closed' && place && (
+        {!inEditor && report.status === 'open' && report.type === 'closed' && place && (
           <Button variant="danger" onClick={deletePlace} disabled={busy}>
             Delete place
           </Button>
         )}
-        {report.type === 'closed' && place && (
+        {onEditPlace && report.type === 'closed' && place && (
           <Button variant="secondary" onClick={() => onEditPlace(place.id, 'hours')} disabled={busy}>
             Edit opening hours
           </Button>
         )}
-        {place && (
+        {onEditPlace && place && (
           <Button variant="secondary" onClick={() => onEditPlace(place.id)} disabled={busy}>
             Edit place
           </Button>
         )}
         {report.status === 'open' ? (
           <>
-            <Button variant="secondary" onClick={() => run(() => setStatus(report, 'resolved'))} disabled={busy}>
+            <Button type="button" variant="secondary" onClick={() => run(() => setStatus(report, 'resolved'))} disabled={busy}>
               Mark resolved
             </Button>
-            <Button variant="secondary" onClick={() => run(() => setStatus(report, 'dismissed'))} disabled={busy}>
+            <Button type="button" variant="secondary" onClick={() => run(() => setStatus(report, 'dismissed'))} disabled={busy}>
               Dismiss
             </Button>
           </>
         ) : (
-          <Button variant="secondary" onClick={() => run(() => setStatus(report, 'open'))} disabled={busy}>
+          <Button type="button" variant="secondary" onClick={() => run(() => setStatus(report, 'open'))} disabled={busy}>
             Reopen
           </Button>
         )}
       </div>
     </li>
+  );
+}
+
+/**
+ * A place's open reports, in its editor, to resolve or dismiss there. A
+ * suggested position goes into the draft (`onUsePosition`) to be saved with it.
+ */
+export function PlaceReports({ placeId, content, save, onUsePosition, onChanged }: {
+  placeId: number;
+  content: Content;
+  save: SaveFn;
+  onUsePosition: (pos: { lat: number; lng: number }) => void;
+  /** A report was resolved, dismissed or reopened. */
+  onChanged?: () => void;
+}) {
+  const [reports, setReports] = useState<Report[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const load = useCallback(async () => {
+    try {
+      setReports((await api.reports('open', 0, { places: [placeId] })).reports);
+      setError(null);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }, [placeId]);
+  useEffect(() => {
+    setReports(null);
+    load();
+  }, [load]);
+
+  const setStatus = async (report: Report, status: Report['status']) => {
+    try {
+      await api.updateReport(report.id, { status });
+      onChanged?.();
+      await load();
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  if (error) return <ErrorBox message={error} />;
+  if (!reports || reports.length === 0) return null;
+  return (
+    <div id="reports" className="scroll-mt-24 rounded-2xl border border-gold/50 bg-gold/5 p-4">
+      <p className="text-xs font-bold text-stone-600 mb-3">Open visitor reports · {reportsLabel(reports.length)}</p>
+      <ul className="space-y-3">
+        {reports.map(r => (
+          <ReportCard key={r.id} report={r} content={content} save={save} setStatus={setStatus} onUsePosition={onUsePosition} />
+        ))}
+      </ul>
+    </div>
   );
 }
 

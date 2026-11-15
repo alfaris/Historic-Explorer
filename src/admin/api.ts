@@ -53,8 +53,15 @@ export const api = {
   content: () => call<{ content: Content; etag: string | null }>('content'),
   saveContent: (content: Content, etag: string | null, note: string) =>
     call<{ etag: string }>('content', { method: 'PUT', body: JSON.stringify({ content, etag, note }) }),
-  reports: (status: Report['status'] | 'all', offset = 0) =>
-    call<{ reports: Report[]; total: number; counts: Record<Report['status'], number> }>('reports', {}, `&status=${status}&offset=${offset}`),
+  /** One page of reports; `places` limits them to those places (a route's, or one), `type` to one kind. */
+  reports: (status: Report['status'] | 'all', offset = 0, filter: { places?: number[]; type?: Report['type'] } = {}) =>
+    call<{ reports: Report[]; total: number; counts: Record<Report['status'], number> }>(
+      'reports',
+      {},
+      `&status=${status}&offset=${offset}${filter.places ? `&places=${filter.places.join(',')}` : ''}${filter.type ? `&type=${filter.type}` : ''}`,
+    ),
+  /** Open reports per place ID. */
+  reportCounts: () => call<{ open: Record<number, number> }>('report-counts'),
   updateReport: (id: string, changes: { status?: Report['status']; adminNote?: string }) =>
     call<{ report: Report }>('report', { method: 'PATCH', body: JSON.stringify({ id, ...changes }) }),
   history: () => call<{ history: HistoryEntry[] }>('history'),
