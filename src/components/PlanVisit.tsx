@@ -1,18 +1,20 @@
 import React, { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { CalendarClock, CheckCircle2, Clock, MoonStar, TriangleAlert, X, Zap } from 'lucide-react';
+import { CalendarClock, CalendarPlus, CheckCircle2, Clock, MoonStar, TriangleAlert, X, Zap } from 'lucide-react';
 import type { Location, Route } from '../data/locations';
 import { cairoTime, dayName, formatTime, statusText, toMinutes } from '../lib/opening-hours';
 import { prayerText } from '../lib/prayer-times';
 import { useDialog } from '../lib/useDialog';
 import {
-  STAY_OPTIONS, cairoDaysBetween, cairoHHMM, cairoInstant, defaultStay, nextQuarter, suggestStart, visitPlan, type PlanFlag,
+  STAY_OPTIONS, cairoDaysBetween, cairoHHMM, cairoInstant, defaultStay, nextQuarter, suggestStart, visitPlan, type PlanFlag, type VisitPlan,
 } from '../lib/visit-plan';
 import { L, byLang, currentLang, nameOf, type Lang } from '../i18n/lang';
 import { minutesLabel } from './WalkInfo';
 import { useContent } from '../data/ContentContext';
 import { WeatherAdvice } from './WeatherAdvice';
 import { breakCount } from '../lib/weather';
+import type { CalendarEvent } from '../lib/calendar';
+import { routeShareUrl } from '../lib/share';
 
 const clock = (d: Date, lang: Lang) => formatTime(cairoTime(d).minutes, lang);
 // Spanish says "a las 9:00" but "a la 1:00".
@@ -84,6 +86,41 @@ function FlagLine({ flag, at, lang }: { flag: PlanFlag; at: Date; lang: Lang }) 
   );
 }
 
+const flagNote = (flag: PlanFlag) =>
+  flag.kind === 'prayer'
+    ? L('Prayer during your visit', 'صلاة أثناء زيارتك')
+    : flag.kind === 'closed'
+      ? L('Closed when you get there', 'مغلق عند وصولك')
+      : L('Closes during your visit', 'يغلق أثناء زيارتك');
+
+/** The plan as a calendar event: the stops in walking order with their times and warnings, and a link back to the walk. */
+function planEvent(route: Route, plan: VisitPlan<Location>, start: Date, short: boolean, lang: Lang): CalendarEvent | null {
+  if (!plan.finish || plan.stops.length === 0) return null;
+  const first = plan.stops[0].place;
+  const url = routeShareUrl(window.location.origin, route.id, short);
+  const lines = [
+    ...(short ? [L('Short walk: the must-see stops only', 'جولة قصيرة: المحطات التي لا تفوّت فقط'), ''] : []),
+    ...plan.stops.flatMap(stop => [
+      `${clock(stop.arrive, lang)}  ${stop.number}. ${nameOf(stop.place)}`,
+      ...stop.flags.map(flag => `   ⚠ ${flagNote(flag)}`),
+    ]),
+    '',
+    L('Estimates. Walking times are from the map; opening hours and prayer times are in Cairo time.', 'تقديرات. أوقات المشي من الخريطة، ومواعيد العمل وأوقات الصلاة بتوقيت القاهرة.'),
+    url,
+  ];
+  return {
+    uid: `plan-${route.id}${short ? '-short' : ''}-${start.getTime()}@cairo-walks`,
+    start,
+    end: plan.finish,
+    title: `${nameOf(route)} · Cairo Walks`,
+    location: nameOf(first),
+    geo: { lat: first.lat, lng: first.lng },
+    description: lines.join('\n'),
+    url,
+    alarmMinutes: 60,
+  };
+}
+
 function PlanDialog({ route, places, walkPlaces = places, onClose, onOpenPlace }: {
   route: Route;
   places: Location[];
@@ -106,6 +143,7 @@ function PlanDialog({ route, places, walkPlaces = places, onClose, onOpenPlace }
   const plan = useMemo(() => visitPlan(walkPlaces, route.id, start, stay, undefined, specialPeriods), [walkPlaces, route.id, start, stay, specialPeriods]);
   const suggestion = useMemo(() => suggestStart(walkPlaces, route.id, start, stay, now, specialPeriods), [walkPlaces, route.id, start, stay, now, specialPeriods]);
   const short = walkPlaces !== places;
+  const event = useMemo(() => planEvent(route, plan, start, short, lang), [route, plan, start, short, lang]);
 
   const dayLabel = (k: number) =>
     k === 0 ? L('Today', 'اليوم') : k === 1 ? L('Tomorrow', 'غدًا') : dayName(cairoTime(cairoInstant(now, k, 12 * 60)).day, lang).replace(/^./, c => c.toUpperCase());
@@ -223,6 +261,16 @@ function PlanDialog({ route, places, walkPlaces = places, onClose, onOpenPlace }
               </li>
             ))}
           </ol>
+
+          {event && (
+            <button
+              onClick={() => void import('../lib/calendar').then(m => m.downloadIcs(event, route.id))}
+              className="mt-4 flex w-full items-center justify-center gap-2 min-h-12 rounded-2xl bg-white border border-sand text-ink text-xs font-bold uppercase tracking-widest shadow-sm hover:border-nile transition-colors"
+            >
+              <CalendarPlus className="w-4 h-4 text-stone-500" aria-hidden="true" />
+              {L('Add to calendar', 'أضف إلى التقويم')}
+            </button>
+          )}
 
           <p className="mt-4 text-xs text-stone-500">
             {L('Estimates. Walking times are from the map; opening hours and prayer times are in Cairo time.', 'تقديرات. أوقات المشي من الخريطة، ومواعيد العمل وأوقات الصلاة بتوقيت القاهرة.')}
