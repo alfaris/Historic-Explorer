@@ -1,16 +1,17 @@
 import React, { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
-import { ChevronDown, Gauge, Loader2, Play, Sparkles } from 'lucide-react';
+import { ChevronDown, Gauge, Loader2, Play, RotateCcw, Sparkles } from 'lucide-react';
 import { textHash } from '../lib/text-hash';
 import { useDisplay } from '../lib/display';
 import { audioGuideUrl } from '../lib/offline-pack';
 import { narrationSource } from '../lib/guide-kind';
 import { track } from '../lib/track';
 import { guidePlayer, nextSpeed, speedLabel, type GuideTrack } from '../lib/guide-player';
+import { clockLabel, savePosition, useResumePoint } from '../lib/guide-resume';
 import { useContent } from '../data/ContentContext';
 import { photoForPlace } from '../data/photo-resolve';
 import { LANGUAGES, type Lang } from '../i18n/lang';
 
-import { L, nameOf } from '../i18n/lang';
+import { L, byLang, nameOf } from '../i18n/lang';
 interface AudioGuideProps {
   locationId: number;
   text: string;
@@ -92,6 +93,8 @@ export function AudioGuide({ locationId, text, langCode, onNext, onPrevious, aut
   const key = `${locationId}:${langCode}:${textHash(source)}`;
   currentKey.current = key;
   const mine = state.key === key;
+  // Where the visitor stopped this narration last time, if part way through.
+  const resumeAt = useResumePoint(key);
   const status = mine ? state.status : 'idle';
 
   // The walk's next and previous change between renders; the lock screen calls the latest.
@@ -118,7 +121,7 @@ export function AudioGuide({ locationId, text, langCode, onNext, onPrevious, aut
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, dataSaver]);
 
-  const start = async ({ auto = false } = {}) => {
+  const start = async ({ auto = false, from = 0 } = {}) => {
     if (!text) return;
     setBlocked(null);
     track({ t: 'play', id: locationId });
@@ -133,6 +136,7 @@ export function AudioGuide({ locationId, text, langCode, onNext, onPrevious, aut
       artwork: photo && !dataSaver ? { src: new URL(photo.src, window.location.href).href, width: photo.width, height: photo.height } : undefined,
       onNext: onNext && (() => nav.current.onNext?.()),
       onPrevious: onPrevious && (() => nav.current.onPrevious?.()),
+      onPosition: (at, duration) => savePosition(key, at, duration),
     };
     // Straight from the tap, before any await: iOS only starts audio from a tap.
     const id = player.begin(t);
@@ -151,7 +155,7 @@ export function AudioGuide({ locationId, text, langCode, onNext, onPrevious, aut
         player.playSpeech(id, result.script, langCode, onBlocked);
         return;
       }
-      await player.playAudio(id, result.audio);
+      await player.playAudio(id, result.audio, from);
     } catch (error) {
       if (onBlocked && (error as Error)?.name === 'NotAllowedError') {
         player.stop(key);
@@ -240,6 +244,23 @@ export function AudioGuide({ locationId, text, langCode, onNext, onPrevious, aut
           </>
         )}
       </button>
+      {status === 'idle' && resumeAt !== null && (
+        <button
+          onClick={e => {
+            e.stopPropagation();
+            start({ from: resumeAt });
+          }}
+          className="inline-flex items-center gap-2 min-h-11 px-4 py-2 rounded-xl border border-gold/60 bg-gold/10 text-xs font-bold text-ink tabular-nums hover:border-gold"
+        >
+          <RotateCcw className="w-4 h-4 text-gold-ink" aria-hidden="true" />
+          {byLang({
+            en: `Resume from ${clockLabel(resumeAt)}`,
+            ar: `أكمل من ${clockLabel(resumeAt)}`,
+            fr: `Reprendre à ${clockLabel(resumeAt)}`,
+            es: `Seguir desde ${clockLabel(resumeAt)}`,
+          })}
+        </button>
+      )}
       {mine && status !== 'idle' && (
         <button
           onClick={e => {

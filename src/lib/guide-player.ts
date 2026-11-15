@@ -51,7 +51,15 @@ export interface GuideTrack {
   /** Walk mode: the lock screen's next and previous buttons move between stops. */
   onNext?: () => void;
   onPrevious?: () => void;
+  /**
+   * How far into the recording the visitor is: every few seconds while it
+   * plays, and when it's paused, stopped or ends (then `at` is the end).
+   */
+  onPosition?: (at: number, duration: number) => void;
 }
+
+/** While a recording plays, its position is reported this often (seconds of audio). */
+export const POSITION_EVERY = 5;
 
 // The slices of browser APIs the player uses.
 export interface AudioLike {
@@ -137,6 +145,9 @@ export function createGuidePlayer(env: PlayerEnv) {
   let audio: AudioLike | null = null;
   let url: string | null = null;
   let silentUrl: string | null = null;
+  // Where to start the recording once it can seek (resuming), and the last position reported.
+  let pendingSeek = 0;
+  let reportedAt = 0;
   // When the lock screen's next or previous button was pressed (the next guide shown plays on).
   let autoplayAt = 0;
   // Browser voice: what's being read, from where, and the utterance that counts.
@@ -153,11 +164,34 @@ export function createGuidePlayer(env: PlayerEnv) {
     a.preload = 'auto';
     // Events from the silent unlock clip are ignored: mode is set to 'audio' only for a guide.
     a.addEventListener('playing', () => state.mode === 'audio' && set({ status: 'playing' }));
-    a.addEventListener('pause', () => state.mode === 'audio' && state.status === 'playing' && !a.ended && set({ status: 'paused' }));
+    a.addEventListener('pause', () => {
+      if (state.mode !== 'audio' || state.status !== 'playing' || a.ended) return;
+      report();
+      set({ status: 'paused' });
+    });
     a.addEventListener('ended', () => state.mode === 'audio' && stop());
+    a.addEventListener('loadedmetadata', () => {
+      // Some browsers ignore a seek made before the recording loaded.
+      if (state.mode === 'audio' && pendingSeek > 0 && a.currentTime < pendingSeek - 1) a.currentTime = pendingSeek;
+      pendingSeek = 0;
+    });
+    a.addEventListener('timeupdate', () => {
+      if (state.mode === 'audio' && state.status === 'playing' && Math.abs(a.currentTime - reportedAt) >= POSITION_EVERY) report();
+    });
     for (const e of ['loadedmetadata', 'ratechange', 'seeked']) a.addEventListener(e, () => state.mode === 'audio' && syncPosition());
     audio = a;
     return a;
+  };
+
+  // Tells the guide how far into its recording the visitor is.
+  const report = () => {
+    const a = audio;
+    if (!a || state.mode !== 'audio' || !track?.onPosition) return;
+    const duration = Number.isFinite(a.duration) ? a.duration : NaN;
+    // A resume whose seek hasn't been applied yet still counts as being there.
+    const at = a.ended && Number.isFinite(duration) ? duration : Math.max(a.currentTime, pendingSeek);
+    reportedAt = at;
+    try { track.onPosition(at, duration); } catch { /* Saving is best effort. */ }
   };
 
   const syncPosition = () => {
@@ -245,6 +279,9 @@ export function createGuidePlayer(env: PlayerEnv) {
   /** Stops whatever is playing. With a key, only if that guide is the one playing. */
   function stop(key?: string) {
     if (key && key !== state.key) return;
+    // Before letting go of the recording: where the visitor got to.
+    report();
+    pendingSeek = 0;
     attempt++;
     track = null;
     const wasAudio = state.mode;
@@ -309,14 +346,22 @@ export function createGuidePlayer(env: PlayerEnv) {
       return id;
     },
 
-    /** Plays the recorded guide, if start `id` is still the current one. Throws if it can't play. */
-    async playAudio(id: number, data: ArrayBuffer) {
+    /**
+     * Plays the recorded guide, if start `id` is still the current one,
+     * from `startAt` seconds in when resuming. Throws if it can't play.
+     */
+    async playAudio(id: number, data: ArrayBuffer, startAt = 0) {
       if (id !== attempt) return;
       const a = el();
       releaseUrl();
       url = env.createObjectURL(new Blob([data], { type: 'audio/wav' }));
       set({ mode: 'audio' });
       a.src = url;
+      pendingSeek = startAt > 0 ? startAt : 0;
+      reportedAt = pendingSeek;
+      if (pendingSeek) {
+        try { a.currentTime = pendingSeek; } catch { /* Applied once the recording has loaded. */ }
+      }
       a.defaultPlaybackRate = state.speed;
       a.playbackRate = state.speed;
       try {
@@ -324,6 +369,7 @@ export function createGuidePlayer(env: PlayerEnv) {
       } catch (err) {
         // A newer start replaced this one (which aborts its play()): not a failure.
         if (id !== attempt) return;
+        pendingSeek = 0;
         set({ mode: null });
         releaseUrl();
         throw err;
