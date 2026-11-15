@@ -5,13 +5,13 @@ describe('withPosition', () => {
   it('remembers a guide stopped part way, as the newest', () => {
     const old: ResumePoint[] = [{ key: 'b', at: 30, saved: 1 }];
     const next = withPosition(old, 'a', 102.7, 240, 5);
-    expect(next).toEqual([{ key: 'a', at: 102, saved: 5 }, { key: 'b', at: 30, saved: 1 }]);
+    expect(next).toEqual([{ key: 'a', at: 102, saved: 5, length: 240 }, { key: 'b', at: 30, saved: 1 }]);
     expect(resumePoint(next, 'a')).toBe(102);
   });
 
   it('updates the same guide instead of adding it twice', () => {
     const next = withPosition([{ key: 'a', at: 30, saved: 1 }], 'a', 60, 240, 2);
-    expect(next).toEqual([{ key: 'a', at: 60, saved: 2 }]);
+    expect(next).toEqual([{ key: 'a', at: 60, saved: 2, length: 240 }]);
   });
 
   it('forgets a guide stopped in its first seconds or listened to the end', () => {
@@ -39,7 +39,7 @@ describe('parsePoints', () => {
     expect(parsePoints(null)).toEqual([]);
     expect(parsePoints('nope')).toEqual([]);
     expect(parsePoints('{"key":"a"}')).toEqual([]);
-    expect(parsePoints('[{"key":"a","at":40,"saved":1},{"key":"","at":4,"saved":1},{"key":"b","at":"x","saved":1},null]'))
+    expect(parsePoints('[{"key":"a","at":40,"saved":1},{"key":"c","at":40,"saved":1,"length":-3},{"key":"","at":4,"saved":1},{"key":"b","at":"x","saved":1},null]'))
       .toEqual([{ key: 'a', at: 40, saved: 1 }]);
   });
 });

@@ -147,6 +147,8 @@ export function createGuidePlayer(env: PlayerEnv) {
   let silentUrl: string | null = null;
   // Where to start the recording once it can seek (resuming), and the last position reported.
   let pendingSeek = 0;
+  // The length the saved point was for (seconds), when known.
+  let expectedLength = 0;
   let reportedAt = 0;
   // When the lock screen's next or previous button was pressed (the next guide shown plays on).
   let autoplayAt = 0;
@@ -171,9 +173,20 @@ export function createGuidePlayer(env: PlayerEnv) {
     });
     a.addEventListener('ended', () => state.mode === 'audio' && stop());
     a.addEventListener('loadedmetadata', () => {
-      // Some browsers ignore a seek made before the recording loaded.
-      if (state.mode === 'audio' && pendingSeek > 0 && a.currentTime < pendingSeek - 1) a.currentTime = pendingSeek;
+      if (state.mode === 'audio' && pendingSeek > 0) {
+        const length = Number.isFinite(a.duration) ? a.duration : NaN;
+        // A recording of another length, or too short, was remade since the point was saved: start afresh.
+        const remade = (expectedLength > 0 && Math.abs(length - expectedLength) > 1) || length <= pendingSeek;
+        if (remade) {
+          a.currentTime = 0;
+          reportedAt = 0;
+        } else if (a.currentTime < pendingSeek - 1) {
+          // Some browsers ignore a seek made before the recording loaded.
+          a.currentTime = pendingSeek;
+        }
+      }
       pendingSeek = 0;
+      expectedLength = 0;
     });
     a.addEventListener('timeupdate', () => {
       if (state.mode === 'audio' && state.status === 'playing' && Math.abs(a.currentTime - reportedAt) >= POSITION_EVERY) report();
@@ -282,6 +295,7 @@ export function createGuidePlayer(env: PlayerEnv) {
     // Before letting go of the recording: where the visitor got to.
     report();
     pendingSeek = 0;
+    expectedLength = 0;
     attempt++;
     track = null;
     const wasAudio = state.mode;
@@ -348,9 +362,10 @@ export function createGuidePlayer(env: PlayerEnv) {
 
     /**
      * Plays the recorded guide, if start `id` is still the current one,
-     * from `startAt` seconds in when resuming. Throws if it can't play.
+     * from `startAt` seconds in when resuming (if the recording is still
+     * `length` seconds long, when that's given). Throws if it can't play.
      */
-    async playAudio(id: number, data: ArrayBuffer, startAt = 0) {
+    async playAudio(id: number, data: ArrayBuffer, startAt = 0, length?: number) {
       if (id !== attempt) return;
       const a = el();
       releaseUrl();
@@ -358,6 +373,7 @@ export function createGuidePlayer(env: PlayerEnv) {
       set({ mode: 'audio' });
       a.src = url;
       pendingSeek = startAt > 0 ? startAt : 0;
+      expectedLength = pendingSeek && length && length > 0 ? length : 0;
       reportedAt = pendingSeek;
       if (pendingSeek) {
         try { a.currentTime = pendingSeek; } catch { /* Applied once the recording has loaded. */ }

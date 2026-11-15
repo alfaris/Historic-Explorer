@@ -289,4 +289,23 @@ describe('guide player', () => {
     player.stop();
     expect(seen).toEqual([]);
   });
+
+  it('starts afresh when the recording was remade at another length since the point was saved', async () => {
+    const { player, audio } = setup();
+    const id = player.begin(track('a'));
+    await player.playAudio(id, wav, 42, 90);
+    audio.fire('loadedmetadata'); // the fake is 60 s long
+    expect(audio.currentTime).toBe(0);
+
+    const id2 = player.begin(track('a'));
+    await player.playAudio(id2, wav, 42, 60);
+    audio.currentTime = 0;
+    audio.fire('loadedmetadata');
+    expect(audio.currentTime).toBe(42);
+
+    const id3 = player.begin(track('a'));
+    await player.playAudio(id3, wav, 70);
+    audio.fire('loadedmetadata');
+    expect(audio.currentTime).toBe(0);
+  });
 });

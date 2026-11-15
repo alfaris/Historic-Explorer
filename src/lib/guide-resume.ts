@@ -19,6 +19,11 @@ export interface ResumePoint {
   at: number;
   /** When it was saved (ms), to keep the most recent. */
   saved: number;
+  /**
+   * The recording's length in seconds. A recording of another length was
+   * remade since (say, regenerated on the server), so it starts afresh.
+   */
+  length?: number;
 }
 
 export function parsePoints(raw: string | null): ResumePoint[] {
@@ -28,7 +33,8 @@ export function parsePoints(raw: string | null): ResumePoint[] {
     if (!Array.isArray(value)) return [];
     return value.filter(
       (p): p is ResumePoint =>
-        !!p && typeof p.key === 'string' && p.key.length > 0 && Number.isFinite(p.at) && p.at > 0 && Number.isFinite(p.saved),
+        !!p && typeof p.key === 'string' && p.key.length > 0 && Number.isFinite(p.at) && p.at > 0 && Number.isFinite(p.saved)
+        && (p.length === undefined || (Number.isFinite(p.length) && p.length > 0)),
     );
   } catch {
     return [];
@@ -43,10 +49,13 @@ export function withPosition(points: ResumePoint[], key: string, at: number, dur
   const rest = points.filter(p => p.key !== key);
   const nearEnd = Number.isFinite(duration) && duration > 0 && at >= duration - END_MARGIN;
   if (!Number.isFinite(at) || at < MIN_SECONDS || nearEnd) return rest;
-  return [{ key, at: Math.floor(at), saved: now }, ...rest].sort((a, b) => b.saved - a.saved).slice(0, MAX_ENTRIES);
+  const point: ResumePoint = { key, at: Math.floor(at), saved: now };
+  if (Number.isFinite(duration) && duration > 0) point.length = Math.round(duration);
+  return [point, ...rest].sort((a, b) => b.saved - a.saved).slice(0, MAX_ENTRIES);
 }
 
-export const resumePoint = (points: ResumePoint[], key: string) => points.find(p => p.key === key)?.at ?? null;
+export const findPoint = (points: ResumePoint[], key: string) => points.find(p => p.key === key) ?? null;
+export const resumePoint = (points: ResumePoint[], key: string) => findPoint(points, key)?.at ?? null;
 
 /** "1:42", or "1:02:05" for an hour or more. */
 export function clockLabel(seconds: number) {
@@ -115,11 +124,11 @@ const subscribe = (fn: () => void) => {
   };
 };
 
-/** Seconds into this guide to resume from, or null. Re-renders when it changes. */
-export function useResumePoint(key: string): number | null {
+/** Where to resume this guide from, or null. Re-renders when it changes. */
+export function useResumePoint(key: string): ResumePoint | null {
   return useSyncExternalStore(
     subscribe,
-    () => resumePoint(current(), key),
+    () => findPoint(current(), key),
     () => null,
   );
 }
