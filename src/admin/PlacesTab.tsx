@@ -330,6 +330,7 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
 
           {!isNew && reportCounts[draft.id] > 0 && (
             <PlaceReports
+              key={draft.id}
               placeId={draft.id}
               content={content}
               save={save}

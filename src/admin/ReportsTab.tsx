@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Mail, RefreshCw, X } from 'lucide-react';
 import type { Content } from '../data/content';
 import { distanceMeters, formatDistance } from '../lib/geo';
@@ -49,21 +49,25 @@ export function ReportsTab({ content, save, onEditPlace, onSignedOut, initialPla
   const placesKey = (filterPlaces(content, view) ?? []).join(',');
   const places = view.route === 'all' && view.placeId === null ? undefined : placesKey;
 
+  // Each load gets a number: an answer for an earlier filter is ignored.
+  const loadId = useRef(0);
   // Loads the first page for the filter, or the next page when appending.
   const load = useCallback(
     async (append = false, offset = 0) => {
+      const id = ++loadId.current;
       try {
         const page = await api.reports(filter, offset, {
           ...(places !== undefined ? { places: places ? places.split(',').map(Number) : [] } : {}),
           ...(view.type !== 'all' ? { type: view.type } : {}),
         });
+        if (id !== loadId.current) return;
         setReports(rs => (append && rs ? [...rs, ...page.reports] : page.reports));
         setTotal(page.total);
         setCounts(page.counts);
         setError(null);
       } catch (err) {
         if (err instanceof ApiError && err.status === 401) return onSignedOut();
-        setError((err as Error).message);
+        if (id === loadId.current) setError((err as Error).message);
       }
     },
     [filter, places, view.type, onSignedOut],
@@ -329,13 +333,22 @@ export function PlaceReports({ placeId, content, save, onUsePosition, onChanged 
   onChanged?: () => void;
 }) {
   const [reports, setReports] = useState<Report[] | null>(null);
+  const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const load = useCallback(async () => {
+  const [loadingMore, setLoadingMore] = useState(false);
+  // An answer for another place, or an earlier load, is ignored.
+  const loadId = useRef(0);
+  // The first page, or the next one when appending.
+  const load = useCallback(async (append = false, offset = 0) => {
+    const id = ++loadId.current;
     try {
-      setReports((await api.reports('open', 0, { places: [placeId] })).reports);
+      const page = await api.reports('open', offset, { places: [placeId] });
+      if (id !== loadId.current) return;
+      setReports(rs => (append && rs ? [...rs, ...page.reports] : page.reports));
+      setTotal(page.total);
       setError(null);
     } catch (err) {
-      setError((err as Error).message);
+      if (id === loadId.current) setError((err as Error).message);
     }
   }, [placeId]);
   useEffect(() => {
@@ -357,12 +370,27 @@ export function PlaceReports({ placeId, content, save, onUsePosition, onChanged 
   if (!reports || reports.length === 0) return null;
   return (
     <div id="reports" className="scroll-mt-24 rounded-2xl border border-gold/50 bg-gold/5 p-4">
-      <p className="text-xs font-bold text-stone-600 mb-3">Open visitor reports · {reportsLabel(reports.length)}</p>
+      <p className="text-xs font-bold text-stone-600 mb-3">Open visitor reports · {reportsLabel(total)}</p>
       <ul className="space-y-3">
         {reports.map(r => (
           <ReportCard key={r.id} report={r} content={content} save={save} setStatus={setStatus} onUsePosition={onUsePosition} />
         ))}
       </ul>
+      {reports.length < total && (
+        <Button
+          type="button"
+          variant="secondary"
+          className="mt-3"
+          disabled={loadingMore}
+          onClick={async () => {
+            setLoadingMore(true);
+            await load(true, reports.length);
+            setLoadingMore(false);
+          }}
+        >
+          {loadingMore ? 'Loading…' : `Load more (${total - reports.length} older)`}
+        </Button>
+      )}
     </div>
   );
 }

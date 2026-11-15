@@ -103,7 +103,8 @@ export const matchesFilter = (meta: ReportMeta | null, filter: ReportFilter) =>
 
 // Place and type of reports filed before they were in the name, by path (a
 // moved report gets a new path). Kept while the function instance is warm.
-const legacyMeta = new Map<string, ReportMeta | null>();
+// Only reports that were read are kept: one that failed is tried again next time.
+const legacyMeta = new Map<string, ReportMeta>();
 
 /** The place and type of each report, from its name, or by reading the older ones. */
 async function metaFor(paths: string[]): Promise<Map<string, ReportMeta | null>> {
@@ -120,7 +121,7 @@ async function metaFor(paths: string[]): Promise<Map<string, ReportMeta | null>>
     const batch = await Promise.all(unread.slice(i, i + 10).map(readReport));
     batch.forEach((r, j) => {
       const meta = r ? { placeId: r.placeId, type: r.type } : null;
-      legacyMeta.set(unread[i + j], meta);
+      if (meta) legacyMeta.set(unread[i + j], meta);
       out.set(unread[i + j], meta);
     });
   }
