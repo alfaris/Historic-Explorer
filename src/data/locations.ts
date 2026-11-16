@@ -3,6 +3,9 @@ import type { OpeningHours } from '../lib/opening-hours';
 import type { VisitorTips } from '../lib/visitor-tips';
 import type { EraId } from '../lib/eras';
 
+/** One of a place's extra photos (an upload), with what it shows in each language for screen readers. */
+export type GalleryPhoto = Photo & { photoAltEn?: string; photoAltAr?: string; photoAltFr?: string; photoAltEs?: string };
+
 export type Category = 'monument' | 'coffee' | 'restaurant' | 'workshop' | 'stationary' | 'meeting';
 
 export interface Route {
@@ -118,6 +121,8 @@ export interface Location {
   photoAltAr?: string;
   photoAltFr?: string;
   photoAltEs?: string;
+  /** Up to 4 more uploaded photos, in order, each with what it shows (see MAX_GALLERY). */
+  gallery?: GalleryPhoto[];
   /** Fields Gemini drafted that no one has checked yet (admin only). See drafted.ts. */
   drafted?: string[];
   /** The position the admin confirmed as right although it's far from the rest of its route (admin only). See admin/pin-check. */

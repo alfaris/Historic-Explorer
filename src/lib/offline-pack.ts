@@ -102,7 +102,10 @@ export function routePack(route: Pick<Route, 'id' | 'photo'>, places: Location[]
     }
   };
   addPhoto(photoForRoute(route)?.src);
-  for (const p of places) addPhoto(photoForPlace(p)?.src);
+  for (const p of places) {
+    addPhoto(photoForPlace(p)?.src);
+    for (const g of p.gallery ?? []) addPhoto(g.src);
+  }
   for (const url of tilesForPlaces(places)) add(url, 'tiles');
   return files;
 }

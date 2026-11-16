@@ -12,7 +12,7 @@ const MAX_HEIGHT = 1600;
  * (JPEG where the browser can't make WebP). Re-encoding also drops the
  * file's metadata, including any GPS position a phone stored in it.
  */
-async function prepareImage(file: File): Promise<{ blob: Blob; width: number; height: number }> {
+export async function prepareImage(file: File): Promise<{ blob: Blob; width: number; height: number }> {
   const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
   const scale = Math.min(1, MAX_WIDTH / bitmap.width, MAX_HEIGHT / bitmap.height);
   const width = Math.round(bitmap.width * scale);
@@ -29,7 +29,7 @@ async function prepareImage(file: File): Promise<{ blob: Blob; width: number; he
   return { blob, width, height };
 }
 
-const LICENSES = ['Own photo', 'Used with permission', 'CC BY 4.0', 'CC BY-SA 4.0', 'CC0', 'Public domain'];
+export const LICENSES = ['Own photo', 'Used with permission', 'CC BY 4.0', 'CC BY-SA 4.0', 'CC0', 'Public domain'];
 
 /** The photo section of the place and route editors. Changes are saved with the form. */
 export function PhotoField({ photo, builtIn, onChange }: {

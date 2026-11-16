@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { lazy } from 'react';
 import type { Location } from '../data/locations';
 import { L, currentLang, descriptionOf, fallbackLang } from '../i18n/lang';
 import { AudioGuide } from './AudioGuide';
@@ -13,6 +13,10 @@ import { VisitorTips } from './VisitorTips';
 import { Notices } from './Notices';
 import { Nearby } from './Nearby';
 import { PlaceNote } from './PlaceNote';
+import { LazyBoundary } from './LazyBoundary';
+
+// Only places with extra photos load the gallery.
+const PlaceGallery = lazy(() => import('./PlaceGallery'));
 
 // The parts of a place's card shared by the list, the map and the admin's
 // preview, so the preview shows exactly what visitors see.
@@ -50,6 +54,11 @@ export function PlaceDetails({ place, audioNote, onOpenPlace }: { place: Locatio
           <AudioGuide locationId={place.id} text={description} langCode={currentLang()} />
         )}
       </div>
+      {place.gallery?.length ? (
+        <LazyBoundary loading={null} failed={null}>
+          <PlaceGallery place={place} />
+        </LazyBoundary>
+      ) : null}
       <PlaceHours place={place} />
       <VisitorTips place={place} />
       <SpotIt place={place} className="mt-4" />

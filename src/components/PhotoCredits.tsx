@@ -18,6 +18,8 @@ export function PhotoCredits({ isArabic }: { isArabic: boolean }) {
   for (const l of locations) {
     const photo = photoForPlace(l);
     if (photo) entries.push([`place-${l.id}`, nameOf(l), photo]);
+    // Its extra photos too, numbered after the place's name.
+    (l.gallery ?? []).forEach((g, i) => entries.push([`place-${l.id}-${i}`, `${nameOf(l)} (${i + 2})`, g]));
   }
   if (entries.length === 0) return null;
 
