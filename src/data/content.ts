@@ -82,6 +82,19 @@ const normalizePhoto = (p: any): Photo | undefined => {
   };
 };
 
+/** How many extra photos a place can have, besides its main one. */
+export const MAX_GALLERY = 4;
+
+/** A place's extra photos from untrusted input: photos with their descriptions; undefined when there are none. */
+const normalizeGallery = (g: unknown) => {
+  if (!Array.isArray(g)) return undefined;
+  const photos = g.flatMap(item => {
+    const photo = normalizePhoto(item);
+    return photo ? [{ ...photo, ...textFields(item, ['photoAlt'], LANGS) }] : [];
+  });
+  return photos.length ? photos : undefined;
+};
+
 const httpsUrl = (v: string | null) => !v || (/^https:\/\/[^\s]+$/.test(v) && v.length <= 500);
 
 function photoProblems(label: string, photo: Photo | undefined): string[] {
@@ -187,6 +200,7 @@ export function normalizeContent(input: unknown): Content {
       lng: Number(p?.lng),
       ...(normalizePhoto(p?.photo) ? { photo: normalizePhoto(p?.photo) } : {}),
       ...textFields(p, ['photoAlt'], LANGS),
+      ...(normalizeGallery(p?.gallery) ? { gallery: normalizeGallery(p?.gallery) } : {}),
       ...normalizeDrafted(p),
       // Kept only while the pin is where it was confirmed: moving it asks again.
       ...(p?.pinChecked && Number(p.pinChecked.lat) === Number(p?.lat) && Number(p.pinChecked.lng) === Number(p?.lng) ? { pinChecked: { lat: Number(p.lat), lng: Number(p.lng) } } : {}),
@@ -273,6 +287,16 @@ export function validateContent(content: Content): string[] {
     if (p.tips) problems.push(...tipsProblems(p.tips).map(problem => `${label}: ${problem}`));
     problems.push(...builtProblems(p).map(problem => `${label}: ${problem}`));
     problems.push(...photoProblems(label, p.photo), ...photoAltProblems(label, p));
+    if (p.gallery) {
+      if (p.gallery.length > MAX_GALLERY) problems.push(`${label}: at most ${MAX_GALLERY} more photos.`);
+      p.gallery.forEach((g, i) => {
+        const which = `${label}, more photos ${i + 1}`;
+        problems.push(...photoProblems(which, g), ...photoAltProblems(which, g));
+        // Extra photos are uploads (built-in photos are one per place).
+        if (!g.src.startsWith('/api/photo?')) problems.push(`${which}: must be an uploaded photo.`);
+      });
+      if (new Set(p.gallery.map(g => g.src)).size < p.gallery.length) problems.push(`${label}: the same photo is in More photos twice.`);
+    }
     const b = CAIRO_BOUNDS;
     if (!(p.lat >= b.minLat && p.lat <= b.maxLat && p.lng >= b.minLng && p.lng <= b.maxLng)) {
       problems.push(`${label}: coordinates are outside Cairo (check latitude and longitude aren't swapped).`);
