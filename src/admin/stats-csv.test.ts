@@ -30,6 +30,9 @@ const events: StatEvent[] = [
   { t: 'why', id: b.id, r: 'outdated' },
   { t: 'listen', id: a.id, b: 'done' },
   { t: 'listen', id: a.id, b: 'q1' },
+  { t: 'miss', q: 'citadel' },
+  { t: 'miss', q: 'citadel' },
+  { t: 'miss', q: 'khan' },
 ];
 const total = addEvents(emptyDay(), events);
 const data: StatsResponse = {
@@ -124,5 +127,9 @@ describe('statsCsv', () => {
     expect(row[header.indexOf('Ratings')]).toBe('2');
     expect(row[header.indexOf('Average rating')]).toBe('3.5');
     expect(row[header.indexOf('Low rating: too hot or tiring')]).toBe('1');
+  });
+
+  it('lists the searches that found nothing, most frequent first', () => {
+    expect(section(rows, 'Searches that found nothing')).toEqual([['citadel', '2'], ['khan', '1']]);
   });
 });

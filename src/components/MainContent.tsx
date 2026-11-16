@@ -22,6 +22,10 @@ import { STOP_CATEGORIES, walkPlan, walkStops } from '../lib/walk';
 import { hasShortWalk, setShortWalk, shortWalkPlaces, shortWalkStats, useShortWalks } from '../lib/short-walk';
 import { ShortWalkToggle, shortWalkMeta } from './ShortWalkToggle';
 import { track } from '../lib/track';
+import { missQuery } from '../lib/stats';
+
+// How long after the last keystroke a search that found nothing is counted.
+const MISS_DELAY_MS = 2000;
 import { matchScore, searchPlaces } from '../lib/search';
 import { formatDistance, formatDuration } from '../lib/route-format';
 import { HoursBadge, useNow } from './PlaceHours';
@@ -237,6 +241,16 @@ export const MainContent: React.FC = () => {
     return searchPlaces(others, searchQuery);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery, selectedCategory, selectedRoute, locations, filters, filters.openNow && now, specialPeriods]);
+  // A search that finds no place at all (any route, any filter) is counted, once the visitor
+  // has stopped typing, to show the admin what visitors look for and don't find.
+  useEffect(() => {
+    const q = missQuery(searchQuery);
+    if (!q) return;
+    const timer = setTimeout(() => {
+      if (searchPlaces(locations, searchQuery).length === 0) track({ t: 'miss', q });
+    }, MISS_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [searchQuery, locations]);
   // Places on this route (in the chosen category) that Open now leaves out for having no hours listed.
   const noHoursHidden = filters.openNow ? withoutHours(locations.filter(l => l.routeId === selectedRoute && (selectedCategory === 'all' || l.category === selectedCategory))) : 0;
 

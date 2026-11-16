@@ -3,7 +3,7 @@
 
 import type { Content } from '../data/content';
 import { walkStops } from '../lib/walk';
-import { languageShares, listening, LISTEN_BANDS, REASONS, ROUTE_REASONS, routeRatings, type ListenBand, type Reason, type RouteReason } from '../lib/stats';
+import { languageShares, listening, topMisses, LISTEN_BANDS, REASONS, ROUTE_REASONS, routeRatings, type ListenBand, type Reason, type RouteReason } from '../lib/stats';
 import { CSV_TYPE, csvText } from './backup';
 import type { StatsResponse } from './api';
 import { LANGUAGES } from '../i18n/lang';
@@ -67,6 +67,10 @@ export function statsCsv(data: StatsResponse, content: Content, days: number, to
     ['Languages', ...(languages.counted < languages.all ? [`${languages.counted} of ${languages.all} route opens and audio plays have a language (not recorded before it was added)`] : [])],
     ['Language', 'Route opens', 'Audio plays', 'Share (%)'],
     ...languages.rows.map(r => [LANGUAGES[r.lang].english, r.routes, r.plays, r.pct]),
+    [],
+    ['Searches that found nothing'],
+    ['Search', 'Times'],
+    ...topMisses(total, 1000).map(m => [m.q, m.count]),
     [],
     ['Per place'],
     ['Place ID', 'Place', 'Route', 'Audio plays', 'Near me arrivals', 'Helpful: yes', 'Helpful: no', ...REASONS.map(r => REASON_HEADERS[r]), ...LISTEN_BANDS.map(b => LISTEN_HEADERS[b]), 'Audio heard to the end (%)'],
