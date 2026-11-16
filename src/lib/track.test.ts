@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { PENDING_KEY, flush, resetTrackingForTest, sendPending, stopTracking, track } from './track';
+import { PENDING_KEY, flush, onBeforeSend, resetTrackingForTest, sendPending, stopTracking, track } from './track';
 
 let beacons: string[];
 let nav: Record<string, unknown>;
@@ -38,6 +38,43 @@ describe('track', () => {
     track({ t: 'route', id: 'ahl-al-bayt' });
     expect(beacons).toEqual([]); // not sent straight away
     expect(await sent()).toEqual([[{ t: 'play', id: 1, l: 'en' }, { t: 'route', id: 'ahl-al-bayt', l: 'en' }]]);
+  });
+
+  it('counts how much of a guide was heard once per visit, keeping the furthest while unsent', async () => {
+    track({ t: 'listen', id: 1, b: 'q1' });
+    track({ t: 'listen', id: 1, b: 'done' });
+    track({ t: 'listen', id: 1, b: 'q2' });
+    track({ t: 'listen', id: 2, b: 'q3' });
+    expect(await sent()).toEqual([[{ t: 'listen', id: 1, b: 'done' }, { t: 'listen', id: 2, b: 'q3' }]]);
+    // Already sent and got further: a new event moves the count from the band it replaces.
+    track({ t: 'listen', id: 2, b: 'q2' }); // not further: ignored
+    track({ t: 'listen', id: 2, b: 'q4' });
+    track({ t: 'listen', id: 2, b: 'done' });
+    flush();
+    // It names the band it replaces and the UTC day that was sent on.
+    expect((await sent())[1]).toEqual([{ t: 'listen', id: 2, b: 'done', w: 'q3', d: new Date().toISOString().slice(0, 10) }]);
+  });
+
+  it('sends kept offline events before a correction made since', async () => {
+    nav.onLine = false;
+    track({ t: 'listen', id: 3, b: 'q1' });
+    flush(); // offline: kept
+    track({ t: 'listen', id: 3, b: 'done' }); // corrects the kept one
+    nav.onLine = true;
+    sendPending();
+    // Not sent yet when corrected, so no day: it counts today, after the original.
+    expect(await sent()).toEqual([[{ t: 'listen', id: 3, b: 'q1' }, { t: 'listen', id: 3, b: 'done', w: 'q1' }]]);
+  });
+
+  it('counts what is under way just before sending as the page is hidden', async () => {
+    const handlers: Record<string, () => void> = {};
+    const doc = { visibilityState: 'visible', addEventListener: (t: string, fn: () => void) => { handlers[t] = fn; } };
+    vi.stubGlobal('document', doc);
+    onBeforeSend(() => track({ t: 'listen', id: 7, b: 'q2' }));
+    track({ t: 'play', id: 7 });
+    doc.visibilityState = 'hidden';
+    handlers.visibilitychange();
+    expect(await sent()).toEqual([[{ t: 'play', id: 7, l: 'en' }, { t: 'listen', id: 7, b: 'q2' }]]);
   });
 
   it('sends nothing once stopped (the admin, whose previews play audio guides)', async () => {

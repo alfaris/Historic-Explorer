@@ -4,7 +4,8 @@ import { audioVersion, textHash } from '../lib/text-hash';
 import { useDisplay } from '../lib/display';
 import { audioGuideUrl } from '../lib/offline-pack';
 import { narrationSource } from '../lib/guide-kind';
-import { track } from '../lib/track';
+import { onBeforeSend, track } from '../lib/track';
+import { listenBand } from '../lib/stats';
 import { guidePlayer, nextSpeed, speedLabel, type GuideTrack } from '../lib/guide-player';
 import { clockLabel, savePosition, useResumePoint } from '../lib/guide-resume';
 import { useContent } from '../data/ContentContext';
@@ -46,6 +47,9 @@ const transcriptOf = (res: Response): string | null => {
     return null;
   }
 };
+
+// The page is being hidden or closed: count how far into the playing guide the visitor got.
+onBeforeSend(() => guidePlayer().snapshot());
 
 // Shared across mounts so a prefetch and a later click reuse one request.
 const guideCache = new Map<string, Promise<GuideAudio>>();
@@ -131,6 +135,9 @@ export function AudioGuide({ locationId, text, langCode, onNext, onPrevious, aut
     const place = places.find(p => p.id === locationId);
     const route = place && routes.find(r => r.id === place.routeId);
     const photo = place && photoForPlace(place);
+    // The furthest point heard in this playback, from what the player reports (a
+    // rejected resume point, for a recording remade since, never counts).
+    let heard = 0;
     const t: GuideTrack = {
       key,
       title: place ? nameOf(place) : '',
@@ -139,7 +146,13 @@ export function AudioGuide({ locationId, text, langCode, onNext, onPrevious, aut
       artwork: photo && !dataSaver ? { src: new URL(photo.src, window.location.href).href, width: photo.width, height: photo.height } : undefined,
       onNext: onNext && (() => nav.current.onNext?.()),
       onPrevious: onPrevious && (() => nav.current.onPrevious?.()),
-      onPosition: (at, duration) => savePosition(resumeKey, at, duration),
+      onPosition: (at, duration, final) => {
+        savePosition(resumeKey, at, duration);
+        // The furthest point heard counts, even after seeking back.
+        heard = Math.max(heard, at);
+        // How much of the recording was heard, counted once it's let go of (the furthest per visit).
+        if (final && Number.isFinite(duration) && duration > 0) track({ t: 'listen', id: locationId, b: listenBand(heard, duration) });
+      },
     };
     // Straight from the tap, before any await: iOS only starts audio from a tap.
     const id = player.begin(t);

@@ -54,8 +54,9 @@ export interface GuideTrack {
   /**
    * How far into the recording the visitor is: every few seconds while it
    * plays, and when it's paused, stopped or ends (then `at` is the end).
+   * `final` is true the last time, when the recording is let go of.
    */
-  onPosition?: (at: number, duration: number) => void;
+  onPosition?: (at: number, duration: number, final: boolean) => void;
 }
 
 /** While a recording plays, its position is reported this often (seconds of audio). */
@@ -197,14 +198,14 @@ export function createGuidePlayer(env: PlayerEnv) {
   };
 
   // Tells the guide how far into its recording the visitor is.
-  const report = () => {
+  const report = (final = false) => {
     const a = audio;
     if (!a || state.mode !== 'audio' || !track?.onPosition) return;
     const duration = Number.isFinite(a.duration) ? a.duration : NaN;
     // A resume whose seek hasn't been applied yet still counts as being there.
     const at = a.ended && Number.isFinite(duration) ? duration : Math.max(a.currentTime, pendingSeek);
     reportedAt = at;
-    try { track.onPosition(at, duration); } catch { /* Saving is best effort. */ }
+    try { track.onPosition(at, duration, final); } catch { /* Saving is best effort. */ }
   };
 
   const syncPosition = () => {
@@ -293,7 +294,7 @@ export function createGuidePlayer(env: PlayerEnv) {
   function stop(key?: string) {
     if (key && key !== state.key) return;
     // Before letting go of the recording: where the visitor got to.
-    report();
+    report(true);
     pendingSeek = 0;
     expectedLength = 0;
     attempt++;
@@ -414,6 +415,15 @@ export function createGuidePlayer(env: PlayerEnv) {
     pause,
     resume,
     seekBy,
+
+    /**
+     * Reports how far into the playing (or paused) recording the visitor is,
+     * as the last report, without stopping it: for when the page is hidden
+     * or closed. If it plays on, later reports can go further.
+     */
+    snapshot() {
+      if (state.mode === 'audio' && state.status !== 'idle') report(true);
+    },
 
     setSpeed(speed: Speed) {
       try { env.storage?.setItem(SPEED_KEY, String(speed)); } catch { /* Private mode: just this visit. */ }

@@ -28,6 +28,8 @@ const events: StatEvent[] = [
   { t: 'up', id: a.id },
   { t: 'down', id: b.id },
   { t: 'why', id: b.id, r: 'outdated' },
+  { t: 'listen', id: a.id, b: 'done' },
+  { t: 'listen', id: a.id, b: 'q1' },
 ];
 const total = addEvents(emptyDay(), events);
 const data: StatsResponse = {
@@ -86,6 +88,12 @@ describe('statsCsv', () => {
     const rowOf = (id: number) => places.find(r => r[0] === String(id))!;
     expect(rowOf(a.id).slice(1, 7)).toEqual([a.nameEn, route.nameEn, '2', '0', '1', '0']);
     expect(rowOf(b.id).slice(3, 8)).toEqual(['1', '1', '0', '1', '1']); // plays, arrivals, yes, no, "out of date"
+    // How much of the audio was heard: the bands, then the share heard to the end.
+    const header = rows[rows.findIndex(r => r.length === 1 && r[0] === 'Per place') + 1];
+    const at = header.indexOf('Audio stopped: first quarter');
+    expect(header.slice(at)).toEqual(['Audio stopped: first quarter', 'Audio stopped: second quarter', 'Audio stopped: third quarter', 'Audio stopped: last quarter', 'Audio heard to the end', 'Audio heard to the end (%)']);
+    expect(rowOf(a.id).slice(at)).toEqual(['1', '0', '0', '0', '1', '50']);
+    expect(rowOf(b.id).slice(at)).toEqual(['0', '0', '0', '0', '0', '']);
   });
 
   it('sums each route and lists its stops in walking order', () => {

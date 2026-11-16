@@ -3,7 +3,7 @@
 
 import type { Content } from '../data/content';
 import { walkStops } from '../lib/walk';
-import { languageShares, REASONS, ROUTE_REASONS, routeRatings, type Reason, type RouteReason } from '../lib/stats';
+import { languageShares, listening, LISTEN_BANDS, REASONS, ROUTE_REASONS, routeRatings, type ListenBand, type Reason, type RouteReason } from '../lib/stats';
 import { CSV_TYPE, csvText } from './backup';
 import type { StatsResponse } from './api';
 import { LANGUAGES } from '../i18n/lang';
@@ -28,6 +28,14 @@ const REASON_HEADERS: Record<Reason, string> = {
   other: 'No: something else',
 };
 
+const LISTEN_HEADERS: Record<ListenBand, string> = {
+  q1: 'Audio stopped: first quarter',
+  q2: 'Audio stopped: second quarter',
+  q3: 'Audio stopped: third quarter',
+  q4: 'Audio stopped: last quarter',
+  done: 'Audio heard to the end',
+};
+
 const ROUTE_REASON_HEADERS: Record<RouteReason, string> = {
   long: 'Low rating: too long',
   hot: 'Low rating: too hot or tiring',
@@ -44,6 +52,7 @@ export function statsCsv(data: StatsResponse, content: Content, days: number, to
   const daily = dailySeries(data.perDay, days, today);
   const ratings = new Map(routeRatings(total, content.routes.map(r => r.id)).map(r => [r.id, r]));
   const languages = languageShares(total);
+  const listens = new Map(listening(total, content.places.map(p => p.id)).map(r => [r.id, r]));
   const from = daily[0].date;
   const to = daily[daily.length - 1].date;
 
@@ -60,7 +69,7 @@ export function statsCsv(data: StatsResponse, content: Content, days: number, to
     ...languages.rows.map(r => [LANGUAGES[r.lang].english, r.routes, r.plays, r.pct]),
     [],
     ['Per place'],
-    ['Place ID', 'Place', 'Route', 'Audio plays', 'Near me arrivals', 'Helpful: yes', 'Helpful: no', ...REASONS.map(r => REASON_HEADERS[r])],
+    ['Place ID', 'Place', 'Route', 'Audio plays', 'Near me arrivals', 'Helpful: yes', 'Helpful: no', ...REASONS.map(r => REASON_HEADERS[r]), ...LISTEN_BANDS.map(b => LISTEN_HEADERS[b]), 'Audio heard to the end (%)'],
     ...content.places.map(p => [
       p.id,
       p.nameEn,
@@ -70,6 +79,8 @@ export function statsCsv(data: StatsResponse, content: Content, days: number, to
       n(total.helpful, p.id),
       n(total.unhelpful, p.id),
       ...REASONS.map(r => n(total.reasons, `${p.id}:${r}`)),
+      ...LISTEN_BANDS.map(b => listens.get(p.id)?.bands[b] ?? 0),
+      listens.has(p.id) ? listens.get(p.id)!.finished : '',
     ]),
     [],
     ['Per route'],

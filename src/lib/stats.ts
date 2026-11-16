@@ -3,8 +3,9 @@
 //
 // Only totals per day are kept: how many times each audio guide was played,
 // each route opened, each place reached with Near me, and each place's
-// "Was this helpful?" votes, with the reason picked after a No, and the
-// interface language of audio plays and route opens. No cookies, no visitor or device IDs, no IP
+// "Was this helpful?" votes, with the reason picked after a No, how much of
+// each recorded audio guide was heard (in quarters), and the interface
+// language of audio plays and route opens. No cookies, no visitor or device IDs, no IP
 // addresses, no timestamps finer than a day.
 
 import { LANGS, type Lang } from '../i18n/lang.js';
@@ -23,6 +24,25 @@ const isStars = (s: unknown): s is Stars => Number.isInteger(s) && (s as number)
 
 const isLang = (l: unknown): l is Lang => (LANGS as readonly unknown[]).includes(l);
 
+/**
+ * How much of a recorded audio guide was heard before it stopped: under a
+ * quarter, under half, under three quarters, more, or to the end.
+ */
+export const LISTEN_BANDS = ['q1', 'q2', 'q3', 'q4', 'done'] as const;
+export type ListenBand = (typeof LISTEN_BANDS)[number];
+const isBand = (b: unknown): b is ListenBand => (LISTEN_BANDS as readonly unknown[]).includes(b);
+
+/** The band for a share of the recording heard (0 to 1). The last few seconds count as the end. */
+export function listenBand(heard: number, duration: number): ListenBand {
+  if (!Number.isFinite(heard) || !Number.isFinite(duration) || duration <= 0) return 'q1';
+  if (heard >= duration - 2) return 'done';
+  const share = heard / duration;
+  return share < 0.25 ? 'q1' : share < 0.5 ? 'q2' : share < 0.75 ? 'q3' : 'q4';
+}
+
+/** Whether band `a` heard more than band `b`. */
+export const furtherBand = (a: ListenBand, b: ListenBand) => LISTEN_BANDS.indexOf(a) > LISTEN_BANDS.indexOf(b);
+
 export type StatEvent =
   /** Audio plays and route opens carry the interface language (`l`). */
   | { t: 'play'; id: number; l?: Lang }
@@ -31,7 +51,14 @@ export type StatEvent =
   | { t: 'why'; id: number; r: Reason }
   /** "How was the walk?" on the finish screen. */
   | { t: 'rate'; id: string; s: Stars }
-  | { t: 'rwhy'; id: string; r: RouteReason };
+  | { t: 'rwhy'; id: string; r: RouteReason }
+  /**
+   * How much of a recorded audio guide was heard, once per place per visit.
+   * When the visitor later gets further, a new event carries the band it
+   * replaces (`w`) and the UTC day it was counted on (`d`), so the count
+   * moves from that band to the new one on that day.
+   */
+  | { t: 'listen'; id: number; b: ListenBand; w?: ListenBand; d?: string };
 
 /** One day's totals, keyed by place ID or route ID. */
 export interface DayStats {
@@ -49,21 +76,25 @@ export interface DayStats {
   routeReasons: Record<string, number>;
   /** Audio plays and route opens by interface language, keyed "play:fr" or "route:ar". Absent on days before it was recorded. */
   langs: Record<string, number>;
+  /** How much of each recorded guide was heard, keyed "placeId:band", e.g. "12:done". Absent on days before it was recorded. */
+  listens: Record<string, number>;
 }
 
-const FIELDS = ['plays', 'routes', 'arrivals', 'helpful', 'unhelpful', 'reasons', 'ratings', 'routeReasons', 'langs'] as const;
+const FIELDS = ['plays', 'routes', 'arrivals', 'helpful', 'unhelpful', 'reasons', 'ratings', 'routeReasons', 'langs', 'listens'] as const;
 const REASON_KEY = new RegExp(`^\\d+:(${REASONS.join('|')})$`);
 const ROUTE_ID = '[a-z0-9]+(?:-[a-z0-9]+)*';
 const RATING_KEY = new RegExp(`^${ROUTE_ID}:[1-5]$`);
 const ROUTE_REASON_KEY = new RegExp(`^${ROUTE_ID}:(${ROUTE_REASONS.join('|')})$`);
 const LANG_KEY = new RegExp(`^(play|route):(${LANGS.join('|')})$`);
+const DAY_KEY = /^\d{4}-\d{2}-\d{2}$/;
+const LISTEN_KEY = new RegExp(`^\\d+:(${LISTEN_BANDS.join('|')})$`);
 
-export const emptyDay = (): DayStats => ({ plays: {}, routes: {}, arrivals: {}, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {}, langs: {} });
+export const emptyDay = (): DayStats => ({ plays: {}, routes: {}, arrivals: {}, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {}, langs: {}, listens: {} });
 
 /** The most events one request may carry. */
 export const MAX_EVENTS_PER_REQUEST = 50;
 
-const FIELD = { play: 'plays', route: 'routes', arrive: 'arrivals', up: 'helpful', down: 'unhelpful', why: 'reasons', rate: 'ratings', rwhy: 'routeReasons' } as const;
+const FIELD = { play: 'plays', route: 'routes', arrive: 'arrivals', up: 'helpful', down: 'unhelpful', why: 'reasons', rate: 'ratings', rwhy: 'routeReasons', listen: 'listens' } as const;
 
 /** The event with its language, when the visitor sent a known one. */
 const withLang = <E extends { t: 'play' | 'route' }>(event: E, raw: object): E => {
@@ -84,6 +115,14 @@ export function cleanEvents(raw: unknown, known: { placeIds: Set<number>; routeI
     else if (t === 'route' && typeof id === 'string' && known.routeIds.has(id)) out.push(withLang({ t, id }, e));
     else if (t === 'rate' && typeof id === 'string' && known.routeIds.has(id) && isStars((e as { s?: unknown }).s)) out.push({ t, id, s: (e as { s: Stars }).s });
     else if (t === 'rwhy' && typeof id === 'string' && known.routeIds.has(id) && isRouteReason(r)) out.push({ t, id, r });
+    else if (t === 'listen' && typeof id === 'number' && known.placeIds.has(id) && isBand((e as { b?: unknown }).b)) {
+      const b = (e as { b: ListenBand }).b;
+      const w = (e as { w?: unknown }).w;
+      // A replaced band must be one the visitor got less far than.
+      const d = (e as { d?: unknown }).d;
+      if (w === undefined) out.push({ t, id, b });
+      else if (isBand(w) && furtherBand(b, w)) out.push(typeof d === 'string' && DAY_KEY.test(d) ? { t, id, b, w, d } : { t, id, b, w });
+    }
   }
   return out;
 }
@@ -93,9 +132,20 @@ export function addEvents(day: DayStats, events: StatEvent[]): DayStats {
   const next = Object.fromEntries(FIELDS.map(f => [f, { ...day[f] }])) as unknown as DayStats;
   for (const e of events) {
     const bucket = next[FIELD[e.t]];
-    const key = e.t === 'why' || e.t === 'rwhy' ? `${e.id}:${e.r}` : e.t === 'rate' ? `${e.id}:${e.s}` : e.id;
+    const key = e.t === 'why' || e.t === 'rwhy' ? `${e.id}:${e.r}` : e.t === 'rate' ? `${e.id}:${e.s}` : e.t === 'listen' ? `${e.id}:${e.b}` : e.id;
     bucket[key] = (bucket[key] ?? 0) + 1;
+    // A listen arriving after its correction brings that band back to zero.
+    if (bucket[key] === 0) delete bucket[key];
     if ((e.t === 'play' || e.t === 'route') && e.l) next.langs[`${e.t}:${e.l}`] = (next.langs[`${e.t}:${e.l}`] ?? 0) + 1;
+    // A listen that got further than one already counted: move it out of the band it replaces.
+    // The correction may arrive before the listen it corrects (separate requests), so the
+    // band can go below zero until that listen arrives: the total is the same in either order.
+    if (e.t === 'listen' && e.w) {
+      const was = `${e.id}:${e.w}`;
+      const n = (next.listens[was] ?? 0) - 1;
+      if (n === 0) delete next.listens[was];
+      else next.listens[was] = n;
+    }
   }
   return next;
 }
@@ -112,7 +162,9 @@ export function parseDay(raw: unknown): DayStats {
       if (field === 'ratings' && !RATING_KEY.test(k)) continue;
       if (field === 'routeReasons' && !ROUTE_REASON_KEY.test(k)) continue;
       if (field === 'langs' && !LANG_KEY.test(k)) continue;
-      if (Number.isInteger(v) && (v as number) > 0) day[field][k] = v as number;
+      if (field === 'listens' && !LISTEN_KEY.test(k)) continue;
+      // Listens can be below zero for a while (a correction ahead of its listen); everything else is a count.
+      if (Number.isInteger(v) && ((v as number) > 0 || (field === 'listens' && (v as number) < 0))) day[field][k] = v as number;
     }
   }
   return day;
@@ -123,7 +175,8 @@ export const sumDays = (days: DayStats[]): DayStats => {
   const total = emptyDay();
   for (const d of days) {
     for (const field of FIELDS) {
-      for (const [k, v] of Object.entries(d[field])) total[field][k] = (total[field][k] ?? 0) + v;
+      // Older totals may have no listens.
+      for (const [k, v] of Object.entries(d[field] ?? {})) total[field][k] = (total[field][k] ?? 0) + v;
     }
   }
   return total;
@@ -192,3 +245,37 @@ export function languageShares(total: DayStats): { rows: LanguageRow[]; counted:
   for (const r of rows) r.pct = counted ? Math.round((r.total / counted) * 100) : 0;
   return { rows: rows.filter(r => r.total > 0).sort((a, b) => b.total - a.total), counted, all: count(total.plays) + count(total.routes) };
 }
+
+export type ListenRow = {
+  id: number;
+  /** Guides stopped or finished (one per visit). */
+  listens: number;
+  bands: Record<ListenBand, number>;
+  /** Share heard to the end, in %. */
+  finished: number;
+  /** Share stopped in the first quarter, in %. */
+  early: number;
+};
+
+/** Fewer listens than this and a place isn't flagged: too few to tell. */
+export const MIN_LISTENS = 10;
+
+/**
+ * How much of each place's recorded guide was heard, for the admin: lowest
+ * finish rate first. Places with no listens are left out.
+ */
+export function listening(total: DayStats, placeIds: number[]): ListenRow[] {
+  const listens = total.listens ?? {};
+  return placeIds
+    .map(id => {
+      // A band below zero (a correction whose listen never arrived) shows as none.
+      const bands = Object.fromEntries(LISTEN_BANDS.map(b => [b, Math.max(0, listens[`${id}:${b}`] ?? 0)])) as Record<ListenBand, number>;
+      const n = LISTEN_BANDS.reduce((a, b) => a + bands[b], 0);
+      return { id, listens: n, bands, finished: n ? Math.round((bands.done / n) * 100) : 0, early: n ? Math.round((bands.q1 / n) * 100) : 0 };
+    })
+    .filter(r => r.listens > 0)
+    .sort((a, b) => a.finished - b.finished || b.listens - a.listens || a.id - b.id);
+}
+
+/** Most listeners stop in the first quarter, with enough listens to tell. */
+export const mostStopEarly = (r: ListenRow) => r.listens >= MIN_LISTENS && r.early >= 50;
