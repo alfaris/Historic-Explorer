@@ -77,6 +77,13 @@ describe('track', () => {
     expect(await sent()).toEqual([[{ t: 'play', id: 7, l: 'en' }, { t: 'listen', id: 7, b: 'q2' }]]);
   });
 
+  it('counts each search that found nothing once per visit', async () => {
+    track({ t: 'miss', q: 'citadel' });
+    track({ t: 'miss', q: 'citadel' });
+    track({ t: 'miss', q: 'khan' });
+    expect(await sent()).toEqual([[{ t: 'miss', q: 'citadel' }, { t: 'miss', q: 'khan' }]]);
+  });
+
   it('sends nothing once stopped (the admin, whose previews play audio guides)', async () => {
     stopTracking();
     track({ t: 'play', id: 1 });

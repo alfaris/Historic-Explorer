@@ -40,6 +40,32 @@ export function listenBand(heard: number, duration: number): ListenBand {
   return share < 0.25 ? 'q1' : share < 0.5 ? 'q2' : share < 0.75 ? 'q3' : 'q4';
 }
 
+/** The longest search kept, and how many different ones a day keeps (the rest aren't counted). */
+export const MISS_MAX_LENGTH = 40;
+export const MAX_MISSES_PER_DAY = 300;
+
+/** Longer searches aren't place names (and aren't counted at all). */
+const MISS_MAX_INPUT = 80;
+
+/**
+ * A search as it's counted: lowercased, spaces collapsed, at most
+ * MISS_MAX_LENGTH characters. Null for anything that could identify someone
+ * or isn't a place name: an email or web address (any dot followed by a
+ * letter), a phone or other number (5 or more digits), symbols, fewer than 2
+ * letters, or more than 80 characters. The whole search is checked before it
+ * is shortened, so nothing identifying past the cut can slip through.
+ */
+export function missQuery(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const full = raw.toLocaleLowerCase().replace(/\s+/g, ' ').trim();
+  if (full.length > MISS_MAX_INPUT) return null;
+  if ((full.match(/\p{L}/gu) ?? []).length < 2) return null;
+  if (!/^[\p{L}\p{M}\p{N} '’.-]+$/u.test(full)) return null;
+  if ((full.match(/\p{N}/gu) ?? []).length >= 5 || /\.\p{L}/u.test(full)) return null;
+  const q = full.slice(0, MISS_MAX_LENGTH).trim();
+  return q.length >= 2 ? q : null;
+}
+
 /** Whether band `a` heard more than band `b`. */
 export const furtherBand = (a: ListenBand, b: ListenBand) => LISTEN_BANDS.indexOf(a) > LISTEN_BANDS.indexOf(b);
 
@@ -58,7 +84,9 @@ export type StatEvent =
    * replaces (`w`) and the UTC day it was counted on (`d`), so the count
    * moves from that band to the new one on that day.
    */
-  | { t: 'listen'; id: number; b: ListenBand; w?: ListenBand; d?: string };
+  | { t: 'listen'; id: number; b: ListenBand; w?: ListenBand; d?: string }
+  /** A search that found no place, as missQuery gives it. */
+  | { t: 'miss'; q: string };
 
 /** One day's totals, keyed by place ID or route ID. */
 export interface DayStats {
@@ -78,9 +106,11 @@ export interface DayStats {
   langs: Record<string, number>;
   /** How much of each recorded guide was heard, keyed "placeId:band", e.g. "12:done". Absent on days before it was recorded. */
   listens: Record<string, number>;
+  /** Searches that found no place, by query (see missQuery). Absent on days before it was recorded. */
+  misses: Record<string, number>;
 }
 
-const FIELDS = ['plays', 'routes', 'arrivals', 'helpful', 'unhelpful', 'reasons', 'ratings', 'routeReasons', 'langs', 'listens'] as const;
+const FIELDS = ['plays', 'routes', 'arrivals', 'helpful', 'unhelpful', 'reasons', 'ratings', 'routeReasons', 'langs', 'listens', 'misses'] as const;
 const REASON_KEY = new RegExp(`^\\d+:(${REASONS.join('|')})$`);
 const ROUTE_ID = '[a-z0-9]+(?:-[a-z0-9]+)*';
 const RATING_KEY = new RegExp(`^${ROUTE_ID}:[1-5]$`);
@@ -89,12 +119,12 @@ const LANG_KEY = new RegExp(`^(play|route):(${LANGS.join('|')})$`);
 const DAY_KEY = /^\d{4}-\d{2}-\d{2}$/;
 const LISTEN_KEY = new RegExp(`^\\d+:(${LISTEN_BANDS.join('|')})$`);
 
-export const emptyDay = (): DayStats => ({ plays: {}, routes: {}, arrivals: {}, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {}, langs: {}, listens: {} });
+export const emptyDay = (): DayStats => ({ plays: {}, routes: {}, arrivals: {}, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {}, langs: {}, listens: {}, misses: {} });
 
 /** The most events one request may carry. */
 export const MAX_EVENTS_PER_REQUEST = 50;
 
-const FIELD = { play: 'plays', route: 'routes', arrive: 'arrivals', up: 'helpful', down: 'unhelpful', why: 'reasons', rate: 'ratings', rwhy: 'routeReasons', listen: 'listens' } as const;
+const FIELD = { play: 'plays', route: 'routes', arrive: 'arrivals', up: 'helpful', down: 'unhelpful', why: 'reasons', rate: 'ratings', rwhy: 'routeReasons', listen: 'listens', miss: 'misses' } as const;
 
 /** The event with its language, when the visitor sent a known one. */
 const withLang = <E extends { t: 'play' | 'route' }>(event: E, raw: object): E => {
@@ -109,6 +139,11 @@ export function cleanEvents(raw: unknown, known: { placeIds: Set<number>; routeI
   for (const e of raw.slice(0, MAX_EVENTS_PER_REQUEST)) {
     if (!e || typeof e !== 'object') continue;
     const { t, id, r } = e as { t?: unknown; id?: unknown; r?: unknown };
+    if (t === 'miss') {
+      const q = missQuery((e as { q?: unknown }).q);
+      if (q) out.push({ t, q });
+      continue;
+    }
     if (t === 'why' && typeof id === 'number' && known.placeIds.has(id) && isReason(r)) out.push({ t, id, r });
     else if (t === 'play' && typeof id === 'number' && known.placeIds.has(id)) out.push(withLang({ t, id }, e));
     else if ((t === 'arrive' || t === 'up' || t === 'down') && typeof id === 'number' && known.placeIds.has(id)) out.push({ t, id });
@@ -131,6 +166,12 @@ export function cleanEvents(raw: unknown, known: { placeIds: Set<number>; routeI
 export function addEvents(day: DayStats, events: StatEvent[]): DayStats {
   const next = Object.fromEntries(FIELDS.map(f => [f, { ...day[f] }])) as unknown as DayStats;
   for (const e of events) {
+    if (e.t === 'miss') {
+      // A day keeps at most MAX_MISSES_PER_DAY different searches.
+      if (next.misses[e.q] === undefined && Object.keys(next.misses).length >= MAX_MISSES_PER_DAY) continue;
+      next.misses[e.q] = (next.misses[e.q] ?? 0) + 1;
+      continue;
+    }
     const bucket = next[FIELD[e.t]];
     const key = e.t === 'why' || e.t === 'rwhy' ? `${e.id}:${e.r}` : e.t === 'rate' ? `${e.id}:${e.s}` : e.t === 'listen' ? `${e.id}:${e.b}` : e.id;
     bucket[key] = (bucket[key] ?? 0) + 1;
@@ -163,6 +204,7 @@ export function parseDay(raw: unknown): DayStats {
       if (field === 'routeReasons' && !ROUTE_REASON_KEY.test(k)) continue;
       if (field === 'langs' && !LANG_KEY.test(k)) continue;
       if (field === 'listens' && !LISTEN_KEY.test(k)) continue;
+      if (field === 'misses' && missQuery(k) !== k) continue;
       // Listens can be below zero for a while (a correction ahead of its listen); everything else is a count.
       if (Number.isInteger(v) && ((v as number) > 0 || (field === 'listens' && (v as number) < 0))) day[field][k] = v as number;
     }
@@ -279,3 +321,12 @@ export function listening(total: DayStats, placeIds: number[]): ListenRow[] {
 
 /** Most listeners stop in the first quarter, with enough listens to tell. */
 export const mostStopEarly = (r: ListenRow) => r.listens >= MIN_LISTENS && r.early >= 50;
+
+/** The searches that found nothing most often, with their counts. */
+export function topMisses(total: DayStats, n = 20): { q: string; count: number }[] {
+  return Object.entries(total.misses ?? {})
+    .filter(([, count]) => count > 0)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, n)
+    .map(([q, count]) => ({ q, count }));
+}

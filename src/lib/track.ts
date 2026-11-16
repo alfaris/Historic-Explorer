@@ -132,7 +132,8 @@ export function track(event: StatEvent) {
     trackListen(event.id, event.b);
     return;
   }
-  const key = `${event.t}:${event.id}`;
+  // Each search that found nothing counts once per visit, like each place.
+  const key = event.t === 'miss' ? `miss:${event.q}` : `${event.t}:${event.id}`;
   if (seen.has(key)) return;
   seen.add(key);
   // Audio plays and route opens say which interface language they were in.

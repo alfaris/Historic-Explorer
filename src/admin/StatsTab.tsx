@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Download, RefreshCw } from 'lucide-react';
 import type { Content } from '../data/content';
 import { walkStops } from '../lib/walk';
-import { helpfulness, languageShares, listening, mostStopEarly, MIN_LISTENS, REASONS, ROUTE_REASONS, routeRatings, type HelpfulRow, type ListenRow, type Reason, type RouteReason } from '../lib/stats';
+import { helpfulness, languageShares, listening, topMisses, mostStopEarly, MIN_LISTENS, REASONS, ROUTE_REASONS, routeRatings, type HelpfulRow, type ListenRow, type Reason, type RouteReason } from '../lib/stats';
 import { api, ApiError, type StatsResponse } from './api';
 import { downloadFile } from './backup';
 import { dailySeries, statsCsv } from './stats-csv';
@@ -170,6 +170,8 @@ export function StatsTab({ content, onSignedOut, onEditPlace }: { content: Conte
     [data, content, helpSort],
   );
 
+  const missRows = useMemo(() => (data ? topMisses(data.total, 30) : []), [data]);
+
   const listenRows = useMemo(() => (data ? listening(data.total, content.places.map(p => p.id)) : []), [data, content]);
 
   const ratingRows = useMemo(
@@ -248,6 +250,25 @@ export function StatsTab({ content, onSignedOut, onEditPlace }: { content: Conte
                   <Bar key={id} label={placeName.get(id)!} value={n} max={topPlaces[0][1]} />
                 ))}
               </div>
+            )}
+          </div>
+
+          <div className="bg-white rounded-2xl border border-sand/50 p-5">
+            <h2 className="text-sm font-bold text-stone-700 mb-1">Searches that found nothing</h2>
+            <p className="text-[11px] text-stone-400 mb-3">
+              What visitors searched for when no place on any route matched, most frequent first (once per search per visit). Search looks at place names in all four languages, so a place visitors know by another spelling needs that spelling in one of its names; one that keeps coming up may be worth adding. Searches are lowercased and cut to 40 characters, and anything with an email, a web address or a long number is never sent.
+            </p>
+            {missRows.length === 0 ? (
+              <p className="text-sm text-stone-400">No searches without results in this period.</p>
+            ) : (
+              <ol className="divide-y divide-sand/40 text-sm">
+                {missRows.map(r => (
+                  <li key={r.q} className="flex items-center gap-3 py-1.5">
+                    <span className="flex-1 min-w-0 truncate text-stone-700" dir="auto">{r.q}</span>
+                    <span className="tabular-nums text-stone-600">{fmt(r.count)}</span>
+                  </li>
+                ))}
+              </ol>
             )}
           </div>
 

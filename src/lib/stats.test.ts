@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addEvents, cleanEvents, dayKey, emptyDay, helpfulness, languageShares, MAX_EVENTS_PER_REQUEST, parseDay, routeRatings, sumDays, listenBand, furtherBand, listening, mostStopEarly } from './stats';
+import { addEvents, cleanEvents, dayKey, emptyDay, helpfulness, languageShares, MAX_EVENTS_PER_REQUEST, parseDay, routeRatings, sumDays, listenBand, furtherBand, listening, mostStopEarly, missQuery, topMisses, MAX_MISSES_PER_DAY } from './stats';
 
 const known = { placeIds: new Set([1, 2]), routeIds: new Set(['ahl-al-bayt']) };
 
@@ -29,7 +29,7 @@ describe('cleanEvents', () => {
 describe('addEvents / sumDays / parseDay', () => {
   it('counts events into the right totals', () => {
     const day = addEvents(emptyDay(), [{ t: 'play', id: 1 }, { t: 'play', id: 1 }, { t: 'route', id: 'r' }, { t: 'arrive', id: 2 }]);
-    expect(day).toEqual({ plays: { 1: 2 }, routes: { r: 1 }, arrivals: { 2: 1 }, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {}, langs: {}, listens: {} });
+    expect(day).toEqual({ plays: { 1: 2 }, routes: { r: 1 }, arrivals: { 2: 1 }, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {}, langs: {}, listens: {}, misses: {} });
   });
 
   it('adds days together', () => {
@@ -39,7 +39,7 @@ describe('addEvents / sumDays / parseDay', () => {
   });
 
   it('drops malformed stored values', () => {
-    expect(parseDay({ plays: { 1: 3, 2: -1, 3: 1.5, 4: 'x' }, routes: 'bad' })).toEqual({ plays: { 1: 3 }, routes: {}, arrivals: {}, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {}, langs: {}, listens: {} });
+    expect(parseDay({ plays: { 1: 3, 2: -1, 3: 1.5, 4: 'x' }, routes: 'bad' })).toEqual({ plays: { 1: 3 }, routes: {}, arrivals: {}, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {}, langs: {}, listens: {}, misses: {} });
     expect(parseDay(null)).toEqual(emptyDay());
   });
 
@@ -48,7 +48,7 @@ describe('addEvents / sumDays / parseDay', () => {
     const events = cleanEvents([{ t: 'up', id: 1 }, { t: 'down', id: 1 }, { t: 'up', id: 9 }, { t: 'up', id: '1' }], known);
     expect(events).toEqual([{ t: 'up', id: 1 }, { t: 'down', id: 1 }]);
     expect(addEvents(emptyDay(), events)).toMatchObject({ helpful: { 1: 1 }, unhelpful: { 1: 1 } });
-    expect(parseDay({ plays: { 1: 2 } })).toEqual({ plays: { 1: 2 }, routes: {}, arrivals: {}, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {}, langs: {}, listens: {} });
+    expect(parseDay({ plays: { 1: 2 } })).toEqual({ plays: { 1: 2 }, routes: {}, arrivals: {}, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {}, langs: {}, listens: {}, misses: {} });
   });
 
   it('lists helpfulness per place, most disliked or most voted first', () => {
@@ -219,5 +219,40 @@ describe('listening', () => {
     expect(addEvents(early, original).listens).toEqual({ '1:done': 1 });
     // A correction whose listen never arrived shows that band as none.
     expect(listening(early, [1])[0].bands).toEqual({ q1: 0, q2: 0, q3: 0, q4: 0, done: 1 });
+  });
+});
+
+describe('searches that found nothing', () => {
+  it('keeps place-like searches, normalised, and never anything identifying', () => {
+    expect(missQuery('  Bab   ZUWAYLA ')).toBe('bab zuwayla');
+    expect(missQuery('مسجد الرفاعي')).toBe('مسجد الرفاعي');
+    expect(missQuery("St. George's church")).toBe("st. george's church");
+    expect(missQuery('x'.repeat(60))).toHaveLength(40);
+    expect(missQuery('st. george church')).toBe('st. george church');
+    for (const bad of [
+      'a', '12', 'me@example.com', '+20 100 123 4567', '0100123456', 'call 01001234', 'www.example', 'example.com', 'example.io', 'john.smith.co.uk', '<script>', 'a&b', 3,
+      // Checked whole, before it's shortened: what's past 40 characters counts too.
+      'contact alexandria museum staff john.smith@example.com',
+      'contact alexandria museum staff on 0100 1234 567',
+      'x'.repeat(81),
+    ]) {
+      expect(missQuery(bad)).toBeNull();
+    }
+  });
+
+  it('counts them, keeps a day to a set number of searches, and lists the most frequent', () => {
+    const known = { placeIds: new Set<number>(), routeIds: new Set<string>() };
+    const events = cleanEvents([{ t: 'miss', q: 'Citadel' }, { t: 'miss', q: 'citadel ' }, { t: 'miss', q: 'me@x.com' }, { t: 'miss' }], known);
+    expect(events).toEqual([{ t: 'miss', q: 'citadel' }, { t: 'miss', q: 'citadel' }]);
+    let day = addEvents(emptyDay(), [...events, { t: 'miss', q: 'khan el khalili' }]);
+    expect(day.misses).toEqual({ citadel: 2, 'khan el khalili': 1 });
+    expect(topMisses(day)).toEqual([{ q: 'citadel', count: 2 }, { q: 'khan el khalili', count: 1 }]);
+    // Stored values are checked too.
+    expect(parseDay({ misses: { citadel: 2, 'me@x.com': 3, 'Upper Case': 1 } }).misses).toEqual({ citadel: 2 });
+    // A full day takes more of the searches it has, and no new ones.
+    day = { ...emptyDay(), misses: Object.fromEntries(Array.from({ length: MAX_MISSES_PER_DAY }, (_, i) => [`place ${String.fromCharCode(97 + (i % 26))}${i}`, 1])) };
+    const next = addEvents(day, [{ t: 'miss', q: 'brand new' }, { t: 'miss', q: 'place a0' }]);
+    expect(next.misses['brand new']).toBeUndefined();
+    expect(next.misses['place a0']).toBe(2);
   });
 });
