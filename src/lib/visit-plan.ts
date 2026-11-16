@@ -6,7 +6,8 @@
 import type { Location } from '../data/locations.js';
 import { cairoTime, openStatus, type OpenStatus } from './opening-hours.js';
 import { isActiveMosque, pausesAround, type PrayerPause } from './prayer-times.js';
-import { walkStops, walkPlan } from './walk.js';
+import { walkMinutes, walkStops, walkPlan } from './walk.js';
+import { distanceMeters } from './geo.js';
 import { openStatusAt, type SpecialPeriod } from './special-hours.js';
 
 const MIN = 60_000;
@@ -136,10 +137,11 @@ export function suggestStart<T extends Place>(
  * says (the middle of its hours), as the nearest of STAY_OPTIONS.
  */
 export function defaultStay<T extends Place>(places: T[], route: { id: string; hoursMin: number; hoursMax: number }): number {
-  const plan = visitPlan(places, route.id, new Date(0), 0, []);
-  if (!plan.stops.length || !(route.hoursMax > 0)) return DEFAULT_STAY;
-  const walking = plan.stops.reduce((sum, s) => sum + s.walkMinutes, 0);
-  const each = ((route.hoursMin + route.hoursMax) * 30 - walking) / plan.stops.length;
+  const stops = walkStops(places, route.id);
+  if (!stops.length || !(route.hoursMax > 0)) return DEFAULT_STAY;
+  // The route's hours assume the usual pace, so a slower walker doesn't get shorter stays.
+  const walking = stops.slice(1).reduce((sum, s, i) => sum + walkMinutes(distanceMeters(stops[i], s), 1), 0);
+  const each = ((route.hoursMin + route.hoursMax) * 30 - walking) / stops.length;
   return STAY_OPTIONS.reduce((best, n) => (Math.abs(n - each) < Math.abs(best - each) ? n : best), STAY_OPTIONS[0]);
 }
 

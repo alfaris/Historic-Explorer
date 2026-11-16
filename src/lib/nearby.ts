@@ -14,7 +14,8 @@ export function nearbyOnOtherRoutes<P extends Point & { id: number; routeId: str
   return places
     .filter(p => p.routeId !== place.routeId && p.id !== place.id)
     .map(p => ({ place: p, meters: distanceMeters(place, p) }))
-    .filter(x => walkMinutes(x.meters) <= NEARBY_MINUTES)
+    // Which places count as nearby doesn't depend on the visitor's pace; the minutes shown do.
+    .filter(x => walkMinutes(x.meters, 1) <= NEARBY_MINUTES)
     .sort((a, b) => a.meters - b.meters || a.place.id - b.place.id)
     .slice(0, NEARBY_MAX)
     .map(x => ({ place: x.place, minutes: walkMinutes(x.meters) }));

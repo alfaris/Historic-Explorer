@@ -14,6 +14,7 @@ import { minutesLabel } from './WalkInfo';
 import { accessSummary, hasAccessInfo, routeAccess } from '../lib/step-free';
 import { accessText } from '../lib/visitor-tips';
 import { gettingThereFor } from '../lib/getting-there';
+import { usePace } from '../lib/pace';
 
 /**
  * The printable route sheet (A4): the route, a schematic map of the stops,
@@ -33,7 +34,8 @@ export default function RouteSheet({ route, places, walkPlaces = places, short, 
   const lang = currentLang();
   const ar = lang === 'ar';
   const stops = useMemo(() => walkStops(walkPlaces, route.id), [walkPlaces, route.id]);
-  const plan = useMemo(() => walkPlan(walkPlaces, route.id), [walkPlaces, route.id]);
+  const pace = usePace();
+  const plan = useMemo(() => walkPlan(walkPlaces, route.id), [walkPlaces, route.id, pace]); // eslint-disable-line react-hooks/exhaustive-deps
   const map = useMemo(() => sheetMap(stops), [stops]);
   const url = routeShareUrl(window.location.origin, route.id);
   // Hours as they stand for the coming week, special hours (Ramadan, closures) included, as on screen.

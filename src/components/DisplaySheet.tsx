@@ -5,11 +5,13 @@ import { useLanguage } from '../i18n/LanguageContext';
 import { L, LANGS, LANGUAGES } from '../i18n/lang';
 import { TEXT_SIZES, THEMES, setDisplay, useDisplay, type TextSize, type Theme } from '../lib/display';
 import { useDialog } from '../lib/useDialog';
+import { PACES, setPace, usePace, type Pace } from '../lib/pace';
 
 // The language and display sheet, loaded when it's opened (see DisplaySettings.tsx).
 
 const sizeLabel = (s: TextSize) => (s === 'standard' ? L('Standard', 'عادي') : s === 'large' ? L('Large', 'كبير') : L('Larger', 'أكبر'));
 const themeLabel = (t: Theme) => (t === 'auto' ? L('Auto', 'تلقائي') : t === 'light' ? L('Light', 'فاتح') : L('Dark', 'داكن'));
+const paceLabel = (p: Pace) => (p === 'relaxed' ? L('Relaxed', 'هادئة') : p === 'usual' ? L('Usual', 'عادية') : L('Brisk', 'سريعة'));
 const THEME_ICON = { auto: Monitor, light: Sun, dark: Moon } as const;
 // The sample letters in each option, at roughly the size it gives.
 const SAMPLE: Record<TextSize, string> = { standard: 'text-base', large: 'text-lg', larger: 'text-xl' };
@@ -17,6 +19,7 @@ const SAMPLE: Record<TextSize, string> = { standard: 'text-base', large: 'text-l
 export default function DisplaySheet({ onClose }: { onClose: () => void }) {
   const { language, setLanguage } = useLanguage();
   const display = useDisplay();
+  const pace = usePace();
   const { ref, guard } = useDialog<HTMLDivElement>(onClose);
   const ar = language === 'ar';
 
@@ -93,6 +96,24 @@ export default function DisplaySheet({ onClose }: { onClose: () => void }) {
             })}
           </div>
           <p className="mt-1 text-xs text-stone-500">{L('Auto follows your phone.', 'التلقائي يتبع إعداد هاتفك.')}</p>
+        </fieldset>
+
+        <fieldset>
+          <legend className="text-xs font-bold uppercase tracking-widest text-stone-500 mb-2">{L('Walking pace', 'سرعة المشي')}</legend>
+          <div className="grid grid-cols-3 gap-2">
+            {PACES.map(p => (
+              <label
+                key={p}
+                className={`flex items-center justify-center min-h-11 rounded-2xl border px-2 py-2 text-center text-sm cursor-pointer has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-nile ${
+                  pace === p ? 'border-nile bg-nile/10 text-nile font-bold' : 'border-sand text-ink hover:border-nile/50'
+                }`}
+              >
+                <input type="radio" name="pace" value={p} checked={pace === p} onChange={() => setPace(p)} className="sr-only" />
+                {paceLabel(p)}
+              </label>
+            ))}
+          </div>
+          <p className="mt-1 text-xs text-stone-500">{L('Every walking time in the app follows your pace.', 'كل أوقات المشي في التطبيق تتبع سرعتك.')}</p>
         </fieldset>
 
         <label className="flex items-start gap-3 cursor-pointer min-h-11">

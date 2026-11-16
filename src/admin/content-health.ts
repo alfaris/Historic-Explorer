@@ -5,7 +5,7 @@ import { glossaryOf, type Content, type Location, type Route } from '../data/con
 import { draftedOf, withoutDrafted } from '../lib/drafted';
 import { photoForPlace } from '../data/photo-resolve';
 import { LANGS, LANGUAGES, OPTIONAL_LANGS, type Lang, type OptionalLang } from '../i18n/lang';
-import { walkPlan } from '../lib/walk';
+import { DETOUR_FACTOR, walkMinutes, walkPlan } from '../lib/walk';
 import type { GlossaryTerm } from '../lib/glossary';
 import type { SpecialPeriod } from '../lib/special-hours';
 import { eraOf } from '../lib/eras';
@@ -104,7 +104,8 @@ export function plannedWalk(places: Location[], routeId: string): { meters: numb
   for (const info of plan.values()) {
     if (info.leg) {
       meters += info.leg.meters;
-      minutes += info.leg.minutes;
+      // The usual pace, whatever pace this browser's visitor app is set to.
+      minutes += walkMinutes(info.leg.meters / DETOUR_FACTOR, 1);
     }
   }
   return { meters: Math.round(meters), minutes, stops: plan.size };

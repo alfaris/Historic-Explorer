@@ -61,6 +61,7 @@ import { LazyBoundary } from './LazyBoundary';
 import { SheetFailed } from './SheetFailed';
 
 import { L, byLang, nameOf, descriptionOf, highlightsOf, currentLang, fallbackLang, LANGS, LANGUAGES } from '../i18n/lang';
+import { usePace } from '../lib/pace';
 // The map (Leaflet, marker clustering and their CSS) is the largest part of the
 // app, so it's loaded only when needed: in the background once the page is idle,
 // or straight away if the map is opened first.
@@ -98,6 +99,8 @@ function useSameList<T>(list: T[]): T[] {
 export const MainContent: React.FC = () => {
   // Live routes and places (admin edits), falling back to the bundled copy.
   const { places: locations, routes, specialPeriods } = useContent();
+  // Walking times follow the visitor's pace; plans below recompute when it changes.
+  const pace = usePace();
   const { t, language, setLanguage, dir } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
   // Open now and Step-free (list and map). Open now is checked against the time, refreshed every minute.
@@ -132,7 +135,7 @@ export const MainContent: React.FC = () => {
   const shortOn = canShort && shortWalks.has(selectedRoute);
   // The places the list, map and walk work from: with the short walk on, the route's other stops are left out.
   const walkPlaces = useMemo(() => (shortOn ? shortWalkPlaces(locations, selectedRoute) : locations), [shortOn, locations, selectedRoute]);
-  const shortStats = useMemo(() => (canShort ? shortWalkStats(locations, selectedRoute) : null), [canShort, locations, selectedRoute]);
+  const shortStats = useMemo(() => (canShort ? shortWalkStats(locations, selectedRoute) : null), [canShort, locations, selectedRoute, pace]); // eslint-disable-line react-hooks/exhaustive-deps
   // A shared short walk (`/r/<id>?short=1`): read once, before the link leaves the
   // address, and applied when the route has a short walk, which may only be known
   // once the live content (with its must-see stops) arrives. Otherwise it's ignored.
@@ -297,7 +300,7 @@ export const MainContent: React.FC = () => {
     if (routes.some(r => r.id === selectedRoute)) track({ t: 'route', id: selectedRoute });
   }, [selectedRoute, routes, locations]);
   // Stop numbers and the walk to the next stop, in the route's walking order.
-  const plan = useMemo(() => walkPlan(walkPlaces, selectedRoute), [walkPlaces, selectedRoute]);
+  const plan = useMemo(() => walkPlan(walkPlaces, selectedRoute), [walkPlaces, selectedRoute, pace]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Near me keeps watching location across all three tabs until stopped.
   const nearMe = useNearMe(isArabic, locations);

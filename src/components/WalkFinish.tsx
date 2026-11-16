@@ -18,6 +18,7 @@ import { stampRoute, useStamps } from '../lib/passport';
 import { cairoDate } from '../lib/special-hours';
 import { removeSkipped, useSkipped } from '../lib/skipped';
 import { NextWalk } from './NextWalk';
+import { usePace } from '../lib/pace';
 
 /**
  * The end of a walk: stops visited, roughly how far the visitor walked (from
@@ -35,6 +36,7 @@ export function WalkFinish({ route, routes, places, onClose, onShowPassport, onS
   onShowRoute?: (id: string) => void;
 }) {
   const visited = useVisited();
+  usePace(); // re-render with the visitor's pace
   const summary = walkSummary(places, route.id, visited);
   const { ref, guard } = useDialog<HTMLDivElement>(onClose);
   const ar = currentLang() === 'ar';

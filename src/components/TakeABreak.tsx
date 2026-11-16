@@ -12,6 +12,7 @@ import { HoursBadge, useNow } from './PlaceHours';
 import { PlacePhoto } from './PlacePhoto';
 import { VisitorTips } from './VisitorTips';
 import { minutesLabel } from './WalkInfo';
+import { usePace } from '../lib/pace';
 
 // Within about 30 m (e.g. the stop the visitor is at) it's simply "here".
 const away = (b: BreakPlace<Location>, ar: boolean) => (b.meters < 30 ? L('Here', 'هنا') : `${formatDistance(b.meters, ar)} · ${minutesLabel(b.minutes)}`);
@@ -33,7 +34,8 @@ export function TakeABreak({ places, from, fromStop, open, onToggle, onPick, isA
 }) {
   const now = useNow();
   const { specialPeriods } = useContent();
-  const { food, toilets } = useMemo(() => nearestBreaks(places, from, now, specialPeriods), [places, from.lat, from.lng, now, specialPeriods]); // eslint-disable-line react-hooks/exhaustive-deps
+  const pace = usePace();
+  const { food, toilets } = useMemo(() => nearestBreaks(places, from, now, specialPeriods), [places, from.lat, from.lng, now, specialPeriods, pace]); // eslint-disable-line react-hooks/exhaustive-deps
   const rows: { b: BreakPlace<Location>; icon: React.ReactNode; label?: string }[] = [
     ...food.map(b => ({ b, icon: b.place.category === 'coffee' ? <Coffee className="w-4 h-4" /> : <Utensils className="w-4 h-4" /> })),
     ...(toilets ? [{ b: toilets, icon: <Toilet className="w-4 h-4" />, label: L('Toilets', 'دورات مياه') }] : []),
