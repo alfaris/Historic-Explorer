@@ -5,7 +5,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Languages, Loader2 } from 'lucide-react';
-import type { Location } from '../data/content';
+import { fitToLimit, type Location } from '../data/content';
 import { LANGUAGES, type OptionalLang } from '../i18n/lang';
 import { api } from './api';
 import { withDrafted, withoutDrafted } from '../lib/drafted';
@@ -37,7 +37,8 @@ export function fillEmpty<T extends object>(obj: T, texts: Record<string, string
   for (const k of keys) {
     const current = next[k];
     if (texts[k]?.trim() && !(typeof current === 'string' && current.trim())) {
-      next[k] = texts[k];
+      // A draft longer than the field allows couldn't be saved.
+      next[k] = fitToLimit(k, texts[k]);
       filled.push(k);
     }
   }
@@ -54,8 +55,8 @@ export function missingPlaceText(place: Location, lang: OptionalLang): Record<st
   const description = fieldKey('description', lang);
   if (!place[name] && place.nameEn.trim()) missing[name] = place.nameEn;
   if (!place[description] && place.descriptionEn?.trim()) missing[description] = place.descriptionEn;
-  // "Spot it" (the challenge and its answer) and the photo tip, when there's an English one.
-  for (const base of ['spot', 'spotAnswer', 'photoTip'] as const) {
+  // "Spot it" (the challenge and its answer), the photo tip and "In short", when there's an English one.
+  for (const base of ['spot', 'spotAnswer', 'photoTip', 'summary'] as const) {
     const key = fieldKey(base, lang);
     const english = place[fieldKey(base, 'en')];
     if (!place[key] && english?.trim()) missing[key] = english;

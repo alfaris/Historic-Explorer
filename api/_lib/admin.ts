@@ -14,6 +14,7 @@
 //   GET  stats?days=7|30|90 → { total, perDay }  (see stats.ts)
 //   POST translate {lang, texts} → { texts } French or Spanish drafts, nothing saved  (see translate.ts)
 //   POST describe-photo {src, name} → { texts } photo descriptions in each language, nothing saved  (see describe-photo.ts)
+//   POST summarize {name, descriptions} → { texts } a place's "In short" line in each language, nothing saved  (see summarize.ts)
 //   GET  digest → { configured, to }   POST digest-test → sends a test email  (see digest.ts)
 //
 // Everything except session and login requires a signed-in admin.
@@ -35,6 +36,7 @@ import { handlePhotoUpload } from './photos.js';
 import { handleAdminAudio } from './admin-audio.js';
 import { handleTranslate } from './translate.js';
 import { handleDescribePhoto } from './describe-photo.js';
+import { handleSummarize } from './summarize.js';
 import { readStats } from './stats.js';
 import { digestConfigured, sendTestEmail } from './digest.js';
 import { normalizeContent, validateContent } from '../../src/data/content.js';
@@ -146,6 +148,10 @@ export async function handleAdmin(request: Request): Promise<Response> {
 
     if (action === 'describe-photo' && method === 'POST') {
       return await handleDescribePhoto(request);
+    }
+
+    if (action === 'summarize' && method === 'POST') {
+      return await handleSummarize(request);
     }
 
     if (action === 'version' && method === 'GET') {

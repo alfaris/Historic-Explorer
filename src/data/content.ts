@@ -46,7 +46,22 @@ export const CATEGORY_IDS = categories.map(c => c.id) as Category[];
 // Roughly Greater Cairo. Generous, but catches swapped lat/lng and typos.
 export const CAIRO_BOUNDS = { minLat: 29.9, maxLat: 30.15, minLng: 31.1, maxLng: 31.4 };
 
-const LIMITS = { name: 120, description: 2000, highlights: 8, fee: 120, photoAlt: 250, spot: 200, spotAnswer: 120, photoTip: 250, metro: 80, gettingThere: 300 };
+const LIMITS = { name: 120, description: 2000, highlights: 8, fee: 120, photoAlt: 250, spot: 200, spotAnswer: 120, photoTip: 250, summary: 160, metro: 80, gettingThere: 300 };
+
+/**
+ * `text` cut to the length a text field allows (by its name, e.g.
+ * "summaryFr"), at a word where it can, with "…": for Gemini's drafts, which
+ * can come back longer in another language than the save allows. Fields
+ * without a length limit (and lists) are left alone.
+ */
+export function fitToLimit(field: string, text: string): string {
+  const base = field.replace(/(En|Ar|Fr|Es)$/, '') as keyof typeof LIMITS;
+  const max = base === 'highlights' ? undefined : LIMITS[base];
+  if (!max || text.length <= max) return text;
+  const cut = text.slice(0, max - 1);
+  const space = cut.lastIndexOf(' ');
+  return `${(space > max * 0.6 ? cut.slice(0, space) : cut).replace(/[\s,;:.-]+$/, '')}…`;
+}
 
 const hasArabic = (value: string) => /[؀-ۿ]/.test(value);
 const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
@@ -167,7 +182,7 @@ export function normalizeContent(input: unknown): Content {
       ...(normalizeTips(p?.tips) ? { tips: normalizeTips(p?.tips) } : {}),
       ...(normalizeHours(p?.hours) ? { hours: normalizeHours(p?.hours) } : {}),
       ...normalizeBuilt(p),
-      ...textFields(p, ['fee', 'spot', 'spotAnswer', 'photoTip'], LANGS),
+      ...textFields(p, ['fee', 'spot', 'spotAnswer', 'photoTip', 'summary'], LANGS),
       lat: Number(p?.lat),
       lng: Number(p?.lng),
       ...(normalizePhoto(p?.photo) ? { photo: normalizePhoto(p?.photo) } : {}),
@@ -249,6 +264,7 @@ export function validateContent(content: Content): string[] {
       [`spot${LANGUAGES[l].suffix}`, LIMITS.spot],
       [`spotAnswer${LANGUAGES[l].suffix}`, LIMITS.spotAnswer],
       [`photoTip${LANGUAGES[l].suffix}`, LIMITS.photoTip],
+      [`summary${LANGUAGES[l].suffix}`, LIMITS.summary],
     ] as const);
     for (const [field, max] of [['nameEn', LIMITS.name], ['nameAr', LIMITS.name], ['descriptionEn', LIMITS.description], ['descriptionAr', LIMITS.description], ...optional, ...fees] as const) {
       if ((p[field] ?? '').length > max) problems.push(`${label}: ${field} is longer than ${max} characters.`);

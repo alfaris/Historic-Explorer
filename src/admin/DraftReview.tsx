@@ -11,6 +11,7 @@ const BASES: Record<string, string> = {
   spot: 'Spot it challenge',
   spotAnswer: 'Spot it answer',
   photoTip: 'Photo tip',
+  summary: 'In short',
   photoAlt: 'Photo description',
   metro: 'Nearest metro',
   gettingThere: 'Getting there note',

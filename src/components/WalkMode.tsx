@@ -14,6 +14,7 @@ import { useHeading, useWakeLock } from '../lib/useWalkSensors';
 import { AudioGuide } from './AudioGuide';
 import { BuiltBadge } from './PlaceEra';
 import { SpotIt } from './SpotIt';
+import { summaryOf } from '../lib/spot-it';
 import { PhotoTip } from './PhotoTip';
 import { HistoricPlaceholder } from './HistoricPlaceholder';
 import { PlacePhoto } from './PlacePhoto';
@@ -301,6 +302,10 @@ export function WalkMode({ route, places, walkPlaces = places, nearMe, isArabic,
               <HoursBadge place={stop} className="mb-3" />
               <PrayerNotice place={stop} className="mb-3" />
               <Notices scope={{ placeId: stop.id }} className="mb-3" />
+              {(() => {
+                const summary = summaryOf(stop, currentLang());
+                return summary && <p className="text-ink font-bold leading-snug mb-2" lang={summary.lang}>{summary.text}</p>;
+              })()}
               <p className="text-stone-600 leading-relaxed mb-4" lang={fallbackLang(stop, 'description')}><GlossaryText text={descriptionOf(stop)} /></p>
               <VisitorTips place={stop} className="mb-4" />
               <SpotIt place={stop} className="mb-4" />
