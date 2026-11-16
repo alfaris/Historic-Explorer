@@ -21,9 +21,19 @@ type Place = Point & { id: number; routeId: string; category: string };
 export const walkStops = <T extends Place>(places: T[], routeId: string): T[] =>
   places.filter(p => p.routeId === routeId && STOP_CATEGORIES.has(p.category));
 
-/** Estimated walking time, in whole minutes (at least 1). */
-export const walkMinutes = (straightMeters: number) =>
-  Math.max(1, Math.round((straightMeters * DETOUR_FACTOR) / WALK_METERS_PER_MINUTE));
+// The visitor's walking pace as a factor on every walking time (see pace.ts):
+// 1 unless the app sets it, so the server and the admin always use the usual pace.
+let paceFactor = 1;
+export const setPaceFactor = (factor: number) => {
+  paceFactor = Number.isFinite(factor) && factor > 0 ? factor : 1;
+};
+
+/** A walking time given at the usual pace (e.g. the admin's minutes from the metro), at the visitor's pace. */
+export const atPace = (minutes: number, factor = paceFactor) => Math.max(1, Math.round(minutes * factor));
+
+/** Estimated walking time, in whole minutes (at least 1), at the visitor's pace unless `factor` is given. */
+export const walkMinutes = (straightMeters: number, factor = paceFactor) =>
+  Math.max(1, Math.round(((straightMeters * DETOUR_FACTOR) / WALK_METERS_PER_MINUTE) * factor));
 
 export type Leg<T> = { next: T; meters: number; minutes: number };
 export type StopInfo<T> = { number: number; total: number; leg: Leg<T> | null };

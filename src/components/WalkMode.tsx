@@ -60,6 +60,7 @@ import { PrayerArrivalWarning, PrayerNotice } from './PrayerTimes';
 import { VisitorTips } from './VisitorTips';
 import { Notices } from './Notices';
 import { BreakView, TakeABreak } from './TakeABreak';
+import { usePace } from '../lib/pace';
 
 
 /**
@@ -82,7 +83,8 @@ export function WalkMode({ route, places, walkPlaces = places, nearMe, isArabic,
 }) {
   const ar = isArabic;
   const stops = useMemo(() => walkStops(walkPlaces, route.id), [walkPlaces, route.id]);
-  const plan = useMemo(() => walkPlan(walkPlaces, route.id), [walkPlaces, route.id]);
+  const pace = usePace();
+  const plan = useMemo(() => walkPlan(walkPlaces, route.id), [walkPlaces, route.id, pace]); // eslint-disable-line react-hooks/exhaustive-deps
   const visited = useVisited();
   const skipped = useSkipped();
   const [index, setIndex] = useState(() => startIndex(stops.map(s => s.id), visited, skipped));

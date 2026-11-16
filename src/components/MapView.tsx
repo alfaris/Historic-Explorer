@@ -20,6 +20,7 @@ import { useVisited } from '../lib/visited';
 import { useSaved } from '../lib/saved';
 
 import { L as T, nameOf } from '../i18n/lang';
+import { usePace } from '../lib/pace';
 // Fix for default marker icons in React Leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -185,8 +186,9 @@ export const MapView: React.FC<MapViewProps> = ({ locations, selectedLocation, o
   // Stop numbers from the whole route's walk plan (the same as "Stop 3 of 20" in
   // the list), so a filter or search doesn't renumber them.
   const { places: allPlaces } = useContent();
+  const pace = usePace();
   const routeId = locations[0]?.routeId;
-  const plan = React.useMemo(() => (routeId ? walkPlan(planPlaces ?? allPlaces, routeId) : new Map()), [planPlaces, allPlaces, routeId]);
+  const plan = React.useMemo(() => (routeId ? walkPlan(planPlaces ?? allPlaces, routeId) : new Map()), [planPlaces, allPlaces, routeId, pace]); // eslint-disable-line react-hooks/exhaustive-deps
   // Arrows along the route line, showing the walking direction.
   const arrows = React.useMemo(() => legArrows(routePoints.map(([lat, lng]) => ({ lat, lng }))), [routePoints]);
 

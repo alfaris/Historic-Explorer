@@ -5,6 +5,7 @@ import type { Location, Route } from '../data/locations';
 import { directionsUrl, gettingThere } from '../lib/getting-there';
 import { useDialog } from '../lib/useDialog';
 import { L, byLang, currentLang, fallbackLang, nameOf } from '../i18n/lang';
+import { usePace } from '../lib/pace';
 
 const metroLine = (station: string, minutes: number | null) =>
   minutes
@@ -23,6 +24,7 @@ const metroLine = (station: string, minutes: number | null) =>
  */
 export function GettingThere({ route, places, className = '' }: { route: Route; places: Location[]; className?: string }) {
   const [driver, setDriver] = useState(false);
+  usePace(); // the walk from the metro follows the visitor's pace
   const info = gettingThere(route, places, currentLang());
   if (!info) return null;
   const { start, metro, minutes, note } = info;

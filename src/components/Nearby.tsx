@@ -4,6 +4,7 @@ import type { Location } from '../data/locations';
 import { useContent } from '../data/ContentContext';
 import { nearbyOnOtherRoutes } from '../lib/nearby';
 import { L, byLang, currentLang, fallbackLang, nameOf } from '../i18n/lang';
+import { usePace } from '../lib/pace';
 
 const minutesWalk = (n: number) =>
   byLang({
@@ -19,6 +20,7 @@ const minutesWalk = (n: number) =>
  */
 export function Nearby({ place, onOpen, className = 'mb-6' }: { place: Location; onOpen: (id: number) => void; className?: string }) {
   const { places, routes } = useContent();
+  usePace(); // re-render with the visitor's pace
   const near = nearbyOnOtherRoutes(place, places);
   if (!near.length) return null;
   const ar = currentLang() === 'ar';

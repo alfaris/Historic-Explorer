@@ -15,6 +15,7 @@ import { WeatherAdvice } from './WeatherAdvice';
 import { breakCount } from '../lib/weather';
 import type { CalendarEvent } from '../lib/calendar';
 import { routeShareUrl } from '../lib/share';
+import { usePace } from '../lib/pace';
 
 // The Plan my visit timetable, loaded when it's opened (see PlanVisit.tsx).
 
@@ -142,8 +143,9 @@ export default function PlanVisitDialog({ route, places, walkPlaces = places, on
   const start = useMemo(() => cairoInstant(now, day, /^\d\d:\d\d$/.test(time) ? toMinutes(time) : 9 * 60), [now, day, time]);
   const { specialPeriods } = useContent();
   // The stops come from the walk as chosen (the short walk leaves some out); breaks and the time per stop from every place.
-  const plan = useMemo(() => visitPlan(walkPlaces, route.id, start, stay, undefined, specialPeriods), [walkPlaces, route.id, start, stay, specialPeriods]);
-  const suggestion = useMemo(() => suggestStart(walkPlaces, route.id, start, stay, now, specialPeriods), [walkPlaces, route.id, start, stay, now, specialPeriods]);
+  const pace = usePace();
+  const plan = useMemo(() => visitPlan(walkPlaces, route.id, start, stay, undefined, specialPeriods), [walkPlaces, route.id, start, stay, specialPeriods, pace]); // eslint-disable-line react-hooks/exhaustive-deps
+  const suggestion = useMemo(() => suggestStart(walkPlaces, route.id, start, stay, now, specialPeriods), [walkPlaces, route.id, start, stay, now, specialPeriods, pace]);
   const short = walkPlaces !== places;
   const event = useMemo(() => planEvent(route, plan, start, short, lang), [route, plan, start, short, lang]);
 

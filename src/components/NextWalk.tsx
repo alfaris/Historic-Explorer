@@ -7,6 +7,7 @@ import { nextWalk } from '../lib/next-walk';
 import { useStamps } from '../lib/passport';
 import { L, byLang, currentLang, nameOf, optionalText } from '../i18n/lang';
 import { PlacePhoto } from './PlacePhoto';
+import { usePace } from '../lib/pace';
 
 const minutesOnFoot = (n: number) =>
   byLang({
@@ -29,6 +30,7 @@ export function NextWalk({ fromRouteId, routes, places, onShowRoute, className =
   className?: string;
 }) {
   const stamps = useStamps();
+  usePace(); // re-render with the visitor's pace
   const next = nextWalk(fromRouteId, routes, places, stamps);
   if (!next) return null;
   const ar = currentLang() === 'ar';
