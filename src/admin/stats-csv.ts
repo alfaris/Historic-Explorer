@@ -79,7 +79,7 @@ export function statsCsv(data: StatsResponse, content: Content, days: number, to
       n(total.helpful, p.id),
       n(total.unhelpful, p.id),
       ...REASONS.map(r => n(total.reasons, `${p.id}:${r}`)),
-      ...LISTEN_BANDS.map(b => n(total.listens ?? {}, `${p.id}:${b}`)),
+      ...LISTEN_BANDS.map(b => listens.get(p.id)?.bands[b] ?? 0),
       listens.has(p.id) ? listens.get(p.id)!.finished : '',
     ]),
     [],

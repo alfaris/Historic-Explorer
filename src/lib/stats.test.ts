@@ -201,7 +201,7 @@ describe('listening', () => {
     expect(rows.map(mostStopEarly)).toEqual([false, true, false]);
   });
 
-  it('moves a listen that got further out of the band it replaces, never below zero', () => {
+  it('moves a listen that got further out of the band it replaces, in whichever order they arrive', () => {
     const known = { placeIds: new Set([1]), routeIds: new Set<string>() };
     const events = cleanEvents([
       { t: 'listen', id: 1, b: 'done', w: 'q2' },
@@ -209,9 +209,15 @@ describe('listening', () => {
       { t: 'listen', id: 1, b: 'q3', w: 'nope' }, // unknown band: dropped
     ], known);
     expect(events).toEqual([{ t: 'listen', id: 1, b: 'done', w: 'q2' }]);
+    const original = [{ t: 'listen' as const, id: 1, b: 'q2' as const }];
     expect(addEvents({ ...emptyDay(), listens: { '1:q2': 3 } }, events).listens).toEqual({ '1:q2': 2, '1:done': 1 });
-    expect(addEvents({ ...emptyDay(), listens: { '1:q2': 1 } }, events).listens).toEqual({ '1:done': 1 });
-    // Counted on another day: nothing to move today.
-    expect(addEvents(emptyDay(), events).listens).toEqual({ '1:done': 1 });
+    // Listen then correction, or correction then listen: the same total.
+    expect(addEvents(addEvents(emptyDay(), original), events).listens).toEqual({ '1:done': 1 });
+    const early = addEvents(emptyDay(), events);
+    expect(early.listens).toEqual({ '1:q2': -1, '1:done': 1 });
+    expect(parseDay(JSON.parse(JSON.stringify(early))).listens).toEqual({ '1:q2': -1, '1:done': 1 });
+    expect(addEvents(early, original).listens).toEqual({ '1:done': 1 });
+    // A correction whose listen never arrived shows that band as none.
+    expect(listening(early, [1])[0].bands).toEqual({ q1: 0, q2: 0, q3: 0, q4: 0, done: 1 });
   });
 });

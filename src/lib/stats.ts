@@ -134,13 +134,17 @@ export function addEvents(day: DayStats, events: StatEvent[]): DayStats {
     const bucket = next[FIELD[e.t]];
     const key = e.t === 'why' || e.t === 'rwhy' ? `${e.id}:${e.r}` : e.t === 'rate' ? `${e.id}:${e.s}` : e.t === 'listen' ? `${e.id}:${e.b}` : e.id;
     bucket[key] = (bucket[key] ?? 0) + 1;
+    // A listen arriving after its correction brings that band back to zero.
+    if (bucket[key] === 0) delete bucket[key];
     if ((e.t === 'play' || e.t === 'route') && e.l) next.langs[`${e.t}:${e.l}`] = (next.langs[`${e.t}:${e.l}`] ?? 0) + 1;
     // A listen that got further than one already counted: move it out of the band it replaces.
-    // (Never below zero: the earlier one may have been counted on another day.)
+    // The correction may arrive before the listen it corrects (separate requests), so the
+    // band can go below zero until that listen arrives: the total is the same in either order.
     if (e.t === 'listen' && e.w) {
       const was = `${e.id}:${e.w}`;
-      if ((next.listens[was] ?? 0) > 1) next.listens[was] -= 1;
-      else delete next.listens[was];
+      const n = (next.listens[was] ?? 0) - 1;
+      if (n === 0) delete next.listens[was];
+      else next.listens[was] = n;
     }
   }
   return next;
@@ -159,7 +163,8 @@ export function parseDay(raw: unknown): DayStats {
       if (field === 'routeReasons' && !ROUTE_REASON_KEY.test(k)) continue;
       if (field === 'langs' && !LANG_KEY.test(k)) continue;
       if (field === 'listens' && !LISTEN_KEY.test(k)) continue;
-      if (Number.isInteger(v) && (v as number) > 0) day[field][k] = v as number;
+      // Listens can be below zero for a while (a correction ahead of its listen); everything else is a count.
+      if (Number.isInteger(v) && ((v as number) > 0 || (field === 'listens' && (v as number) < 0))) day[field][k] = v as number;
     }
   }
   return day;
@@ -263,7 +268,8 @@ export function listening(total: DayStats, placeIds: number[]): ListenRow[] {
   const listens = total.listens ?? {};
   return placeIds
     .map(id => {
-      const bands = Object.fromEntries(LISTEN_BANDS.map(b => [b, listens[`${id}:${b}`] ?? 0])) as Record<ListenBand, number>;
+      // A band below zero (a correction whose listen never arrived) shows as none.
+      const bands = Object.fromEntries(LISTEN_BANDS.map(b => [b, Math.max(0, listens[`${id}:${b}`] ?? 0)])) as Record<ListenBand, number>;
       const n = LISTEN_BANDS.reduce((a, b) => a + bands[b], 0);
       return { id, listens: n, bands, finished: n ? Math.round((bands.done / n) * 100) : 0, early: n ? Math.round((bands.q1 / n) * 100) : 0 };
     })

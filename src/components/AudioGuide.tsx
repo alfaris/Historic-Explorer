@@ -135,8 +135,9 @@ export function AudioGuide({ locationId, text, langCode, onNext, onPrevious, aut
     const place = places.find(p => p.id === locationId);
     const route = place && routes.find(r => r.id === place.routeId);
     const photo = place && photoForPlace(place);
-    // How far into the recording this playback got (resuming starts there).
-    let heard = from;
+    // The furthest point heard in this playback, from what the player reports (a
+    // rejected resume point, for a recording remade since, never counts).
+    let heard = 0;
     const t: GuideTrack = {
       key,
       title: place ? nameOf(place) : '',
