@@ -256,7 +256,7 @@ export function StatsTab({ content, onSignedOut, onEditPlace }: { content: Conte
           <div className="bg-white rounded-2xl border border-sand/50 p-5">
             <h2 className="text-sm font-bold text-stone-700 mb-1">Searches that found nothing</h2>
             <p className="text-[11px] text-stone-400 mb-3">
-              What visitors searched for when no place on any route matched, most frequent first (once per search per visit). A place under another spelling may need that name in its description; one that keeps coming up may be worth adding. Searches are lowercased and cut to 40 characters, and anything with an email, a web address or a long number is never sent.
+              What visitors searched for when no place on any route matched, most frequent first (once per search per visit). Search looks at place names in all four languages, so a place visitors know by another spelling needs that spelling in one of its names; one that keeps coming up may be worth adding. Searches are lowercased and cut to 40 characters, and anything with an email, a web address or a long number is never sent.
             </p>
             {missRows.length === 0 ? (
               <p className="text-sm text-stone-400">No searches without results in this period.</p>

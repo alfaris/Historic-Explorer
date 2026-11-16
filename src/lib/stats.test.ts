@@ -228,7 +228,14 @@ describe('searches that found nothing', () => {
     expect(missQuery('مسجد الرفاعي')).toBe('مسجد الرفاعي');
     expect(missQuery("St. George's church")).toBe("st. george's church");
     expect(missQuery('x'.repeat(60))).toHaveLength(40);
-    for (const bad of ['a', '12', 'me@example.com', '+20 100 123 4567', '0100123456', 'call 01001234', 'www.example', 'example.com', '<script>', 'a&b', 3]) {
+    expect(missQuery('st. george church')).toBe('st. george church');
+    for (const bad of [
+      'a', '12', 'me@example.com', '+20 100 123 4567', '0100123456', 'call 01001234', 'www.example', 'example.com', 'example.io', 'john.smith.co.uk', '<script>', 'a&b', 3,
+      // Checked whole, before it's shortened: what's past 40 characters counts too.
+      'contact alexandria museum staff john.smith@example.com',
+      'contact alexandria museum staff on 0100 1234 567',
+      'x'.repeat(81),
+    ]) {
       expect(missQuery(bad)).toBeNull();
     }
   });

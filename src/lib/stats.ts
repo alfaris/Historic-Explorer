@@ -44,19 +44,26 @@ export function listenBand(heard: number, duration: number): ListenBand {
 export const MISS_MAX_LENGTH = 40;
 export const MAX_MISSES_PER_DAY = 300;
 
+/** Longer searches aren't place names (and aren't counted at all). */
+const MISS_MAX_INPUT = 80;
+
 /**
  * A search as it's counted: lowercased, spaces collapsed, at most
  * MISS_MAX_LENGTH characters. Null for anything that could identify someone
- * or isn't a place name: an email or web address, a phone or other number
- * (5 or more digits), symbols, or fewer than 2 letters.
+ * or isn't a place name: an email or web address (any dot followed by a
+ * letter), a phone or other number (5 or more digits), symbols, fewer than 2
+ * letters, or more than 80 characters. The whole search is checked before it
+ * is shortened, so nothing identifying past the cut can slip through.
  */
 export function missQuery(raw: unknown): string | null {
   if (typeof raw !== 'string') return null;
-  const q = raw.toLocaleLowerCase().replace(/\s+/g, ' ').trim().slice(0, MISS_MAX_LENGTH).trim();
-  if (q.length < 2 || (q.match(/\p{L}/gu) ?? []).length < 2) return null;
-  if (!/^[\p{L}\p{M}\p{N} '’.-]+$/u.test(q)) return null;
-  if ((q.match(/\p{N}/gu) ?? []).length >= 5 || /www\.|\.(com|net|org)\b/.test(q)) return null;
-  return q;
+  const full = raw.toLocaleLowerCase().replace(/\s+/g, ' ').trim();
+  if (full.length > MISS_MAX_INPUT) return null;
+  if ((full.match(/\p{L}/gu) ?? []).length < 2) return null;
+  if (!/^[\p{L}\p{M}\p{N} '’.-]+$/u.test(full)) return null;
+  if ((full.match(/\p{N}/gu) ?? []).length >= 5 || /\.\p{L}/u.test(full)) return null;
+  const q = full.slice(0, MISS_MAX_LENGTH).trim();
+  return q.length >= 2 ? q : null;
 }
 
 /** Whether band `a` heard more than band `b`. */

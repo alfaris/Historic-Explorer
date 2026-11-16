@@ -70,7 +70,7 @@ export function statsCsv(data: StatsResponse, content: Content, days: number, to
     [],
     ['Searches that found nothing'],
     ['Search', 'Times'],
-    ...topMisses(total, 1000).map(m => [m.q, m.count]),
+    ...topMisses(total, Infinity).map(m => [m.q, m.count]),
     [],
     ['Per place'],
     ['Place ID', 'Place', 'Route', 'Audio plays', 'Near me arrivals', 'Helpful: yes', 'Helpful: no', ...REASONS.map(r => REASON_HEADERS[r]), ...LISTEN_BANDS.map(b => LISTEN_HEADERS[b]), 'Audio heard to the end (%)'],
