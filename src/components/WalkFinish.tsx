@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { lazy, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Binoculars, Clock, Flag, Footprints, RotateCcw, X } from 'lucide-react';
+import { Binoculars, Clock, Flag, Footprints, Hourglass, RotateCcw, X } from 'lucide-react';
 import { spotCount, spotted } from '../lib/spot-it';
 import type { Location, Route } from '../data/locations';
 import { photoForRoute, photoAltOf } from '../data/photo-resolve';
@@ -19,6 +19,11 @@ import { cairoDate } from '../lib/special-hours';
 import { removeSkipped, useSkipped } from '../lib/skipped';
 import { NextWalk } from './NextWalk';
 import { usePace } from '../lib/pace';
+import { hasQuiz } from '../lib/quiz';
+import { LazyBoundary } from './LazyBoundary';
+
+// "Which came first?", loaded when it's opened.
+const WhichCameFirst = lazy(() => import('./WhichCameFirst'));
 
 /**
  * The end of a walk: stops visited, roughly how far the visitor walked (from
@@ -48,6 +53,8 @@ export function WalkFinish({ route, routes, places, onClose, onShowPassport, onS
     if (summary.complete) stampRoute(route.id, cairoDate(new Date()), spots);
   }, [summary.complete, route.id, spots.found, spots.total]); // eslint-disable-line react-hooks/exhaustive-deps
   const stamp = useStamps()[route.id];
+  const quiz = hasQuiz(places, route.id);
+  const [quizOpen, setQuizOpen] = useState(false);
   // Stops skipped in walk mode and not visited since.
   const skipped = useSkipped();
   const skippedCount = summary.stopIds.filter(id => skipped.has(id) && !visited.has(id)).length;
@@ -136,6 +143,20 @@ export function WalkFinish({ route, routes, places, onClose, onShowPassport, onS
               })}
             </p>
           )}
+
+          {quiz && (quizOpen ? (
+            <LazyBoundary loading={null} failed={null}>
+              <WhichCameFirst places={places} routeId={route.id} onClose={() => setQuizOpen(false)} />
+            </LazyBoundary>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setQuizOpen(true)}
+              className="mb-5 inline-flex items-center justify-center gap-2 min-h-11 rounded-2xl border border-sand px-4 text-sm font-bold text-ink hover:border-nile/60"
+            >
+              <Hourglass className="w-4 h-4 text-gold-ink" aria-hidden="true" /> {L('Which came first?', 'أيهما بُني أولاً؟')}
+            </button>
+          ))}
 
           {summary.complete && stamp && (
             <div className="mb-5 flex flex-col items-center gap-2">
