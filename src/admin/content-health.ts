@@ -36,12 +36,12 @@ const hasLang = (o: Record<string, unknown>, lang: OptionalLang, bases: string[]
 /** Only monuments need a build date or era (not cafés, workshops and the like). */
 const needsEra = (place: Location) => place.category === 'monument';
 
-/** What a place is missing: a photo (uploaded or built in) or its description, opening hours, a build date or era (monuments), or a language (name and description). */
+/** What a place is missing: a photo (uploaded or built in) or a description of it or of any of its More photos, opening hours, a build date or era (monuments), or a language (name and description). */
 export function placeGaps(place: Location): Gap[] {
   const gaps: Gap[] = [];
   if (!photoForPlace(place)) gaps.push('photo');
-  // A photo screen readers only know by the place's name.
-  else if (!place.photoAltEn?.trim()) gaps.push('photoAlt');
+  // A photo screen readers only know by the place's name (More photos too).
+  if ((photoForPlace(place) && !place.photoAltEn?.trim()) || place.gallery?.some(g => !g.photoAltEn?.trim())) gaps.push('photoAlt');
   if (!place.hours) gaps.push('hours');
   if (needsEra(place) && !eraOf(place)) gaps.push('era');
   if (needsEra(place) && !place.spotEn?.trim()) gaps.push('spot');

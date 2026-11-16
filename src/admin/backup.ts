@@ -113,6 +113,10 @@ export const CSV_TYPE = 'text/csv;charset=utf-8';
  */
 export const csvText = (rows: unknown[][]) => `\uFEFF${rows.map(r => r.map(csvCell).join(',')).join('\r\n')}\r\n`;
 
+/** A place's More photos as one cell: "2: A. Author (CC BY-SA 4.0); B (CC0)", or empty. */
+export const moreCredits = (gallery: { author: string; license: string }[] | undefined) =>
+  gallery?.length ? `${gallery.length}: ${gallery.map(g => `${g.author} (${g.license})`).join('; ')}` : '';
+
 /**
  * The places as a CSV spreadsheet. It starts with a byte-order mark and uses
  * CRLF line ends, so Excel reads the Arabic as UTF-8; Google Sheets does too.
@@ -131,6 +135,7 @@ export function placesCsv(content: Content, now = new Date()) {
     'Longitude',
     'Opening hours set',
     'Photo credit',
+    'More photos',
   ];
   const rows = content.places.map(p => {
     const photo = p.photo ?? placePhoto(p.id);
@@ -145,6 +150,7 @@ export function placesCsv(content: Content, now = new Date()) {
       p.lng,
       p.hours ? 'Yes' : 'No',
       photo ? `${photo.author} (${photo.license})` : '',
+      moreCredits(p.gallery),
     ];
   });
   return { name: dated('places', 'csv', now), type: CSV_TYPE, text: csvText([header, ...rows]) };
