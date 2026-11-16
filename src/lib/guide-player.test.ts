@@ -308,4 +308,16 @@ describe('guide player', () => {
     audio.fire('loadedmetadata');
     expect(audio.currentTime).toBe(0);
   });
+
+  it('marks the last report, when the recording is let go of, as final', async () => {
+    const { player, audio } = setup();
+    const seen: [number, boolean][] = [];
+    const id = player.begin(track('a', { onPosition: (at: number, _d: number, final: boolean) => seen.push([at, final]) }));
+    await player.playAudio(id, wav);
+    audio.currentTime = 12;
+    audio.fire('timeupdate');
+    player.pause();
+    player.stop();
+    expect(seen).toEqual([[12, false], [12, false], [12, true]]);
+  });
 });

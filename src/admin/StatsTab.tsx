@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Download, RefreshCw } from 'lucide-react';
 import type { Content } from '../data/content';
 import { walkStops } from '../lib/walk';
-import { helpfulness, languageShares, REASONS, ROUTE_REASONS, routeRatings, type HelpfulRow, type Reason, type RouteReason } from '../lib/stats';
+import { helpfulness, languageShares, listening, mostStopEarly, MIN_LISTENS, REASONS, ROUTE_REASONS, routeRatings, type HelpfulRow, type ListenRow, type Reason, type RouteReason } from '../lib/stats';
 import { api, ApiError, type StatsResponse } from './api';
 import { downloadFile } from './backup';
 import { dailySeries, statsCsv } from './stats-csv';
@@ -27,6 +27,13 @@ function Bar({ value, max, label }: { value: number; max: number; label: string 
     </div>
   );
 }
+
+/** Where listeners stopped, e.g. "first quarter 7 · second 2 · end 1". */
+const bandText = (r: ListenRow) =>
+  ([['q1', 'first quarter'], ['q2', 'second'], ['q3', 'third'], ['q4', 'last'], ['done', 'end']] as const)
+    .filter(([b]) => r.bands[b] > 0)
+    .map(([b, label]) => `${label} ${fmt(r.bands[b])}`)
+    .join(' · ');
 
 function Tile({ label, value, hint }: { label: string; value: number; hint: string }) {
   return (
@@ -163,6 +170,8 @@ export function StatsTab({ content, onSignedOut, onEditPlace }: { content: Conte
     [data, content, helpSort],
   );
 
+  const listenRows = useMemo(() => (data ? listening(data.total, content.places.map(p => p.id)) : []), [data, content]);
+
   const ratingRows = useMemo(
     () => (data ? routeRatings(data.total, content.routes.map(r => r.id)).sort((a, b) => b.count - a.count) : []),
     [data, content],
@@ -239,6 +248,47 @@ export function StatsTab({ content, onSignedOut, onEditPlace }: { content: Conte
                   <Bar key={id} label={placeName.get(id)!} value={n} max={topPlaces[0][1]} />
                 ))}
               </div>
+            )}
+          </div>
+
+          <div className="bg-white rounded-2xl border border-sand/50 p-5">
+            <h2 className="text-sm font-bold text-stone-700 mb-1">How much of each guide is heard</h2>
+            <p className="text-[11px] text-stone-400 mb-3">
+              Where visitors stopped each recorded guide (once per place per visit, the furthest), lowest finish rate first. A guide most people stop in its first quarter probably needs a stronger opening or a shorter script. Counted since this was added; the browser-voice fallback isn’t counted.
+            </p>
+            {listenRows.length === 0 ? (
+              <p className="text-sm text-stone-400">No listens in this period yet.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-xs text-stone-500 text-start">
+                    <th scope="col" className="text-start font-bold pb-2">Place</th>
+                    <th scope="col" className="text-end font-bold pb-2">Listens</th>
+                    <th scope="col" className="text-end font-bold pb-2">Heard to the end</th>
+                    {onEditPlace && <th scope="col" className="pb-2"><span className="sr-only">Edit</span></th>}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-sand/40">
+                  {listenRows.map(r => (
+                    <tr key={r.id}>
+                      <td className="py-1.5 pe-3 text-stone-700">
+                        {placeName.get(String(r.id))}
+                        <span className="block text-[11px] text-stone-500">Stopped in: {bandText(r)}</span>
+                        {mostStopEarly(r) && <span className="block text-[11px] font-bold text-amber-800">Most stop in the first quarter ({r.early}%)</span>}
+                      </td>
+                      <td className="py-1.5 text-end tabular-nums text-stone-600">{fmt(r.listens)}</td>
+                      <td className={`py-1.5 text-end tabular-nums ${r.listens >= MIN_LISTENS && r.finished < 25 ? 'text-red-700 font-bold' : 'text-stone-700'}`}>{r.finished}%</td>
+                      {onEditPlace && (
+                        <td className="py-1.5 text-end">
+                          <button onClick={() => onEditPlace(r.id)} className="min-h-9 px-2 text-xs font-bold text-nile hover:underline">
+                            Edit
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             )}
           </div>
 

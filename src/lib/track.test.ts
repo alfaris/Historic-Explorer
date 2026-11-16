@@ -40,6 +40,18 @@ describe('track', () => {
     expect(await sent()).toEqual([[{ t: 'play', id: 1, l: 'en' }, { t: 'route', id: 'ahl-al-bayt', l: 'en' }]]);
   });
 
+  it('counts how much of a guide was heard once per visit, keeping the furthest while unsent', async () => {
+    track({ t: 'listen', id: 1, b: 'q1' });
+    track({ t: 'listen', id: 1, b: 'done' });
+    track({ t: 'listen', id: 1, b: 'q2' });
+    track({ t: 'listen', id: 2, b: 'q3' });
+    expect(await sent()).toEqual([[{ t: 'listen', id: 1, b: 'done' }, { t: 'listen', id: 2, b: 'q3' }]]);
+    // Already sent: not counted again this visit.
+    track({ t: 'listen', id: 2, b: 'done' });
+    flush();
+    expect(await sent()).toHaveLength(1);
+  });
+
   it('sends nothing once stopped (the admin, whose previews play audio guides)', async () => {
     stopTracking();
     track({ t: 'play', id: 1 });

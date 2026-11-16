@@ -5,7 +5,7 @@
 // (Global Privacy Control or Do Not Track) send nothing. Events from a visit
 // with no connection are kept on the device and sent once it's back online.
 
-import { MAX_EVENTS_PER_REQUEST, type StatEvent } from './stats';
+import { MAX_EVENTS_PER_REQUEST, furtherBand, type StatEvent } from './stats';
 import { currentLang } from '../i18n/lang';
 
 const ENDPOINT = '/api/stats';
@@ -101,7 +101,14 @@ export const stopTracking = () => {
 export function track(event: StatEvent) {
   if (off || optedOut()) return;
   const key = `${event.t}:${event.id}`;
-  if (seen.has(key)) return;
+  if (seen.has(key)) {
+    // A guide heard further later in the visit (resumed, or played again) counts as the furthest, while it's still unsent.
+    if (event.t === 'listen') {
+      const i = queue.findIndex(e => e.t === 'listen' && e.id === event.id);
+      if (i >= 0 && furtherBand(event.b, (queue[i] as typeof event).b)) queue[i] = event;
+    }
+    return;
+  }
   seen.add(key);
   // Audio plays and route opens say which interface language they were in.
   queue.push(event.t === 'play' || event.t === 'route' ? { ...event, l: event.l ?? currentLang() } : event);

@@ -5,6 +5,7 @@ import { useDisplay } from '../lib/display';
 import { audioGuideUrl } from '../lib/offline-pack';
 import { narrationSource } from '../lib/guide-kind';
 import { track } from '../lib/track';
+import { listenBand } from '../lib/stats';
 import { guidePlayer, nextSpeed, speedLabel, type GuideTrack } from '../lib/guide-player';
 import { clockLabel, savePosition, useResumePoint } from '../lib/guide-resume';
 import { useContent } from '../data/ContentContext';
@@ -139,7 +140,11 @@ export function AudioGuide({ locationId, text, langCode, onNext, onPrevious, aut
       artwork: photo && !dataSaver ? { src: new URL(photo.src, window.location.href).href, width: photo.width, height: photo.height } : undefined,
       onNext: onNext && (() => nav.current.onNext?.()),
       onPrevious: onPrevious && (() => nav.current.onPrevious?.()),
-      onPosition: (at, duration) => savePosition(resumeKey, at, duration),
+      onPosition: (at, duration, final) => {
+        savePosition(resumeKey, at, duration);
+        // How much of the recording was heard, counted once it's let go of (the furthest per visit).
+        if (final && Number.isFinite(duration) && duration > 0) track({ t: 'listen', id: locationId, b: listenBand(at, duration) });
+      },
     };
     // Straight from the tap, before any await: iOS only starts audio from a tap.
     const id = player.begin(t);
