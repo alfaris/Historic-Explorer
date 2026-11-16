@@ -99,6 +99,8 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
   const [saveError, setSaveError] = useState<{ message: string; problems: string[]; conflict: boolean } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [editPlaceId, setEditPlaceId] = useState<number | null>(null);
+  // A place's badge in the Places tab: open the Reports tab on its reports.
+  const [reportsPlaceId, setReportsPlaceId] = useState<number | null>(null);
   // Which part of the place editor to scroll to (a "closed" report opens the hours).
   const [editSection, setEditSection] = useState<PlaceSection | null>(null);
   const [editRouteId, setEditRouteId] = useState<string | null>(null);
@@ -233,6 +235,8 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
               setTab('places');
             }}
             onSignedOut={onSignedOut}
+            initialPlaceId={reportsPlaceId}
+            onPlaceShown={() => setReportsPlaceId(null)}
           />
         ) : tab === 'content' ? (
           <ContentTab
@@ -259,7 +263,17 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
             onEditNotices={() => setTab('notices')}
           />
         ) : tab === 'places' ? (
-          <PlacesTab content={content} save={save} initialPlaceId={editPlaceId} initialSection={editSection} onSelected={() => { setEditPlaceId(null); setEditSection(null); }} />
+          <PlacesTab
+            content={content}
+            save={save}
+            initialPlaceId={editPlaceId}
+            initialSection={editSection}
+            onSelected={() => { setEditPlaceId(null); setEditSection(null); }}
+            onShowReports={id => {
+              setReportsPlaceId(id);
+              setTab('reports');
+            }}
+          />
         ) : tab === 'routes' ? (
           <RoutesTab
             content={content}

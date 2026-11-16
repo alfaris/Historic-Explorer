@@ -30,7 +30,7 @@ import {
 } from './admin-auth.js';
 import { ContentConflictError, getContentWithEtag, listHistory, readHistory, saveContent } from './content.js';
 import { json, readJson } from './http.js';
-import { listReports, updateReport } from './reports.js';
+import { listReports, openReportCounts, updateReport } from './reports.js';
 import { handlePhotoUpload } from './photos.js';
 import { handleAdminAudio } from './admin-audio.js';
 import { handleTranslate } from './translate.js';
@@ -94,7 +94,16 @@ export async function handleAdmin(request: Request): Promise<Response> {
       const status = url.searchParams.get('status');
       const filter = status === 'open' || status === 'resolved' || status === 'dismissed' ? status : status === 'all' ? 'all' : 'open';
       const offset = Number(url.searchParams.get('offset') ?? 0) || 0;
-      return json(await listReports(filter, offset, 50));
+      const places = (url.searchParams.get('places') ?? '').split(',').map(Number).filter(n => Number.isInteger(n) && n > 0).slice(0, 500);
+      const type = url.searchParams.get('type');
+      return json(await listReports(filter, offset, 50, {
+        ...(url.searchParams.has('places') ? { placeIds: places } : {}),
+        ...(type === 'location' || type === 'text' || type === 'closed' || type === 'photo' ? { type } : {}),
+      }));
+    }
+
+    if (action === 'report-counts' && method === 'GET') {
+      return json({ open: await openReportCounts() });
     }
 
     if (action === 'report' && method === 'PATCH') {

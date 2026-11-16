@@ -73,11 +73,60 @@ export async function buildReport(input: any, now = new Date()): Promise<Report 
 
 // Reports are filed by status (reports/open/…, reports/resolved/…), so the
 // dashboard can list and page through one status without reading the rest.
+// The file name also carries the place and the kind of report
+// (<time>_<id>_p<place>_<type>.json), so they can be filtered from the
+// listing alone. Reports filed before that (<time>_<id>.json) are read once.
 const STATUSES: ReportStatus[] = ['open', 'resolved', 'dismissed'];
-const pathFor = (r: Pick<Report, 'id' | 'createdAt' | 'status'>) =>
-  `${PREFIX}${r.status}/${r.createdAt.replace(/[:.]/g, '-')}_${r.id}.json`;
+const pathFor = (r: Pick<Report, 'id' | 'createdAt' | 'status' | 'placeId' | 'type'>) =>
+  `${PREFIX}${r.status}/${r.createdAt.replace(/[:.]/g, '-')}_${r.id}_p${r.placeId}_${r.type}.json`;
 const statusOf = (pathname: string) => pathname.slice(PREFIX.length).split('/')[0] as ReportStatus;
 const fileName = (pathname: string) => pathname.slice(pathname.lastIndexOf('/') + 1);
+
+/** What a report's file name says: its time key, ID, and (newer files) place and type. */
+export function parseReportName(pathname: string): { key: string; id: string; placeId?: number; type?: ReportType } | null {
+  const m = /^([^_]+)_([^_]+)(?:_p(\d+)_([a-z]+))?\.json$/.exec(fileName(pathname));
+  if (!m) return null;
+  const type = m[4] as ReportType | undefined;
+  return m[3] && type && TYPES.includes(type) ? { key: m[1], id: m[2], placeId: Number(m[3]), type } : { key: m[1], id: m[2] };
+}
+
+export interface ReportFilter {
+  /** Only reports about these places (a route's places, or one place). */
+  placeIds?: number[];
+  type?: ReportType;
+}
+
+export type ReportMeta = { placeId: number; type: ReportType };
+
+export const matchesFilter = (meta: ReportMeta | null, filter: ReportFilter) =>
+  (!filter.placeIds || (!!meta && filter.placeIds.includes(meta.placeId))) && (!filter.type || meta?.type === filter.type);
+
+// Place and type of reports filed before they were in the name, by path (a
+// moved report gets a new path). Kept while the function instance is warm.
+// Only reports that were read are kept: one that failed is tried again next time.
+const legacyMeta = new Map<string, ReportMeta>();
+
+/** The place and type of each report, from its name, or by reading the older ones. */
+async function metaFor(paths: string[]): Promise<Map<string, ReportMeta | null>> {
+  const out = new Map<string, ReportMeta | null>();
+  const unread: string[] = [];
+  for (const p of paths) {
+    const parsed = parseReportName(p);
+    if (parsed?.placeId !== undefined && parsed.type) out.set(p, { placeId: parsed.placeId, type: parsed.type });
+    else if (legacyMeta.has(p)) out.set(p, legacyMeta.get(p)!);
+    else unread.push(p);
+  }
+  // Read a few at a time to stay well within Blob's rate limits.
+  for (let i = 0; i < unread.length; i += 10) {
+    const batch = await Promise.all(unread.slice(i, i + 10).map(readReport));
+    batch.forEach((r, j) => {
+      const meta = r ? { placeId: r.placeId, type: r.type } : null;
+      if (meta) legacyMeta.set(unread[i + j], meta);
+      out.set(unread[i + j], meta);
+    });
+  }
+  return out;
+}
 
 async function listReportPaths(): Promise<string[]> {
   const paths: string[] = [];
@@ -114,10 +163,9 @@ export const reportTimeKey = (iso: string) => iso.replace(/[:.]/g, '-');
 export async function openReportRefsSince(sinceKey: string): Promise<ReportRef[]> {
   return (await listReportPaths())
     .filter(p => statusOf(p) === 'open')
-    .map(pathname => {
-      const name = fileName(pathname).replace(/\.json$/, '');
-      const cut = name.indexOf('_');
-      return { key: name.slice(0, cut), id: name.slice(cut + 1), pathname };
+    .flatMap(pathname => {
+      const parsed = parseReportName(pathname);
+      return parsed ? [{ key: parsed.key, id: parsed.id, pathname }] : [];
     })
     .filter(r => r.key >= sinceKey);
 }
@@ -151,6 +199,18 @@ export async function handleReport(request: Request): Promise<Response> {
   return json({ ok: true, id: report.id }, 201);
 }
 
+/** How many open reports each place has, for the dashboard's place list. */
+export async function openReportCounts(): Promise<Record<number, number>> {
+  const open = (await listReportPaths()).filter(p => statusOf(p) === 'open');
+  const meta = await metaFor(open);
+  const counts: Record<number, number> = {};
+  for (const p of open) {
+    const m = meta.get(p);
+    if (m) counts[m.placeId] = (counts[m.placeId] ?? 0) + 1;
+  }
+  return counts;
+}
+
 export interface ReportPage {
   reports: Report[];
   /** How many reports match the filter in total. */
@@ -158,9 +218,13 @@ export interface ReportPage {
   counts: Record<ReportStatus, number>;
 }
 
-/** One page of reports for the dashboard, newest first. */
-export async function listReports(status: ReportStatus | 'all' = 'open', offset = 0, limit = 50): Promise<ReportPage> {
-  const all = await listReportPaths();
+/** One page of reports for the dashboard, newest first, with counts that follow the filter. */
+export async function listReports(status: ReportStatus | 'all' = 'open', offset = 0, limit = 50, filter: ReportFilter = {}): Promise<ReportPage> {
+  let all = await listReportPaths();
+  if (filter.placeIds || filter.type) {
+    const meta = await metaFor(all);
+    all = all.filter(p => matchesFilter(meta.get(p) ?? null, filter));
+  }
   const counts = { open: 0, resolved: 0, dismissed: 0 };
   for (const p of all) counts[statusOf(p)]++;
   const matching = status === 'all' ? all : all.filter(p => statusOf(p) === status);
@@ -177,7 +241,7 @@ export async function listReports(status: ReportStatus | 'all' = 'open', offset 
 /** Changes a report's status or note. Returns the updated report, or null if not found. */
 export async function updateReport(id: string, changes: { status?: unknown; adminNote?: unknown }): Promise<Report | null> {
   if (!/^[0-9a-f-]{36}$/.test(id)) return null;
-  const pathname = (await listReportPaths()).find(p => p.endsWith(`_${id}.json`));
+  const pathname = (await listReportPaths()).find(p => parseReportName(p)?.id === id);
   if (!pathname) return null;
   const report = await readReport(pathname);
   if (!report) return null;

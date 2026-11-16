@@ -158,7 +158,7 @@ What to download is worked out in `src/lib/offline-pack.ts`, and the download it
 
 `/admin` is a password-protected dashboard for managing the content without a code change:
 
-- **Reports**: visitor reports, newest first. Apply a suggested map position in one click, delete a place reported as closed, or open it in the editor. Mark reports resolved or dismissed.
+- **Reports**: visitor reports, newest first. Apply a suggested map position in one click, delete a place reported as closed, or open it in the editor. Mark reports resolved or dismissed. Filter by **route** and **type** alongside the status; the counts follow the filters, and reports about the same place are grouped under it. In the **Places** tab, a place with open reports shows a badge ("2 reports") that opens the Reports tab on that place's reports, and the place's editor lists its open reports to resolve or dismiss there (a suggested position goes into the draft with **Use this position**, saved with the place). New report files carry the place and type in their names (`reports/open/<time>_<id>_p<place>_<type>.json`), so the server filters from the listing; older ones are read once to find out (`api/_lib/reports.ts`, `src/admin/report-groups.ts`).
   Optionally, a **daily email** lists the reports that arrived since the last one (sent around 8 am Cairo time, and only on days with new reports). To turn it on:
   1. Create a free [Resend](https://resend.com) account and an API key.
   2. In Vercel, set `RESEND_API_KEY`, `ADMIN_EMAIL` (one address, or several separated by commas) and `CRON_SECRET` (any long random string), then redeploy.
