@@ -5,7 +5,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Languages, Loader2 } from 'lucide-react';
-import type { Location } from '../data/content';
+import { fitToLimit, type Location } from '../data/content';
 import { LANGUAGES, type OptionalLang } from '../i18n/lang';
 import { api } from './api';
 import { withDrafted, withoutDrafted } from '../lib/drafted';
@@ -37,7 +37,8 @@ export function fillEmpty<T extends object>(obj: T, texts: Record<string, string
   for (const k of keys) {
     const current = next[k];
     if (texts[k]?.trim() && !(typeof current === 'string' && current.trim())) {
-      next[k] = texts[k];
+      // A draft longer than the field allows couldn't be saved.
+      next[k] = fitToLimit(k, texts[k]);
       filled.push(k);
     }
   }

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CheckSquare, Clock, Copy, Flag, Languages, Plus, Search } from 'lucide-react';
 import { categories } from '../data/locations';
-import { nextPlaceId, type Content, type Location } from '../data/content';
+import { fitToLimit, nextPlaceId, type Content, type Location } from '../data/content';
 import type { SaveFn } from './AdminApp';
 import { Button, Field, inputClass, MapPicker, sameValue } from './ui';
 import { PhotoField } from './PhotoField';
@@ -172,7 +172,8 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
         const { texts: drafts } = await api.translate(texts, lang);
         for (const [key, value] of Object.entries(drafts)) {
           const [id, field] = key.split('.');
-          filled.set(Number(id), { ...filled.get(Number(id)), [field]: value });
+          // A draft longer than the field allows would stop the whole save.
+          filled.set(Number(id), { ...filled.get(Number(id)), [field]: fitToLimit(field, value) });
         }
       }
       const places = content.places.map(p => {

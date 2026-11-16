@@ -42,3 +42,23 @@ describe('admin', () => {
     expect(draftSection('summaryFr')).toBe('summary');
   });
 });
+
+describe('drafts longer than the field allows', () => {
+  it('are cut at a word to fit, so they can be saved', async () => {
+    const { fitToLimit } = await import('../data/content');
+    const { fillEmpty } = await import('../admin/translations');
+    const long = 'Une mosquée du IXe siècle '.repeat(10).trim();
+    const cut = fitToLimit('summaryFr', long);
+    expect(cut.length).toBeLessThanOrEqual(160);
+    expect(cut.endsWith('…')).toBe(true);
+    expect(long.startsWith(cut.slice(0, -1))).toBe(true);
+    expect(fitToLimit('summaryFr', 'Court.')).toBe('Court.');
+    expect(fitToLimit('descriptionEs', long)).toBe(long); // within 2000
+    expect(fitToLimit('unknownFr', long)).toBe(long);
+    const filled = fillEmpty({ ...withSummary }, { summaryFr: long }, ['summaryFr']);
+    expect(filled.summaryFr).toBe(cut);
+    const content = structuredClone(bundledContent);
+    Object.assign(content.places[0], { summaryEn: 'x', summaryFr: cut });
+    expect(validateContent(normalizeContent(content)).join(' ')).not.toContain('summaryFr');
+  });
+});
