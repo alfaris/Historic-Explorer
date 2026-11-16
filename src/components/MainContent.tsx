@@ -7,7 +7,6 @@ import { HistoricPlaceholder } from './HistoricPlaceholder';
 import { PlacePhoto } from './PlacePhoto';
 import { PhotoCredits } from './PhotoCredits';
 import { RouteProgress, VisitedBadge, VisitedToggle } from './Visited';
-import { WalkFinish } from './WalkFinish';
 import { useVisited } from '../lib/visited';
 import { justCompleted, walkSummary } from '../lib/walk-summary';
 import { NearMeOverlay, NearMeView, useNearMe } from './NearMe';
@@ -55,6 +54,7 @@ import { PlanVisit } from './PlanVisit';
 import { isPlaceLink, isRouteLink, placeFromLocation, routeFromLocation, savedFromLocation, shortWalkFromLocation } from '../lib/share';
 import { askForCompass } from '../lib/useWalkSensors';
 import { LazyBoundary } from './LazyBoundary';
+import { SheetFailed } from './SheetFailed';
 
 import { L, byLang, nameOf, descriptionOf, highlightsOf, currentLang, fallbackLang, LANGS, LANGUAGES } from '../i18n/lang';
 // The map (Leaflet, marker clustering and their CSS) is the largest part of the
@@ -66,6 +66,7 @@ const RouteSheet = React.lazy(() => import('./RouteSheet'));
 const MapView = lazy(() => loadMapView().then(m => ({ default: m.MapView })));
 // Loaded when a walk starts (the service worker precaches it, so it works offline).
 const WalkMode = lazy(() => import('./WalkMode').then(m => ({ default: m.WalkMode })));
+const WalkFinish = lazy(() => import('./WalkFinish').then(m => ({ default: m.WalkFinish })));
 
 const MapFallback = () => (
   <div className="w-full h-full bg-chalk animate-pulse flex items-center justify-center">
@@ -1101,20 +1102,22 @@ export const MainContent: React.FC = () => {
         <NearMeOverlay nearMe={nearMe} isArabic={isArabic} onOpenPlace={openPlace} onShowTab={() => setViewMode('near')} />
       )}
       {finishedRouteData && (
-        <WalkFinish
-          route={finishedRouteData}
-          routes={routes}
-          places={locations}
-          onClose={() => setFinishedRoute(null)}
-          onShowRoute={id => {
-            setFinishedRoute(null);
-            showRoute(id);
-          }}
-          onShowPassport={() => {
-            setFinishedRoute(null);
-            setPassportOpen(true);
-          }}
-        />
+        <LazyBoundary loading={null} failed={<SheetFailed onClose={() => setFinishedRoute(null)} />}>
+          <WalkFinish
+            route={finishedRouteData}
+            routes={routes}
+            places={locations}
+            onClose={() => setFinishedRoute(null)}
+            onShowRoute={id => {
+              setFinishedRoute(null);
+              showRoute(id);
+            }}
+            onShowPassport={() => {
+              setFinishedRoute(null);
+              setPassportOpen(true);
+            }}
+          />
+        </LazyBoundary>
       )}
       {sharedIds && <SharedListSheet ids={sharedIds} places={locations} routes={routes} onOpen={openPlace} onClose={closeShared} />}
       {passportOpen && <PassportSheet routes={routes} places={locations} onClose={() => setPassportOpen(false)} onShowRoute={id => { setPassportOpen(false); showRoute(id); }} />}
