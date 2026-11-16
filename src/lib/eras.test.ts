@@ -65,7 +65,12 @@ describe('labels', () => {
   const sultan = { era: 'mamluk' as const, builtFrom: 1356, builtTo: 1363 };
   it('reads naturally in each language', () => {
     expect(builtLabel(sultan, 'en')).toBe('Built 1356–1363 · Mamluk');
-    expect(builtLabel(sultan, 'ar')).toBe('بُني بين 1356 و1363 · العصر المملوكي');
+    expect(builtLabel(sultan, 'ar')).toBe('تاريخ البناء: 1356–1363 · العصر المملوكي');
+    // No verb, so it fits feminine names (الكنيسة المعلقة) as well as masculine ones.
+    expect(builtLabel({ builtFrom: 690 }, 'ar')).toBe('تاريخ البناء: 690');
+    expect(builtLabel({ builtFrom: 690, era: 'early-islamic' }, 'ar')).toBe('تاريخ البناء: 690 · صدر الإسلام');
+    expect(builtLabel({ era: 'fatimid' }, 'ar')).toBe('العصر الفاطمي');
+    expect(builtLabel({ builtFrom: 1356, builtTo: 1363 }, 'ar')).not.toMatch(/بُني/);
     expect(builtLabel(sultan, 'fr')).toBe('Construit de 1356 à 1363 · Époque mamelouke');
     expect(builtLabel(sultan, 'es')).toBe('Construido entre 1356 y 1363 · Época mameluca');
     expect(builtLabel({ builtFrom: 879 }, 'en')).toBe('Built 879');
