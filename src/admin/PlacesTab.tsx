@@ -478,6 +478,20 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
             </div>
           </div>
 
+          <div id="photoTip" className="rounded-xl border border-sand/60 p-4 space-y-3 scroll-mt-24">
+            <p className="text-xs font-bold text-stone-600">Photo tip (optional)</p>
+            <p className="text-[11px] text-stone-400">
+              Where to stand and when for the best photo, e.g. "Stand at the south end of the courtyard in the late afternoon; the arches line up with the minaret." Shown on the place card and in Start the walk. French and Spanish are in their sections below.
+            </p>
+            <div className="grid sm:grid-cols-2 gap-3">
+              {(['en', 'ar'] as const).map(lang => (
+                <Field key={lang} label={`Photo tip (${LANGUAGES[lang].english})`}>
+                  <textarea value={draft[fieldKey('photoTip', lang)] ?? ''} onChange={e => setField(fieldKey('photoTip', lang), e.target.value)} className={inputClass} rows={2} maxLength={250} dir={LANGUAGES[lang].dir} lang={lang} />
+                </Field>
+              ))}
+            </div>
+          </div>
+
           <TipsEditor place={draft} onChange={tips => setDraft(d => (d ? withOptional(d, 'tips', tips) : d))} />
 
           <HoursEditor hours={draft.hours} onChange={hours => setDraft(d => (d ? withOptional(d, 'hours', hours) : d))} />
@@ -522,6 +536,11 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
                       <input value={draft[fieldKey('spotAnswer', lang)] ?? ''} onChange={e => setField(fieldKey('spotAnswer', lang), e.target.value)} className={inputClass} lang={lang} maxLength={120} />
                     </Field>
                   </div>
+                )}
+                {(draft.photoTipEn || draft[fieldKey('photoTip', lang)]) && (
+                  <Field label={`Photo tip (${name})`}>
+                    <textarea value={draft[fieldKey('photoTip', lang)] ?? ''} onChange={e => setField(fieldKey('photoTip', lang), e.target.value)} className={inputClass} rows={2} lang={lang} maxLength={250} />
+                  </Field>
                 )}
                 <FillMissingButton
                   key={`${draft.id}-${lang}`}

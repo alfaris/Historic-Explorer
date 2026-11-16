@@ -1,7 +1,7 @@
 // "Duplicate" in the place editor: a new, unsaved place copied from an
 // existing one (same route, category, hours, tips, fee, text), for adding a
 // café or workshop much like one already there. What belongs to the original
-// alone is left out: its photo and what it shows, its Spot it challenge and
+// alone is left out: its photo and what it shows, its photo tip, its Spot it challenge and
 // answer, and text Gemini drafted that no one has checked. Audio is kept by
 // place ID, so the copy has none until it's made.
 
@@ -10,7 +10,7 @@ import type { Location } from '../data/locations';
 /** How far the copy is moved each step (degrees, about 30 m north-east), so its pin isn't on top of another. */
 export const COPY_OFFSET = 0.0002;
 
-const DROPPED = /^(photo|image|photoAlt\w*|spot\w*|drafted|pinChecked)$/;
+const DROPPED = /^(photo|image|photoAlt\w*|photoTip\w*|spot\w*|drafted|pinChecked)$/;
 // Every place has these, so an unchecked draft of one stays, still marked for review.
 const REQUIRED = new Set(['id', 'routeId', 'nameEn', 'nameAr', 'category', 'lat', 'lng']);
 const withCopy = (name: string, suffix: string) => (name.trim() ? `${name.trim()} ${suffix}` : name);
