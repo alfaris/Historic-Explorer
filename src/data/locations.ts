@@ -83,6 +83,14 @@ export interface Location {
   spotAnswerAr?: string;
   spotAnswerFr?: string;
   spotAnswerEs?: string;
+  /**
+   * Where to stand and when for the best photo, e.g. "Stand at the south end
+   * of the courtyard in the late afternoon" (optional). See photoTipOf.
+   */
+  photoTipEn?: string;
+  photoTipAr?: string;
+  photoTipFr?: string;
+  photoTipEs?: string;
   /** When it was built and in which era (Through the ages); all optional. See lib/eras. */
   era?: EraId;
   builtFrom?: number;

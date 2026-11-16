@@ -10,7 +10,7 @@ import type { GlossaryTerm } from '../lib/glossary';
 import type { SpecialPeriod } from '../lib/special-hours';
 import { eraOf } from '../lib/eras';
 
-export type Gap = 'photo' | 'photoAlt' | 'hours' | 'era' | 'spot' | OptionalLang;
+export type Gap = 'photo' | 'photoAlt' | 'hours' | 'era' | 'spot' | 'photoTip' | OptionalLang;
 
 /** Each item the checklist tracks, with the place editor section that fixes it. */
 export const GAPS: { id: Gap; label: string; section: PlaceSection }[] = [
@@ -19,11 +19,12 @@ export const GAPS: { id: Gap; label: string; section: PlaceSection }[] = [
   { id: 'hours', label: 'Opening hours', section: 'hours' },
   { id: 'era', label: 'Build date or era', section: 'built' },
   { id: 'spot', label: 'Spot it challenge', section: 'spot' },
+  { id: 'photoTip', label: 'Photo tip (must-see stops)', section: 'photoTip' },
   ...OPTIONAL_LANGS.map(lang => ({ id: lang, label: LANGUAGES[lang].english, section: `lang-${lang}` as const })),
 ];
 
 /** Sections of the place editor that can be scrolled to (element ids). */
-export type PlaceSection = 'photo' | 'hours' | 'built' | 'spot' | 'tips' | 'location' | `lang-${OptionalLang}`;
+export type PlaceSection = 'photo' | 'hours' | 'built' | 'spot' | 'photoTip' | 'tips' | 'location' | `lang-${OptionalLang}`;
 
 const hasLang = (o: Record<string, unknown>, lang: OptionalLang, bases: string[]) =>
   bases.every(b => {
@@ -43,6 +44,8 @@ export function placeGaps(place: Location): Gap[] {
   if (!place.hours) gaps.push('hours');
   if (needsEra(place) && !eraOf(place)) gaps.push('era');
   if (needsEra(place) && !place.spotEn?.trim()) gaps.push('spot');
+  // Must-see stops are the ones visitors most want a good photo of.
+  if (place.mustSee && !place.photoTipEn?.trim()) gaps.push('photoTip');
   for (const lang of OPTIONAL_LANGS) {
     const needsDescription = !!place.descriptionEn?.trim();
     if (!hasLang(place as unknown as Record<string, unknown>, lang, needsDescription ? ['name', 'description'] : ['name'])) gaps.push(lang);
@@ -80,8 +83,8 @@ export function missingText(obj: object, lang: OptionalLang, bases: string[]): R
 export function progress(content: Content): { id: Gap; label: string; done: number; total: number }[] {
   const gaps = content.places.map(placeGaps);
   return GAPS.map(g => {
-    // The era and Spot it count only the places that need one (monuments).
-    const applies = content.places.map(p => (g.id !== 'era' && g.id !== 'spot') || needsEra(p));
+    // The era and Spot it count only the places that need one (monuments); the photo tip, must-see stops.
+    const applies = content.places.map(p => (g.id === 'photoTip' ? !!p.mustSee : (g.id !== 'era' && g.id !== 'spot') || needsEra(p)));
     return {
       id: g.id,
       label: g.label,
@@ -141,6 +144,7 @@ export function draftsToReview(content: Content, lang?: Lang): DraftRow[] {
 export function draftSection(key: string): PlaceSection | undefined {
   if (key.startsWith('photoAlt')) return 'photo';
   if (key.startsWith('spot') && (key.endsWith('En') || key.endsWith('Ar'))) return 'spot';
+  if (key.startsWith('photoTip') && (key.endsWith('En') || key.endsWith('Ar'))) return 'photoTip';
   const lang = draftLang(key);
   return lang === 'fr' || lang === 'es' ? `lang-${lang}` : undefined;
 }

@@ -7,6 +7,7 @@ import { BuiltBadge } from './PlaceEra';
 import { HoursBadge, PlaceHours } from './PlaceHours';
 import { PrayerNotice } from './PrayerTimes';
 import { SpotIt } from './SpotIt';
+import { PhotoTip } from './PhotoTip';
 import { VisitorTips } from './VisitorTips';
 import { Notices } from './Notices';
 import { Nearby } from './Nearby';
@@ -49,6 +50,7 @@ export function PlaceDetails({ place, audioNote, onOpenPlace }: { place: Locatio
       <PlaceHours place={place} />
       <VisitorTips place={place} />
       <SpotIt place={place} className="mt-4" />
+      <PhotoTip place={place} className="mt-4" />
       {onOpenPlace && <PlaceNote placeId={place.id} />}
       {onOpenPlace && <Nearby place={place} onOpen={onOpenPlace} className="mt-4" />}
     </>

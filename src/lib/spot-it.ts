@@ -20,6 +20,12 @@ export function spotOf(place: Location, lang?: Lang): { question: Spot; answer: 
   return { question, answer: answer.text.trim() ? answer : null };
 }
 
+/** A place's photo tip in the visitor's language (English when not translated); null without one. */
+export function photoTipOf(place: Location, lang?: Lang): Spot | null {
+  const tip = optionalText(place, 'photoTip', lang);
+  return tip.text.trim() ? tip : null;
+}
+
 /** A route's challenges and how many were found, in walking order. */
 export function spotCount(places: Location[], routeId: string, found: Set<number>): { found: number; total: number } {
   // Any language counts: an Arabic-only challenge still shows in Arabic.
