@@ -84,6 +84,9 @@ export const api = {
   generateAudio: (placeId: number, lang: Lang, version: string) =>
     call<{ state: 'stored' }>('audio', { method: 'POST', body: JSON.stringify({ id: placeId, lang, version }) }),
   /** Gemini's draft descriptions of a photo, as photoAltEn … photoAltEs; nothing is saved. */
+  /** Drafts a place's "In short" line in each language from its descriptions (nothing saved). */
+  summarize: (name: string, descriptions: Partial<Record<string, string>>) =>
+    call<{ texts: Record<string, string> }>('summarize', { method: 'POST', body: JSON.stringify({ name, descriptions }) }),
   describePhoto: (src: string, name: string) =>
     call<{ texts: Record<string, string> }>('describe-photo', { method: 'POST', body: JSON.stringify({ src, name }) }),
   /** French or Spanish drafts from Gemini for the given English texts; nothing is saved. */

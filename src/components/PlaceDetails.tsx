@@ -7,6 +7,7 @@ import { BuiltBadge } from './PlaceEra';
 import { HoursBadge, PlaceHours } from './PlaceHours';
 import { PrayerNotice } from './PrayerTimes';
 import { SpotIt } from './SpotIt';
+import { summaryOf } from '../lib/spot-it';
 import { PhotoTip } from './PhotoTip';
 import { VisitorTips } from './VisitorTips';
 import { Notices } from './Notices';
@@ -34,10 +35,12 @@ export function PlaceBadges({ place }: { place: Location }) {
  */
 export function PlaceDetails({ place, audioNote, onOpenPlace }: { place: Location; audioNote?: string; /** Opens another place's card (Nearby); without it, Nearby isn't shown. */ onOpenPlace?: (id: number) => void }) {
   const description = descriptionOf(place);
+  const summary = summaryOf(place, currentLang());
   return (
     <>
       <Notices scope={{ placeId: place.id }} className="mb-6" />
       <div className="mb-8">
+        {summary && <p className="text-ink text-base font-bold leading-snug mb-3" lang={summary.lang}>{summary.text}</p>}
         <p className="text-stone-600 text-lg leading-relaxed mb-4 font-serif italic" lang={fallbackLang(place, 'description')}>
           {description ? <GlossaryText text={description} /> : L('No description available for this location at the moment.', 'لا يوجد وصف متاح حالياً لهذا الموقع.')}
         </p>

@@ -84,6 +84,14 @@ export interface Location {
   spotAnswerFr?: string;
   spotAnswerEs?: string;
   /**
+   * "In short": one line read before the description, e.g. "A 9th-century
+   * mosque with Cairo's only spiral minaret" (optional). See summaryOf.
+   */
+  summaryEn?: string;
+  summaryAr?: string;
+  summaryFr?: string;
+  summaryEs?: string;
+  /**
    * Where to stand and when for the best photo, e.g. "Stand at the south end
    * of the courtyard in the late afternoon" (optional). See photoTipOf.
    */

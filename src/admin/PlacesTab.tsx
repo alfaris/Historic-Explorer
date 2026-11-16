@@ -6,6 +6,7 @@ import type { SaveFn } from './AdminApp';
 import { Button, Field, inputClass, MapPicker, sameValue } from './ui';
 import { PhotoField } from './PhotoField';
 import { PHOTO_ALT_KEYS, PhotoAltFields, withoutPhotoAlts } from './PhotoAltFields';
+import { SUMMARY_KEYS, SummaryFields } from './SummaryFields';
 import { builtInPhoto } from '../data/photo-resolve';
 import { descriptionOf, LANGS, LANGUAGES, OPTIONAL_LANGS, type Lang, type OptionalLang } from '../i18n/lang';
 import { api } from './api';
@@ -372,6 +373,13 @@ export function PlacesTab({ content, save, initialPlaceId, initialSection = null
           <Field label="Description (Arabic)">
             <textarea value={draft.descriptionAr} onChange={e => set('descriptionAr', e.target.value)} className={inputClass} rows={4} dir="rtl" maxLength={2000} />
           </Field>
+
+          <SummaryFields
+            key={`summary-${draft.id}`}
+            item={draft}
+            onChange={(key, value) => setField(key, value)}
+            onDraft={texts => setDraft(d => (d ? fillEmpty(d, texts, SUMMARY_KEYS) : d))}
+          />
 
           <label className="flex items-start gap-3 rounded-xl border border-sand/60 p-4 text-sm">
             <input
