@@ -32,6 +32,14 @@ describe('placeGaps', () => {
     expect(placeGaps({ ...place, id: 999_998 })).not.toContain('photoAlt');
     expect(placeGaps({ ...place, photoAltEn: '  ' })).toContain('photoAlt');
   });
+  it('asks for a description of each of More photos too', () => {
+    const g = { src: '/api/photo?id=a', width: 800, height: 600, author: 'A', license: 'CC0', licenseUrl: null, sourceUrl: '' };
+    const described = { ...place, photoAltEn: 'Courtyard.' };
+    expect(placeGaps({ ...described, gallery: [{ ...g, photoAltEn: 'The dome.' }] })).not.toContain('photoAlt');
+    expect(placeGaps({ ...described, gallery: [{ ...g, photoAltEn: 'The dome.' }, { ...g, src: '/api/photo?id=b' }] })).toContain('photoAlt');
+    // Even with no main photo to describe.
+    expect(placeGaps({ ...place, id: 999_998, gallery: [g] })).toEqual(expect.arrayContaining(['photo', 'photoAlt']));
+  });
   it('needs a photo when there is neither an upload nor a built-in one', () => {
     expect(placeGaps({ ...place, id: 999_998 })).toContain('photo');
   });

@@ -3,7 +3,9 @@
 // special hours are matched by ID: added, deleted, or edited with the fields
 // that changed (old and new, long text shortened; a moved pin as a distance).
 // Notices have no ID, so a changed one shows as one removed and one added.
-// Unchanged items are left out. Pure.
+// A place's More photos are summed up in words (added, removed, reordered,
+// description or credit changed) rather than shown as data. Unchanged items
+// are left out. Pure.
 
 import { glossaryOf, type Content } from '../data/content';
 import { distanceMeters } from '../lib/geo';
@@ -36,6 +38,40 @@ function fieldChanges(before: Record<string, unknown>, after: Record<string, unk
 
 type Keyed = Record<string, unknown>;
 
+type GalleryItem = { src: string } & Record<string, unknown>;
+const photos = (n: number) => `${n} photo${n === 1 ? '' : 's'}`;
+
+/**
+ * A place's More photos change in words: "2 photos" before, and after
+ * "3 photos (1 added, reordered, description changed on 1)". Photos are
+ * matched by their file. Null when nothing changed.
+ */
+export function galleryChange(before: unknown, after: unknown): FieldChange | null {
+  const list = (v: unknown) => (Array.isArray(v) ? (v as GalleryItem[]).filter(g => g && typeof g.src === 'string') : []);
+  const was = list(before);
+  const now = list(after);
+  if (same(was, now)) return null;
+  const old = new Map(was.map(g => [g.src, g]));
+  const kept = now.filter(g => old.has(g.src));
+  const added = now.length - kept.length;
+  const removed = was.filter(g => !now.some(n => n.src === g.src)).length;
+  const wasOrder = was.filter(g => kept.some(k => k.src === g.src)).map(g => g.src);
+  const reordered = kept.some((g, i) => g.src !== wasOrder[i]);
+  const alt = (g: Keyed) => Object.keys(g).filter(k => k.startsWith('photoAlt')).sort().map(k => [k, g[k]]);
+  const credit = (g: Keyed) => [g.author, g.license, g.licenseUrl, g.sourceUrl];
+  const altChanged = kept.filter(g => !same(alt(g), alt(old.get(g.src)!))).length;
+  const creditChanged = kept.filter(g => !same(credit(g), credit(old.get(g.src)!))).length;
+  const parts = [
+    added && `${added} added`,
+    removed && `${removed} removed`,
+    reordered && 'reordered',
+    altChanged && `description changed on ${altChanged}`,
+    creditChanged && `credit changed on ${creditChanged}`,
+  ].filter(Boolean);
+  const count = (n: number) => (n ? photos(n) : '(empty)');
+  return { field: 'more photos', before: count(was.length), after: `${count(now.length)}${parts.length ? ` (${parts.join(', ')})` : ''}` };
+}
+
 function compareById<T extends Keyed>(before: T[], after: T[], key: (item: T) => string | number, name: (item: T) => string, located = false): ItemChange[] {
   const old = new Map(before.map(i => [key(i), i]));
   const now = new Map(after.map(i => [key(i), i]));
@@ -47,7 +83,9 @@ function compareById<T extends Keyed>(before: T[], after: T[], key: (item: T) =>
       continue;
     }
     if (same(prev, item)) continue;
-    const fields = fieldChanges(prev, item, new Set(located ? ['lat', 'lng'] : []));
+    const fields = fieldChanges(prev, item, new Set(located ? ['lat', 'lng', 'gallery'] : []));
+    const gallery = located ? galleryChange(prev.gallery, item.gallery) : null;
+    if (gallery) fields.push(gallery);
     const p = prev as unknown as { lat: number; lng: number };
     const n = item as unknown as { lat: number; lng: number };
     const moved = located && (p.lat !== n.lat || p.lng !== n.lng) ? Math.round(distanceMeters(p, n)) : undefined;

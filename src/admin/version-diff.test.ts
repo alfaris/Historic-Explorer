@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { changeCount, shortValue, TEXT_MAX, versionDiff } from './version-diff';
+import { changeCount, galleryChange, shortValue, TEXT_MAX, versionDiff } from './version-diff';
 import { bundledContent, normalizeContent, type Content } from '../data/content';
 
 const base = (): Content => normalizeContent(structuredClone(bundledContent));
@@ -100,5 +100,29 @@ describe('shortValue', () => {
     expect(shortValue(3)).toBe('3');
     expect(shortValue(true)).toBe('true');
     expect(shortValue({ toilets: true })).toBe('{"toilets":true}');
+  });
+});
+
+describe('More photos', () => {
+  const photo = (id: string, extra: Record<string, unknown> = {}) => ({ src: `/api/photo?id=${id}`, width: 800, height: 600, author: 'A', license: 'CC0', licenseUrl: null, sourceUrl: '', ...extra });
+
+  it('sums up the change in words instead of data', () => {
+    const a = base();
+    const b = base();
+    b.places[0] = { ...b.places[0], gallery: [photo('a'), photo('b')] };
+    const edit = versionDiff(a, b)[0].items[0];
+    expect(edit).toEqual({ kind: 'edited', name: expect.any(String), fields: [{ field: 'more photos', before: '(empty)', after: '2 photos (2 added)' }] });
+  });
+
+  it('tells added, removed, reordered, description and credit changes apart', () => {
+    expect(galleryChange([photo('a'), photo('b'), photo('c')], [photo('c'), photo('a', { photoAltEn: 'Dome' }), photo('d', {})]))
+      .toEqual({ field: 'more photos', before: '3 photos', after: '3 photos (1 added, 1 removed, reordered, description changed on 1)' });
+    expect(galleryChange([photo('a')], [photo('a', { author: 'B' })])).toEqual({ field: 'more photos', before: '1 photo', after: '1 photo (credit changed on 1)' });
+    expect(galleryChange([photo('a')], undefined)).toEqual({ field: 'more photos', before: '1 photo', after: '(empty) (1 removed)' });
+  });
+
+  it('is nothing when the photos are the same', () => {
+    expect(galleryChange([photo('a')], [photo('a')])).toBeNull();
+    expect(galleryChange(undefined, [])).toBeNull();
   });
 });

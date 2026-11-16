@@ -103,7 +103,7 @@ describe('places CSV', () => {
       'ID', 'Route ID', 'Route', 'Category',
       'Name (English)', 'Name (Arabic)', 'Name (French)', 'Name (Spanish)',
       'Description (English)', 'Description (Arabic)', 'Description (French)', 'Description (Spanish)',
-      'Latitude', 'Longitude', 'Opening hours set', 'Photo credit',
+      'Latitude', 'Longitude', 'Opening hours set', 'Photo credit', 'More photos',
     ]);
     expect(rows).toHaveLength(c.places.length + 1);
     const p = c.places[0];
@@ -113,6 +113,15 @@ describe('places CSV', () => {
     expect(row[9]).toBe(p.descriptionAr);
     expect(Number(row[12])).toBe(p.lat);
     expect(['Yes', 'No']).toContain(row[14]);
+  });
+
+  it("lists each place's More photos with their credits", () => {
+    const c = content();
+    const g = { src: '/api/photo?id=a', width: 800, height: 600, licenseUrl: null, sourceUrl: '' };
+    c.places[0].gallery = [{ ...g, author: 'Ann', license: 'CC BY 4.0' }, { ...g, src: '/api/photo?id=b', author: 'Bo', license: 'CC0' }];
+    const rows = readCsv(placesCsv(c, now).text.slice(1));
+    expect(rows[1][16]).toBe('2: Ann (CC BY 4.0); Bo (CC0)');
+    expect(rows[2][16]).toBe('');
   });
 
   it('keeps commas, quotes and new lines inside a cell', () => {
