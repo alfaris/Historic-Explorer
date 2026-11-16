@@ -3,7 +3,7 @@
 
 import type { Location, Route } from '../data/locations';
 import { optionalText, type Lang } from '../i18n/lang';
-import { walkStops } from './walk';
+import { atPace, walkStops } from './walk';
 
 type Text = { text: string; lang: 'en' | undefined };
 
@@ -24,7 +24,8 @@ export function gettingThere<T extends Location>(route: Route, places: T[], lang
   return {
     start,
     metro: metro.text ? metro : null,
-    minutes: metro.text && route.metroMinutes ? route.metroMinutes : null,
+    // The admin gives the walk from the metro at the usual pace.
+    minutes: metro.text && route.metroMinutes ? atPace(route.metroMinutes) : null,
     note: note.text ? note : null,
   };
 }

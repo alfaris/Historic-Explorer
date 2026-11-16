@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { PACE_FACTOR, readPace } from './pace';
-import { setPaceFactor, walkMinutes, walkPlan } from './walk';
+import { atPace, setPaceFactor, walkMinutes, walkPlan } from './walk';
+import { gettingThere } from './getting-there';
 import { defaultStay, visitPlan } from './visit-plan';
 import { shortWalkStats } from './short-walk-core';
 import { nearbyOnOtherRoutes } from './nearby';
@@ -40,6 +41,15 @@ describe('walking times at a pace', () => {
     expect(slow.finish!.getTime()).toBeGreaterThan(plan.finish!.getTime());
     // Distances stay the same.
     expect(shortWalkStats(places, route.id).meters).toBe(short.meters);
+  });
+
+  it("applies it to the admin's minutes from the metro too", () => {
+    expect(atPace(10, PACE_FACTOR.relaxed)).toBe(13);
+    expect(atPace(10, PACE_FACTOR.brisk)).toBe(8);
+    const r = { ...route, metroEn: 'Mar Girgis station', metroMinutes: 10 };
+    expect(gettingThere(r, places)?.minutes).toBe(10);
+    setPaceFactor(PACE_FACTOR.relaxed);
+    expect(gettingThere(r, places)?.minutes).toBe(13);
   });
 
   it("ignores a pace that isn't a positive number", () => {

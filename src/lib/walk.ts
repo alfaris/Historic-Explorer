@@ -28,6 +28,9 @@ export const setPaceFactor = (factor: number) => {
   paceFactor = Number.isFinite(factor) && factor > 0 ? factor : 1;
 };
 
+/** A walking time given at the usual pace (e.g. the admin's minutes from the metro), at the visitor's pace. */
+export const atPace = (minutes: number, factor = paceFactor) => Math.max(1, Math.round(minutes * factor));
+
 /** Estimated walking time, in whole minutes (at least 1), at the visitor's pace unless `factor` is given. */
 export const walkMinutes = (straightMeters: number, factor = paceFactor) =>
   Math.max(1, Math.round(((straightMeters * DETOUR_FACTOR) / WALK_METERS_PER_MINUTE) * factor));
