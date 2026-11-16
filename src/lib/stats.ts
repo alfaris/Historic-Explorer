@@ -55,9 +55,10 @@ export type StatEvent =
   /**
    * How much of a recorded audio guide was heard, once per place per visit.
    * When the visitor later gets further, a new event carries the band it
-   * replaces (`w`), so the count moves from that band to the new one.
+   * replaces (`w`) and the UTC day it was counted on (`d`), so the count
+   * moves from that band to the new one on that day.
    */
-  | { t: 'listen'; id: number; b: ListenBand; w?: ListenBand };
+  | { t: 'listen'; id: number; b: ListenBand; w?: ListenBand; d?: string };
 
 /** One day's totals, keyed by place ID or route ID. */
 export interface DayStats {
@@ -85,6 +86,7 @@ const ROUTE_ID = '[a-z0-9]+(?:-[a-z0-9]+)*';
 const RATING_KEY = new RegExp(`^${ROUTE_ID}:[1-5]$`);
 const ROUTE_REASON_KEY = new RegExp(`^${ROUTE_ID}:(${ROUTE_REASONS.join('|')})$`);
 const LANG_KEY = new RegExp(`^(play|route):(${LANGS.join('|')})$`);
+const DAY_KEY = /^\d{4}-\d{2}-\d{2}$/;
 const LISTEN_KEY = new RegExp(`^\\d+:(${LISTEN_BANDS.join('|')})$`);
 
 export const emptyDay = (): DayStats => ({ plays: {}, routes: {}, arrivals: {}, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {}, langs: {}, listens: {} });
@@ -117,8 +119,9 @@ export function cleanEvents(raw: unknown, known: { placeIds: Set<number>; routeI
       const b = (e as { b: ListenBand }).b;
       const w = (e as { w?: unknown }).w;
       // A replaced band must be one the visitor got less far than.
+      const d = (e as { d?: unknown }).d;
       if (w === undefined) out.push({ t, id, b });
-      else if (isBand(w) && furtherBand(b, w)) out.push({ t, id, b, w });
+      else if (isBand(w) && furtherBand(b, w)) out.push(typeof d === 'string' && DAY_KEY.test(d) ? { t, id, b, w, d } : { t, id, b, w });
     }
   }
   return out;

@@ -8,7 +8,7 @@
 // the rate limit.
 
 import { BlobNotFoundError, BlobPreconditionFailedError, get, list, put } from '@vercel/blob';
-import { addEvents, cleanEvents, dayKey, emptyDay, parseDay, sumDays, type DayStats } from '../../src/lib/stats.js';
+import { addEvents, cleanEvents, dayKey, emptyDay, parseDay, sumDays, type DayStats, type StatEvent } from '../../src/lib/stats.js';
 import { getContent } from './content.js';
 import { createRateLimiter } from './guard.js';
 import { hasBlobStore, json, readJson } from './http.js';
@@ -37,8 +37,7 @@ async function readDay(key: string): Promise<{ day: DayStats; etag: string | nul
  * same moment can't overwrite each other's counts; on a clash it re-reads and
  * tries again.
  */
-export async function recordEvents(events: Parameters<typeof addEvents>[1], now = new Date()) {
-  const key = dayKey(now);
+export async function recordEvents(events: Parameters<typeof addEvents>[1], now = new Date(), key = dayKey(now)) {
   for (let attempt = 0; attempt < 5; attempt++) {
     const { day, etag } = await readDay(key);
     try {
@@ -56,6 +55,29 @@ export async function recordEvents(events: Parameters<typeof addEvents>[1], now 
   return false;
 }
 
+/**
+ * Events by the day they count on: today, except a listen correction, which
+ * goes to the day its first listen was counted (so a visit counts once), if
+ * that was today or yesterday. Older corrections are dropped.
+ */
+export function byDay(events: StatEvent[], now = new Date()): Map<string, StatEvent[]> {
+  const today = dayKey(now);
+  const yesterday = dayKey(new Date(now.getTime() - 86_400_000));
+  const out = new Map<string, StatEvent[]>();
+  for (const e of events) {
+    let key = today;
+    if (e.t === 'listen' && e.w) {
+      const d = e.d ?? today;
+      if (d !== today && d !== yesterday) continue;
+      key = d;
+    }
+    const list = out.get(key);
+    if (list) list.push(e);
+    else out.set(key, [e]);
+  }
+  return out;
+}
+
 export async function handleStats(request: Request): Promise<Response> {
   if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
   const limited = statsRateLimit(request);
@@ -70,7 +92,7 @@ export async function handleStats(request: Request): Promise<Response> {
   });
   if (events.length === 0) return noContent();
   try {
-    await recordEvents(events);
+    for (const [key, group] of byDay(events)) await recordEvents(group, new Date(), key);
   } catch (err) {
     // Stats are best-effort: never show visitors an error for them.
     console.warn('Recording stats failed:', err);

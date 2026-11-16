@@ -51,7 +51,19 @@ describe('track', () => {
     track({ t: 'listen', id: 2, b: 'q4' });
     track({ t: 'listen', id: 2, b: 'done' });
     flush();
-    expect((await sent())[1]).toEqual([{ t: 'listen', id: 2, b: 'done', w: 'q3' }]);
+    // It names the band it replaces and the UTC day that was sent on.
+    expect((await sent())[1]).toEqual([{ t: 'listen', id: 2, b: 'done', w: 'q3', d: new Date().toISOString().slice(0, 10) }]);
+  });
+
+  it('sends kept offline events before a correction made since', async () => {
+    nav.onLine = false;
+    track({ t: 'listen', id: 3, b: 'q1' });
+    flush(); // offline: kept
+    track({ t: 'listen', id: 3, b: 'done' }); // corrects the kept one
+    nav.onLine = true;
+    sendPending();
+    // Not sent yet when corrected, so no day: it counts today, after the original.
+    expect(await sent()).toEqual([[{ t: 'listen', id: 3, b: 'q1' }, { t: 'listen', id: 3, b: 'done', w: 'q1' }]]);
   });
 
   it('counts what is under way just before sending as the page is hidden', async () => {

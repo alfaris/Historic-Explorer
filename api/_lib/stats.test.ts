@@ -35,7 +35,7 @@ vi.mock('@vercel/blob', () => {
   };
 });
 
-const { handleStats, readStats, recordEvents } = await import('./stats');
+const { byDay, handleStats, readStats, recordEvents } = await import('./stats');
 const { _resetContentCache } = await import('./content');
 
 let ip = 0;
@@ -104,5 +104,31 @@ describe('readStats', () => {
       { date: '2026-11-05', plays: 1, routes: 0, arrivals: 0 },
     ]);
     expect((await readStats(90, now)).total.plays[1]).toBe(3);
+  });
+});
+
+describe('byDay', () => {
+  const now = new Date('2026-11-16T00:10:00Z');
+  it("counts a listen correction on the day its first listen was counted, if that was today or yesterday", () => {
+    const days = byDay([
+      { t: 'play', id: 1 },
+      { t: 'listen', id: 1, b: 'done', w: 'q1', d: '2026-11-15' },
+      { t: 'listen', id: 2, b: 'q3', w: 'q1' },
+      { t: 'listen', id: 3, b: 'done', w: 'q2', d: '2026-11-10' },
+    ], now);
+    expect([...days.entries()]).toEqual([
+      ['2026-11-16', [{ t: 'play', id: 1 }, { t: 'listen', id: 2, b: 'q3', w: 'q1' }]],
+      ['2026-11-15', [{ t: 'listen', id: 1, b: 'done', w: 'q1', d: '2026-11-15' }]],
+    ]);
+  });
+
+  it('moves the count within that day when the correction arrives after midnight', async () => {
+    const yesterday = new Date(Date.now() - 86_400_000);
+    await recordEvents([{ t: 'listen', id: 1, b: 'q1' }, { t: 'listen', id: 2, b: 'q1' }], yesterday);
+    // Another visitor today, in the band being corrected: untouched.
+    await recordEvents([{ t: 'listen', id: 1, b: 'q1' }]);
+    await send({ events: [{ t: 'listen', id: 1, b: 'done', w: 'q1', d: yesterday.toISOString().slice(0, 10) }] });
+    const { total } = await readStats(7);
+    expect(total.listens).toEqual({ '1:q1': 1, '1:done': 1, '2:q1': 1 });
   });
 });

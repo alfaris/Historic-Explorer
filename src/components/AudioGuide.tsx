@@ -135,6 +135,8 @@ export function AudioGuide({ locationId, text, langCode, onNext, onPrevious, aut
     const place = places.find(p => p.id === locationId);
     const route = place && routes.find(r => r.id === place.routeId);
     const photo = place && photoForPlace(place);
+    // How far into the recording this playback got (resuming starts there).
+    let heard = from;
     const t: GuideTrack = {
       key,
       title: place ? nameOf(place) : '',
@@ -145,8 +147,10 @@ export function AudioGuide({ locationId, text, langCode, onNext, onPrevious, aut
       onPrevious: onPrevious && (() => nav.current.onPrevious?.()),
       onPosition: (at, duration, final) => {
         savePosition(resumeKey, at, duration);
+        // The furthest point heard counts, even after seeking back.
+        heard = Math.max(heard, at);
         // How much of the recording was heard, counted once it's let go of (the furthest per visit).
-        if (final && Number.isFinite(duration) && duration > 0) track({ t: 'listen', id: locationId, b: listenBand(at, duration) });
+        if (final && Number.isFinite(duration) && duration > 0) track({ t: 'listen', id: locationId, b: listenBand(heard, duration) });
       },
     };
     // Straight from the tap, before any await: iOS only starts audio from a tap.

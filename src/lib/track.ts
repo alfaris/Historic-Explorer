@@ -40,8 +40,10 @@ export const optedOut = () => {
 
 let queue: StatEvent[] = [];
 const seen = new Set<string>();
-// The furthest band counted for each guide this visit (queued or sent).
+// The furthest band counted for each guide this visit (queued or sent),
+// and the UTC day its listen was sent on, for a later correction.
 const listened = new Map<number, ListenBand>();
+const sentOn = new Map<number, string>();
 // Called just before events are sent as the page is hidden or closed.
 const beforeSend = new Set<() => void>();
 
@@ -72,6 +74,9 @@ export function flush() {
   }
   const events = queue;
   queue = [];
+  // A later correction of a listen goes to the day it was counted on.
+  const today = new Date().toISOString().slice(0, 10);
+  for (const e of events) if (e.t === 'listen' && !sentOn.has(e.id)) sentOn.set(e.id, today);
   // The server takes at most MAX_EVENTS_PER_REQUEST a request (kept events plus new ones can be more).
   for (let i = 0; i < events.length; i += MAX_EVENTS_PER_REQUEST) send(events.slice(i, i + MAX_EVENTS_PER_REQUEST));
 }
@@ -109,7 +114,8 @@ export function sendPending() {
   const pending = readPending();
   if (pending.length === 0) return;
   writePending([]);
-  queue.push(...pending);
+  // Kept events first: a correction queued since must come after the listen it corrects.
+  queue = [...pending, ...queue];
   flush();
 }
 
@@ -149,7 +155,8 @@ function trackListen(id: number, b: ListenBand) {
     queue[i] = { ...(queue[i] as Extract<StatEvent, { t: 'listen' }>), b };
     return;
   }
-  queue.push(before ? { t: 'listen', id, b, w: before } : { t: 'listen', id, b });
+  const day = sentOn.get(id);
+  queue.push(before ? { t: 'listen', id, b, w: before, ...(day ? { d: day } : {}) } : { t: 'listen', id, b });
   listen();
   timer ??= setTimeout(flush, SEND_AFTER_MS);
 }
@@ -160,6 +167,7 @@ export const resetTrackingForTest = () => {
   queue = [];
   seen.clear();
   listened.clear();
+  sentOn.clear();
   beforeSend.clear();
   listening = false;
   if (timer) clearTimeout(timer);
