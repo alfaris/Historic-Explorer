@@ -320,4 +320,16 @@ describe('guide player', () => {
     player.stop();
     expect(seen).toEqual([[12, false], [12, false], [12, true]]);
   });
+
+  it('reports where a playing recording is without stopping it (page hidden or closed)', async () => {
+    const { player, audio } = setup();
+    const seen: [number, boolean][] = [];
+    const id = player.begin(track('a', { onPosition: (at: number, _d: number, final: boolean) => seen.push([at, final]) }));
+    player.snapshot(); // still loading: nothing to report
+    await player.playAudio(id, wav);
+    audio.currentTime = 30;
+    player.snapshot();
+    expect(seen).toEqual([[30, true]]);
+    expect(player.getState().status).toBe('playing');
+  });
 });

@@ -416,6 +416,15 @@ export function createGuidePlayer(env: PlayerEnv) {
     resume,
     seekBy,
 
+    /**
+     * Reports how far into the playing (or paused) recording the visitor is,
+     * as the last report, without stopping it: for when the page is hidden
+     * or closed. If it plays on, later reports can go further.
+     */
+    snapshot() {
+      if (state.mode === 'audio' && state.status !== 'idle') report(true);
+    },
+
     setSpeed(speed: Speed) {
       try { env.storage?.setItem(SPEED_KEY, String(speed)); } catch { /* Private mode: just this visit. */ }
       set({ speed });

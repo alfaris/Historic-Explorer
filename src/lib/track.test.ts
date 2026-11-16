@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { PENDING_KEY, flush, resetTrackingForTest, sendPending, stopTracking, track } from './track';
+import { PENDING_KEY, flush, onBeforeSend, resetTrackingForTest, sendPending, stopTracking, track } from './track';
 
 let beacons: string[];
 let nav: Record<string, unknown>;
@@ -46,10 +46,23 @@ describe('track', () => {
     track({ t: 'listen', id: 1, b: 'q2' });
     track({ t: 'listen', id: 2, b: 'q3' });
     expect(await sent()).toEqual([[{ t: 'listen', id: 1, b: 'done' }, { t: 'listen', id: 2, b: 'q3' }]]);
-    // Already sent: not counted again this visit.
+    // Already sent and got further: a new event moves the count from the band it replaces.
+    track({ t: 'listen', id: 2, b: 'q2' }); // not further: ignored
+    track({ t: 'listen', id: 2, b: 'q4' });
     track({ t: 'listen', id: 2, b: 'done' });
     flush();
-    expect(await sent()).toHaveLength(1);
+    expect((await sent())[1]).toEqual([{ t: 'listen', id: 2, b: 'done', w: 'q3' }]);
+  });
+
+  it('counts what is under way just before sending as the page is hidden', async () => {
+    const handlers: Record<string, () => void> = {};
+    const doc = { visibilityState: 'visible', addEventListener: (t: string, fn: () => void) => { handlers[t] = fn; } };
+    vi.stubGlobal('document', doc);
+    onBeforeSend(() => track({ t: 'listen', id: 7, b: 'q2' }));
+    track({ t: 'play', id: 7 });
+    doc.visibilityState = 'hidden';
+    handlers.visibilitychange();
+    expect(await sent()).toEqual([[{ t: 'play', id: 7, l: 'en' }, { t: 'listen', id: 7, b: 'q2' }]]);
   });
 
   it('sends nothing once stopped (the admin, whose previews play audio guides)', async () => {

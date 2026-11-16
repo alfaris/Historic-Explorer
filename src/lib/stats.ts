@@ -52,8 +52,12 @@ export type StatEvent =
   /** "How was the walk?" on the finish screen. */
   | { t: 'rate'; id: string; s: Stars }
   | { t: 'rwhy'; id: string; r: RouteReason }
-  /** How much of a recorded audio guide was heard, once per place per visit (the furthest). */
-  | { t: 'listen'; id: number; b: ListenBand };
+  /**
+   * How much of a recorded audio guide was heard, once per place per visit.
+   * When the visitor later gets further, a new event carries the band it
+   * replaces (`w`), so the count moves from that band to the new one.
+   */
+  | { t: 'listen'; id: number; b: ListenBand; w?: ListenBand };
 
 /** One day's totals, keyed by place ID or route ID. */
 export interface DayStats {
@@ -109,7 +113,13 @@ export function cleanEvents(raw: unknown, known: { placeIds: Set<number>; routeI
     else if (t === 'route' && typeof id === 'string' && known.routeIds.has(id)) out.push(withLang({ t, id }, e));
     else if (t === 'rate' && typeof id === 'string' && known.routeIds.has(id) && isStars((e as { s?: unknown }).s)) out.push({ t, id, s: (e as { s: Stars }).s });
     else if (t === 'rwhy' && typeof id === 'string' && known.routeIds.has(id) && isRouteReason(r)) out.push({ t, id, r });
-    else if (t === 'listen' && typeof id === 'number' && known.placeIds.has(id) && isBand((e as { b?: unknown }).b)) out.push({ t, id, b: (e as { b: ListenBand }).b });
+    else if (t === 'listen' && typeof id === 'number' && known.placeIds.has(id) && isBand((e as { b?: unknown }).b)) {
+      const b = (e as { b: ListenBand }).b;
+      const w = (e as { w?: unknown }).w;
+      // A replaced band must be one the visitor got less far than.
+      if (w === undefined) out.push({ t, id, b });
+      else if (isBand(w) && furtherBand(b, w)) out.push({ t, id, b, w });
+    }
   }
   return out;
 }
@@ -122,6 +132,13 @@ export function addEvents(day: DayStats, events: StatEvent[]): DayStats {
     const key = e.t === 'why' || e.t === 'rwhy' ? `${e.id}:${e.r}` : e.t === 'rate' ? `${e.id}:${e.s}` : e.t === 'listen' ? `${e.id}:${e.b}` : e.id;
     bucket[key] = (bucket[key] ?? 0) + 1;
     if ((e.t === 'play' || e.t === 'route') && e.l) next.langs[`${e.t}:${e.l}`] = (next.langs[`${e.t}:${e.l}`] ?? 0) + 1;
+    // A listen that got further than one already counted: move it out of the band it replaces.
+    // (Never below zero: the earlier one may have been counted on another day.)
+    if (e.t === 'listen' && e.w) {
+      const was = `${e.id}:${e.w}`;
+      if ((next.listens[was] ?? 0) > 1) next.listens[was] -= 1;
+      else delete next.listens[was];
+    }
   }
   return next;
 }

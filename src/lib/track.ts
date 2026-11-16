@@ -5,7 +5,7 @@
 // (Global Privacy Control or Do Not Track) send nothing. Events from a visit
 // with no connection are kept on the device and sent once it's back online.
 
-import { MAX_EVENTS_PER_REQUEST, furtherBand, type StatEvent } from './stats';
+import { MAX_EVENTS_PER_REQUEST, furtherBand, type ListenBand, type StatEvent } from './stats';
 import { currentLang } from '../i18n/lang';
 
 const ENDPOINT = '/api/stats';
@@ -40,6 +40,22 @@ export const optedOut = () => {
 
 let queue: StatEvent[] = [];
 const seen = new Set<string>();
+// The furthest band counted for each guide this visit (queued or sent).
+const listened = new Map<number, ListenBand>();
+// Called just before events are sent as the page is hidden or closed.
+const beforeSend = new Set<() => void>();
+
+/**
+ * Runs `fn` just before events are sent as the page is hidden or closed, to
+ * count something still under way (a guide playing). Returns an unsubscribe.
+ */
+export function onBeforeSend(fn: () => void) {
+  beforeSend.add(fn);
+  return () => beforeSend.delete(fn);
+}
+const runBeforeSend = () => beforeSend.forEach(fn => {
+  try { fn(); } catch { /* Best effort. */ }
+});
 let timer: ReturnType<typeof setTimeout> | null = null;
 let listening = false;
 
@@ -75,9 +91,15 @@ const listen = () => {
   if (listening || typeof document === 'undefined') return;
   listening = true;
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') flush();
+    if (document.visibilityState === 'hidden') {
+      runBeforeSend();
+      flush();
+    }
   });
-  window.addEventListener('pagehide', flush);
+  window.addEventListener('pagehide', () => {
+    runBeforeSend();
+    flush();
+  });
   window.addEventListener('online', sendPending);
 };
 
@@ -100,18 +122,34 @@ export const stopTracking = () => {
 
 export function track(event: StatEvent) {
   if (off || optedOut()) return;
-  const key = `${event.t}:${event.id}`;
-  if (seen.has(key)) {
-    // A guide heard further later in the visit (resumed, or played again) counts as the furthest, while it's still unsent.
-    if (event.t === 'listen') {
-      const i = queue.findIndex(e => e.t === 'listen' && e.id === event.id);
-      if (i >= 0 && furtherBand(event.b, (queue[i] as typeof event).b)) queue[i] = event;
-    }
+  if (event.t === 'listen') {
+    trackListen(event.id, event.b);
     return;
   }
+  const key = `${event.t}:${event.id}`;
+  if (seen.has(key)) return;
   seen.add(key);
   // Audio plays and route opens say which interface language they were in.
   queue.push(event.t === 'play' || event.t === 'route' ? { ...event, l: event.l ?? currentLang() } : event);
+  listen();
+  timer ??= setTimeout(flush, SEND_AFTER_MS);
+}
+
+/**
+ * How far a guide was heard, once per place per visit, keeping the furthest.
+ * Still queued: the queued event is raised. Already sent: a new event says
+ * which band it replaces, so the server moves the count.
+ */
+function trackListen(id: number, b: ListenBand) {
+  const before = listened.get(id);
+  if (before && !furtherBand(b, before)) return;
+  listened.set(id, b);
+  const i = queue.findIndex(e => e.t === 'listen' && e.id === id);
+  if (i >= 0) {
+    queue[i] = { ...(queue[i] as Extract<StatEvent, { t: 'listen' }>), b };
+    return;
+  }
+  queue.push(before ? { t: 'listen', id, b, w: before } : { t: 'listen', id, b });
   listen();
   timer ??= setTimeout(flush, SEND_AFTER_MS);
 }
@@ -121,6 +159,9 @@ export const resetTrackingForTest = () => {
   off = false;
   queue = [];
   seen.clear();
+  listened.clear();
+  beforeSend.clear();
+  listening = false;
   if (timer) clearTimeout(timer);
   timer = null;
 };

@@ -4,7 +4,7 @@ import { audioVersion, textHash } from '../lib/text-hash';
 import { useDisplay } from '../lib/display';
 import { audioGuideUrl } from '../lib/offline-pack';
 import { narrationSource } from '../lib/guide-kind';
-import { track } from '../lib/track';
+import { onBeforeSend, track } from '../lib/track';
 import { listenBand } from '../lib/stats';
 import { guidePlayer, nextSpeed, speedLabel, type GuideTrack } from '../lib/guide-player';
 import { clockLabel, savePosition, useResumePoint } from '../lib/guide-resume';
@@ -47,6 +47,9 @@ const transcriptOf = (res: Response): string | null => {
     return null;
   }
 };
+
+// The page is being hidden or closed: count how far into the playing guide the visitor got.
+onBeforeSend(() => guidePlayer().snapshot());
 
 // Shared across mounts so a prefetch and a later click reuse one request.
 const guideCache = new Map<string, Promise<GuideAudio>>();
