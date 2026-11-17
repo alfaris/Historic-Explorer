@@ -6,6 +6,7 @@ import { L, byLang, currentLang, nameOf } from '../i18n/lang';
 import { builtLabel } from '../lib/eras';
 import { quizRounds, type Round } from '../lib/quiz';
 import { recordScore, useQuizBests } from '../lib/quiz-best';
+import { track } from '../lib/track';
 import { PlacePhoto } from './PlacePhoto';
 
 // "Which came first?" on the finish screen (loaded when it's opened): a few
@@ -27,7 +28,11 @@ export default function WhichCameFirst({ places, routeId, onClose }: { places: L
 
   // A finished game is recorded once, as it ends.
   useEffect(() => {
-    if (done && newBest === null && rounds.length) setNewBest(recordScore(routeId, score, rounds.length));
+    if (done && newBest === null && rounds.length) {
+      setNewBest(recordScore(routeId, score, rounds.length));
+      // The anonymous usage counts take the first game per route per visit.
+      track({ t: 'quiz', id: routeId, s: score, n: rounds.length });
+    }
   }, [done, newBest, rounds.length, routeId, score]);
 
   // Each new round (and the score) starts reading from the top for screen readers and keyboards.

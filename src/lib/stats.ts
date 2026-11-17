@@ -86,7 +86,9 @@ export type StatEvent =
    */
   | { t: 'listen'; id: number; b: ListenBand; w?: ListenBand; d?: string }
   /** A search that found no place, as missQuery gives it. */
-  | { t: 'miss'; q: string };
+  | { t: 'miss'; q: string }
+  /** A finished "Which came first?" game on a route: right answers `s` of `n` rounds (first game per route per visit). */
+  | { t: 'quiz'; id: string; s: number; n: number };
 
 /** One day's totals, keyed by place ID or route ID. */
 export interface DayStats {
@@ -108,9 +110,14 @@ export interface DayStats {
   listens: Record<string, number>;
   /** Searches that found no place, by query (see missQuery). Absent on days before it was recorded. */
   misses: Record<string, number>;
+  /**
+   * "Which came first?" games per route, keyed "routeId:g" (games), "routeId:r"
+   * (right answers) and "routeId:n" (rounds). Absent on days before it was recorded.
+   */
+  quiz: Record<string, number>;
 }
 
-const FIELDS = ['plays', 'routes', 'arrivals', 'helpful', 'unhelpful', 'reasons', 'ratings', 'routeReasons', 'langs', 'listens', 'misses'] as const;
+const FIELDS = ['plays', 'routes', 'arrivals', 'helpful', 'unhelpful', 'reasons', 'ratings', 'routeReasons', 'langs', 'listens', 'misses', 'quiz'] as const;
 const REASON_KEY = new RegExp(`^\\d+:(${REASONS.join('|')})$`);
 const ROUTE_ID = '[a-z0-9]+(?:-[a-z0-9]+)*';
 const RATING_KEY = new RegExp(`^${ROUTE_ID}:[1-5]$`);
@@ -118,8 +125,11 @@ const ROUTE_REASON_KEY = new RegExp(`^${ROUTE_ID}:(${ROUTE_REASONS.join('|')})$`
 const LANG_KEY = new RegExp(`^(play|route):(${LANGS.join('|')})$`);
 const DAY_KEY = /^\d{4}-\d{2}-\d{2}$/;
 const LISTEN_KEY = new RegExp(`^\\d+:(${LISTEN_BANDS.join('|')})$`);
+const QUIZ_KEY = new RegExp(`^${ROUTE_ID}:[grn]$`);
+/** The most rounds a game has (see quiz.ts); anything more is made up. */
+export const QUIZ_MAX_ROUNDS = 5;
 
-export const emptyDay = (): DayStats => ({ plays: {}, routes: {}, arrivals: {}, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {}, langs: {}, listens: {}, misses: {} });
+export const emptyDay = (): DayStats => ({ plays: {}, routes: {}, arrivals: {}, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {}, langs: {}, listens: {}, misses: {}, quiz: {} });
 
 /** The most events one request may carry. */
 export const MAX_EVENTS_PER_REQUEST = 50;
@@ -142,6 +152,12 @@ export function cleanEvents(raw: unknown, known: { placeIds: Set<number>; routeI
     if (t === 'miss') {
       const q = missQuery((e as { q?: unknown }).q);
       if (q) out.push({ t, q });
+      continue;
+    }
+    if (t === 'quiz') {
+      const { s, n } = e as { s?: unknown; n?: unknown };
+      const ok = typeof id === 'string' && known.routeIds.has(id) && Number.isInteger(n) && Number.isInteger(s);
+      if (ok && (n as number) >= 1 && (n as number) <= QUIZ_MAX_ROUNDS && (s as number) >= 0 && (s as number) <= (n as number)) out.push({ t, id: id as string, s: s as number, n: n as number });
       continue;
     }
     if (t === 'why' && typeof id === 'number' && known.placeIds.has(id) && isReason(r)) out.push({ t, id, r });
@@ -170,6 +186,15 @@ export function addEvents(day: DayStats, events: StatEvent[]): DayStats {
       // A day keeps at most MAX_MISSES_PER_DAY different searches.
       if (next.misses[e.q] === undefined && Object.keys(next.misses).length >= MAX_MISSES_PER_DAY) continue;
       next.misses[e.q] = (next.misses[e.q] ?? 0) + 1;
+      continue;
+    }
+    if (e.t === 'quiz') {
+      const add = (k: string, v: number) => {
+        if (v) next.quiz[`${e.id}:${k}`] = (next.quiz[`${e.id}:${k}`] ?? 0) + v;
+      };
+      add('g', 1);
+      add('r', e.s);
+      add('n', e.n);
       continue;
     }
     const bucket = next[FIELD[e.t]];
@@ -205,6 +230,7 @@ export function parseDay(raw: unknown): DayStats {
       if (field === 'langs' && !LANG_KEY.test(k)) continue;
       if (field === 'listens' && !LISTEN_KEY.test(k)) continue;
       if (field === 'misses' && missQuery(k) !== k) continue;
+      if (field === 'quiz' && !QUIZ_KEY.test(k)) continue;
       // Listens can be below zero for a while (a correction ahead of its listen); everything else is a count.
       if (Number.isInteger(v) && ((v as number) > 0 || (field === 'listens' && (v as number) < 0))) day[field][k] = v as number;
     }
@@ -265,6 +291,20 @@ export function routeRatings(total: DayStats, routeIds: string[]): RatingRow[] {
       return { id, count, average: count ? Math.round((sum / count) * 10) / 10 : 0, reasons };
     })
     .filter(r => r.count > 0);
+}
+
+export type QuizRow = { id: string; games: number; right: number; rounds: number; pct: number };
+
+/** Each route's "Which came first?" games and the share of right answers (in %). Routes without games are left out. */
+export function quizStats(total: DayStats, routeIds: string[]): QuizRow[] {
+  const q = total.quiz ?? {};
+  return routeIds
+    .map(id => {
+      const rounds = q[`${id}:n`] ?? 0;
+      const right = Math.min(q[`${id}:r`] ?? 0, rounds);
+      return { id, games: q[`${id}:g`] ?? 0, right, rounds, pct: rounds ? Math.round((right / rounds) * 100) : 0 };
+    })
+    .filter(r => r.games > 0);
 }
 
 export type LanguageRow = { lang: Lang; plays: number; routes: number; total: number; pct: number };

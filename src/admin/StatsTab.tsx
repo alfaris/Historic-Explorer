@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Download, RefreshCw } from 'lucide-react';
 import type { Content } from '../data/content';
 import { walkStops } from '../lib/walk';
-import { helpfulness, languageShares, listening, topMisses, mostStopEarly, MIN_LISTENS, REASONS, ROUTE_REASONS, routeRatings, type HelpfulRow, type ListenRow, type Reason, type RouteReason } from '../lib/stats';
+import { helpfulness, languageShares, listening, topMisses, mostStopEarly, MIN_LISTENS, quizStats, REASONS, ROUTE_REASONS, routeRatings, type HelpfulRow, type ListenRow, type Reason, type RouteReason } from '../lib/stats';
 import { api, ApiError, type StatsResponse } from './api';
 import { downloadFile } from './backup';
 import { dailySeries, statsCsv } from './stats-csv';
@@ -174,6 +174,7 @@ export function StatsTab({ content, onSignedOut, onEditPlace }: { content: Conte
 
   const listenRows = useMemo(() => (data ? listening(data.total, content.places.map(p => p.id)) : []), [data, content]);
 
+  const quizRows = useMemo(() => (data ? quizStats(data.total, content.routes.map(r => r.id)).sort((a, b) => b.games - a.games) : []), [data, content.routes]);
   const ratingRows = useMemo(
     () => (data ? routeRatings(data.total, content.routes.map(r => r.id)).sort((a, b) => b.count - a.count) : []),
     [data, content],
@@ -384,6 +385,37 @@ export function StatsTab({ content, onSignedOut, onEditPlace }: { content: Conte
                       <td className="py-2 text-end tabular-nums text-ink">★ {r.average.toFixed(1)}</td>
                       <td className="py-2 text-end tabular-nums text-stone-600">{fmt(r.count)}</td>
                       <td className="py-2 ps-4 text-xs text-stone-500">{routeReasonText(r.reasons) || '–'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          <div className="bg-white rounded-2xl border border-sand/50 p-5">
+            <h2 className="text-sm font-bold text-stone-700 mb-1">Which came first?</h2>
+            <p className="text-[11px] text-stone-400 mb-4">
+              The quiz on the finish screen: games played (the first per route per visit) and the share of right answers. A route where visitors often get it wrong may have build years worth checking.
+            </p>
+            {quizRows.length === 0 ? (
+              <p className="text-sm text-stone-400">No games in this period yet.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-start text-[11px] uppercase tracking-widest text-stone-400">
+                    <th className="text-start font-bold pb-2">Route</th>
+                    <th className="text-end font-bold pb-2">Games</th>
+                    <th className="text-end font-bold pb-2">Right answers</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-sand/40">
+                  {quizRows.map(r => (
+                    <tr key={r.id}>
+                      <td className="py-2 text-stone-700">{routeName.get(r.id) ?? r.id}</td>
+                      <td className="py-2 text-end tabular-nums text-stone-600">{fmt(r.games)}</td>
+                      <td className="py-2 text-end tabular-nums text-ink">
+                        {r.pct}% <span className="text-[11px] text-stone-400">({fmt(r.right)} of {fmt(r.rounds)})</span>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

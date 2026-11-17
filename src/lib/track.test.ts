@@ -84,6 +84,13 @@ describe('track', () => {
     expect(await sent()).toEqual([[{ t: 'miss', q: 'citadel' }, { t: 'miss', q: 'khan' }]]);
   });
 
+  it('counts the first quiz game per route per visit', async () => {
+    track({ t: 'quiz', id: 'ahl-al-bayt', s: 2, n: 5 });
+    track({ t: 'quiz', id: 'ahl-al-bayt', s: 5, n: 5 });
+    track({ t: 'quiz', id: 'al-muizz', s: 3, n: 4 });
+    expect(await sent()).toEqual([[{ t: 'quiz', id: 'ahl-al-bayt', s: 2, n: 5 }, { t: 'quiz', id: 'al-muizz', s: 3, n: 4 }]]);
+  });
+
   it('sends nothing once stopped (the admin, whose previews play audio guides)', async () => {
     stopTracking();
     track({ t: 'play', id: 1 });
