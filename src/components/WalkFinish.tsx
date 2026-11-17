@@ -146,7 +146,7 @@ export function WalkFinish({ route, routes, places, onClose, onShowPassport, onS
 
           {quiz && (quizOpen ? (
             <LazyBoundary loading={null} failed={null}>
-              <WhichCameFirst places={places} routeId={route.id} onClose={() => setQuizOpen(false)} />
+              <WhichCameFirst places={places} routeId={route.id} routeName={nameOf(route)} onClose={() => setQuizOpen(false)} />
             </LazyBoundary>
           ) : (
             <button

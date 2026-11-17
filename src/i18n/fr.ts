@@ -351,6 +351,7 @@ export const FR: Record<string, string> = {
   'Play again': 'Rejouer',
   'New best!': 'Nouveau record !',
   'Best light for photos': 'La plus belle lumière pour les photos',
+  'Share': 'Partager',
   'Through the ages': 'À travers les âges',
   'Places on every route, from the oldest.': 'Les lieux de tous les parcours, du plus ancien au plus récent.',
   'Era': 'Époque',
