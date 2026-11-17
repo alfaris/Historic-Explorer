@@ -11,7 +11,7 @@ import { SheetFailed } from './SheetFailed';
 const PassportSheetLazy = lazy(() => import('./PassportSheet'));
 
 /** The passport sheet, loaded when it's opened. */
-export function PassportSheet(props: { routes: Route[]; places?: Location[]; onClose: () => void; onShowRoute?: (id: string) => void }) {
+export function PassportSheet(props: { routes: Route[]; places?: Location[]; onClose: () => void; onShowRoute?: (id: string) => void; onOpenPlace?: (id: number) => void }) {
   return (
     <LazyBoundary loading={null} failed={<SheetFailed onClose={props.onClose} />}>
       <PassportSheetLazy {...props} />
@@ -65,7 +65,7 @@ export function StampBadge({ route, stamp, quiz, size = 'md' }: { route: Route; 
 }
 
 /** "Passport 1/5" beside Saved, over the routes. */
-export function PassportButton({ routes, places, onShowRoute }: { routes: Route[]; places?: Location[]; onShowRoute?: (id: string) => void }) {
+export function PassportButton({ routes, places, onShowRoute, onOpenPlace }: { routes: Route[]; places?: Location[]; onShowRoute?: (id: string) => void; onOpenPlace?: (id: number) => void }) {
   const [open, setOpen] = useState(false);
   const stamps = useStamps();
   const n = stampCount(stamps, routes);
@@ -82,7 +82,7 @@ export function PassportButton({ routes, places, onShowRoute }: { routes: Route[
         <span className="tabular-nums tracking-normal text-stone-500" aria-hidden="true">{n}/{routes.length}</span>
         <span className="sr-only"> ({walksLabel(n, routes.length)})</span>
       </button>
-      {open && <PassportSheet routes={routes} places={places} onClose={() => setOpen(false)} onShowRoute={onShowRoute && (id => { setOpen(false); onShowRoute(id); })} />}
+      {open && <PassportSheet routes={routes} places={places} onClose={() => setOpen(false)} onShowRoute={onShowRoute && (id => { setOpen(false); onShowRoute(id); })} onOpenPlace={onOpenPlace && (id => { setOpen(false); onOpenPlace(id); })} />}
     </>
   );
 }
