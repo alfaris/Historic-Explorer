@@ -60,6 +60,20 @@ describe('marking visits', () => {
     expect(stored()).toEqual({});
   });
 
+  it('keeps a date another tab removed removed, and dates a later visit afresh', async () => {
+    const { toggleVisited } = await import('./visited');
+    const { recordVisitDate } = await import('./visit-dates');
+    toggleVisited(5); // this tab: 5 visited on the 17th (and cached)
+    // Another tab unmarks 5: its date leaves storage, the visited set too.
+    store.set(VISIT_DATES_KEY, JSON.stringify({}));
+    store.set('cairo-walks:visited', JSON.stringify([]));
+    recordVisitDate(8); // this tab writes again
+    expect(stored()).toEqual({ 8: '2026-11-17' });
+    vi.setSystemTime(new Date('2026-11-20T08:00:00Z'));
+    toggleVisited(5); // visited again three days later
+    expect(stored()).toEqual({ 8: '2026-11-17', 5: '2026-11-20' });
+  });
+
   it('gives no date to a place already visited before dates were kept', async () => {
     store.set('cairo-walks:visited', JSON.stringify([7]));
     const { markVisited } = await import('./visited');

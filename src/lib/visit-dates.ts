@@ -62,14 +62,25 @@ const save = (next: VisitDates) => {
   }
   listeners.forEach(l => l());
 };
-// Build on the latest saved dates, so another tab's aren't overwritten.
-const latest = () => ({ ...current(), ...(typeof window === 'undefined' ? {} : read()) });
+const storageWorks = () => {
+  try {
+    return typeof window !== 'undefined' && window.localStorage.getItem(VISIT_DATES_KEY) !== undefined;
+  } catch {
+    return false;
+  }
+};
+// Build on the saved dates when storage works (they're the truth: a date another
+// tab removed stays removed), and on this tab's copy only when it doesn't.
+const latest = (): VisitDates => (storageWorks() ? read() : { ...current() });
 
 /** Records today's Cairo date for a place just marked visited (the first date is kept). */
 export function recordVisitDate(id: number, at = new Date()) {
   const base = latest();
   if (base[id]) {
-    if (!dates?.[id]) save(base);
+    if (dates?.[id] !== base[id]) {
+      dates = base;
+      listeners.forEach(l => l());
+    }
     return;
   }
   save({ ...base, [id]: cairoDate(at) });
@@ -78,13 +89,21 @@ export function recordVisitDate(id: number, at = new Date()) {
 /** Forgets the dates of places no longer visited (unmarked, or a route walked again). */
 export function forgetVisitDates(ids: number[]) {
   const base = latest();
-  if (!ids.some(id => base[id])) return;
+  if (!ids.some(id => base[id])) {
+    dates = base;
+    return;
+  }
   const next = { ...base };
   for (const id of ids) delete next[id];
   save(next);
 }
 
 const subscribe = (listener: () => void) => {
+  // Dates another tab changed while nothing here was listening (the passport closed).
+  if (storageWorks()) {
+    const stored = read();
+    if (JSON.stringify(stored) !== JSON.stringify(current())) dates = stored;
+  }
   listeners.add(listener);
   const onStorage = (e: StorageEvent) => {
     if (e.key === VISIT_DATES_KEY || e.key === null) {
