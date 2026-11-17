@@ -97,7 +97,8 @@ export function builtLabel(p: BuiltFields, lang: Lang): string | null {
   const to = p.builtTo;
   const built = {
     en: to !== undefined ? `Built ${from}–${to}` : `Built ${from}`,
-    ar: to !== undefined ? `بُني بين ${from} و${to}` : `بُني عام ${from}`,
+    // "Date of building": no verb, so it reads right whether the place's name is masculine or feminine.
+    ar: to !== undefined ? `تاريخ البناء: ${from}–${to}` : `تاريخ البناء: ${from}`,
     fr: to !== undefined ? `Construit de ${from} à ${to}` : `Construit en ${from}`,
     es: to !== undefined ? `Construido entre ${from} y ${to}` : `Construido en ${from}`,
   }[lang];
