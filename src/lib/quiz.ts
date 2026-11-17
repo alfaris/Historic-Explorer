@@ -78,3 +78,11 @@ function oneGame<T extends Dated>(pairs: [T, T][], random: () => number): Round<
   }
   return rounds;
 }
+
+/** The text shared after a game: "I got 4 of 5 on "Which came first?" on the Coptic Cairo walk with Cairo Walks". */
+export function quizShareText(score: number, of: number, routeName: string, lang: 'en' | 'ar' | 'fr' | 'es'): string {
+  if (lang === 'ar') return `أجبت ${score} من ${of} في مسابقة «أيهما بُني أولاً؟» في جولة ${routeName} مع Cairo Walks`;
+  if (lang === 'fr') return `J’ai trouvé ${score} sur ${of} à « Lequel est le plus ancien ? » sur la visite ${routeName} avec Cairo Walks`;
+  if (lang === 'es') return `He acertado ${score} de ${of} en «¿Cuál es más antiguo?» en el paseo ${routeName} con Cairo Walks`;
+  return `I got ${score} of ${of} on "Which came first?" on the ${routeName} walk with Cairo Walks`;
+}

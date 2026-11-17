@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Check, Hourglass, RotateCcw, X } from 'lucide-react';
+import { Check, Hourglass, RotateCcw, Share2, X } from 'lucide-react';
 import type { Location } from '../data/locations';
 import { photoAltOf, photoForPlace } from '../data/photo-resolve';
 import { L, byLang, currentLang, nameOf } from '../i18n/lang';
 import { builtLabel } from '../lib/eras';
-import { quizRounds, type Round } from '../lib/quiz';
+import { quizRounds, quizShareText, type Round } from '../lib/quiz';
+import { routeShareUrl } from '../lib/share';
 import { recordScore, useQuizBests } from '../lib/quiz-best';
 import { track } from '../lib/track';
 import { PlacePhoto } from './PlacePhoto';
@@ -13,7 +14,29 @@ import { PlacePhoto } from './PlacePhoto';
 // rounds of two places from the route, tap the older one, then the score.
 // Everything is on the device, so it works offline.
 
-export default function WhichCameFirst({ places, routeId, onClose }: { places: Location[]; routeId: string; onClose: () => void }) {
+/**
+ * Shares the score through the phone's share sheet, or copies the text and
+ * link. Returns whether it was copied (to show "Copied").
+ */
+async function shareScore(title: string, text: string, url: string): Promise<boolean> {
+  if (navigator.share) {
+    try {
+      await navigator.share({ title, text, url });
+      return false;
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') return false; // The visitor closed the sheet.
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(`${text} ${url}`);
+    return true;
+  } catch {
+    window.prompt(L('Copy the link:', 'انسخ الرابط:'), `${text} ${url}`);
+    return false;
+  }
+}
+
+export default function WhichCameFirst({ places, routeId, routeName, onClose }: { places: Location[]; routeId: string; routeName: string; onClose: () => void }) {
   const [rounds, setRounds] = useState<Round<Location>[]>(() => quizRounds(places, routeId));
   const [index, setIndex] = useState(0);
   const [picked, setPicked] = useState<Location | null>(null);
@@ -22,6 +45,14 @@ export default function WhichCameFirst({ places, routeId, onClose }: { places: L
   // This game's result against the best on this device: null until the game ends.
   const [newBest, setNewBest] = useState<boolean | null>(null);
   const best = useQuizBests()[routeId];
+  const [copied, setCopied] = useState(false);
+  const share = async () => {
+    const text = quizShareText(score, rounds.length, routeName, lang);
+    if (await shareScore(title, text, routeShareUrl(window.location.origin, routeId))) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    }
+  };
   const lang = currentLang();
   const done = index >= rounds.length;
   const round = done ? null : rounds[index];
@@ -164,13 +195,24 @@ export default function WhichCameFirst({ places, routeId, onClose }: { places: L
               </p>
             )
           )}
-          <button
-            type="button"
-            onClick={again}
-            className="mt-3 inline-flex items-center justify-center gap-2 min-h-11 rounded-2xl bg-white border border-sand px-4 text-sm font-bold text-ink hover:border-nile/60"
-          >
-            <RotateCcw className="w-4 h-4" aria-hidden="true" /> {L('Play again', 'العب مرة أخرى')}
-          </button>
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={again}
+              className="inline-flex items-center justify-center gap-2 min-h-11 rounded-2xl bg-white border border-sand px-4 text-sm font-bold text-ink hover:border-nile/60"
+            >
+              <RotateCcw className="w-4 h-4" aria-hidden="true" /> {L('Play again', 'العب مرة أخرى')}
+            </button>
+            <button
+              type="button"
+              onClick={share}
+              className="inline-flex items-center justify-center gap-2 min-h-11 rounded-2xl bg-white border border-sand px-4 text-sm font-bold text-ink hover:border-nile/60"
+            >
+              {copied ? <Check className="w-4 h-4 text-nile" aria-hidden="true" /> : <Share2 className="w-4 h-4" aria-hidden="true" />}
+              {copied ? L('Copied', 'تم النسخ') : L('Share', 'مشاركة')}
+            </button>
+          </div>
+          <p className="sr-only" aria-live="polite">{copied ? L('Copied', 'تم النسخ') : ''}</p>
         </div>
       )}
     </section>

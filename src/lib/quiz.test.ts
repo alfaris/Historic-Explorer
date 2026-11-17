@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { QUIZ_ROUNDS, datedPlaces, fairPairs, hasQuiz, quizRounds, yearsApart } from './quiz';
+import { QUIZ_ROUNDS, datedPlaces, fairPairs, hasQuiz, quizRounds, quizShareText, yearsApart } from './quiz';
 
 const place = (id: number, builtFrom?: number, builtTo?: number, routeId = 'r') => ({ id, routeId, ...(builtFrom ? { builtFrom } : {}), ...(builtTo ? { builtTo } : {}) });
 // A fixed sequence for "random", so the tests are repeatable.
@@ -77,5 +77,14 @@ describe('quizRounds', () => {
   it('shows the older place on either side', () => {
     const sides = new Set(quizRounds(route, 'r', seq(0.1, 0.9)).map(r => r.older === r.a));
     expect(sides.size).toBe(2);
+  });
+});
+
+describe('quizShareText', () => {
+  it('says the score and the walk in each language', () => {
+    expect(quizShareText(4, 5, 'Coptic Cairo', 'en')).toBe('I got 4 of 5 on "Which came first?" on the Coptic Cairo walk with Cairo Walks');
+    expect(quizShareText(4, 5, 'القاهرة القبطية', 'ar')).toBe('أجبت 4 من 5 في مسابقة «أيهما بُني أولاً؟» في جولة القاهرة القبطية مع Cairo Walks');
+    expect(quizShareText(2, 3, 'Le Caire copte', 'fr')).toBe('J’ai trouvé 2 sur 3 à « Lequel est le plus ancien ? » sur la visite Le Caire copte avec Cairo Walks');
+    expect(quizShareText(0, 4, 'El Cairo copto', 'es')).toBe('He acertado 0 de 4 en «¿Cuál es más antiguo?» en el paseo El Cairo copto con Cairo Walks');
   });
 });
