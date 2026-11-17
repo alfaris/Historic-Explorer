@@ -4,14 +4,16 @@ import type { Location } from '../data/locations';
 import { photoAltOf, photoForPlace } from '../data/photo-resolve';
 import { L, byLang, currentLang, nameOf } from '../i18n/lang';
 import { builtLabel } from '../lib/eras';
-import { quizRounds, quizShareText, type Round } from '../lib/quiz';
+import { ALL_CAIRO_KEY, quizRounds, type QuizScope, type Round } from '../lib/quiz';
+import { quizShareText } from '../lib/quiz-share';
 import { routeShareUrl } from '../lib/share';
 import { recordScore, useQuizBests } from '../lib/quiz-best';
 import { track } from '../lib/track';
 import { PlacePhoto } from './PlacePhoto';
 
-// "Which came first?" on the finish screen (loaded when it's opened): a few
-// rounds of two places from the route, tap the older one, then the score.
+// "Which came first?" (loaded when it's opened): a few rounds of two places,
+// from the route on its finish screen or from every route in Through the ages;
+// tap the older one, then the score.
 // Everything is on the device, so it works offline.
 
 /**
@@ -36,19 +38,29 @@ async function shareScore(title: string, text: string, url: string): Promise<boo
   }
 }
 
-export default function WhichCameFirst({ places, routeId, routeName, onClose }: { places: Location[]; routeId: string; routeName: string; onClose: () => void }) {
+export default function WhichCameFirst({ places, routeId, routeName, routeNames, onClose }: {
+  places: Location[];
+  /** The route, or null for every route ("across Cairo"). */
+  routeId: QuizScope;
+  /** The route's name, or null across Cairo. */
+  routeName: string | null;
+  /** Across Cairo: each route's name, shown on the place cards so visitors know where they are. */
+  routeNames?: Map<string, string>;
+  onClose: () => void;
+}) {
   const [rounds, setRounds] = useState<Round<Location>[]>(() => quizRounds(places, routeId));
+  const bestKey = routeId ?? ALL_CAIRO_KEY;
   const [index, setIndex] = useState(0);
   const [picked, setPicked] = useState<Location | null>(null);
   const [score, setScore] = useState(0);
   const heading = useRef<HTMLHeadingElement>(null);
   // This game's result against the best on this device: null until the game ends.
   const [newBest, setNewBest] = useState<boolean | null>(null);
-  const best = useQuizBests()[routeId];
+  const best = useQuizBests()[bestKey];
   const [copied, setCopied] = useState(false);
   const share = async () => {
     const text = quizShareText(score, rounds.length, routeName, lang);
-    if (await shareScore(title, text, routeShareUrl(window.location.origin, routeId))) {
+    if (await shareScore(title, text, routeId ? routeShareUrl(window.location.origin, routeId) : `${window.location.origin}/`)) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     }
@@ -60,11 +72,11 @@ export default function WhichCameFirst({ places, routeId, routeName, onClose }: 
   // A finished game is recorded once, as it ends.
   useEffect(() => {
     if (done && newBest === null && rounds.length) {
-      setNewBest(recordScore(routeId, score, rounds.length));
-      // The anonymous usage counts take the first game per route per visit.
-      track({ t: 'quiz', id: routeId, s: score, n: rounds.length });
+      setNewBest(recordScore(bestKey, score, rounds.length));
+      // The anonymous usage counts take the first game per route per visit (not the one across Cairo).
+      if (routeId) track({ t: 'quiz', id: routeId, s: score, n: rounds.length });
     }
-  }, [done, newBest, rounds.length, routeId, score]);
+  }, [done, newBest, rounds.length, routeId, bestKey, score]);
 
   // Each new round (and the score) starts reading from the top for screen readers and keyboards.
   useEffect(() => {
@@ -141,7 +153,10 @@ export default function WhichCameFirst({ places, routeId, routeName, onClose }: 
                     sizes="200px"
                     fallback={<div className="w-full aspect-[4/3] bg-nile/10" />}
                   />
-                  <span className="block p-2 text-sm font-bold text-ink leading-snug">{nameOf(place)}</span>
+                  <span className="block p-2 text-sm font-bold text-ink leading-snug">
+                    {nameOf(place)}
+                    {routeNames && <span className="block text-[11px] font-normal text-stone-500">{routeNames.get(place.routeId)}</span>}
+                  </span>
                   {picked && (
                     <span className="flex items-start gap-1 px-2 pb-2 text-xs text-stone-600">
                       {isOlder && <Check className="w-4 h-4 text-nile shrink-0" aria-hidden="true" />}

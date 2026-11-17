@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { QUIZ_ROUNDS, datedPlaces, fairPairs, hasQuiz, quizRounds, quizShareText, yearsApart } from './quiz';
+import { QUIZ_ROUNDS, datedPlaces, fairPairs, hasQuiz, quizRounds, yearsApart } from './quiz';
+import { quizShareText } from './quiz-share';
 
 const place = (id: number, builtFrom?: number, builtTo?: number, routeId = 'r') => ({ id, routeId, ...(builtFrom ? { builtFrom } : {}), ...(builtTo ? { builtTo } : {}) });
 // A fixed sequence for "random", so the tests are repeatable.
@@ -86,5 +87,27 @@ describe('quizShareText', () => {
     expect(quizShareText(4, 5, 'القاهرة القبطية', 'ar')).toBe('أجبت 4 من 5 في مسابقة «أيهما بُني أولاً؟» في جولة القاهرة القبطية مع Cairo Walks');
     expect(quizShareText(2, 3, 'Le Caire copte', 'fr')).toBe('J’ai trouvé 2 sur 3 à « Lequel est le plus ancien ? » sur la visite Le Caire copte avec Cairo Walks');
     expect(quizShareText(0, 4, 'El Cairo copto', 'es')).toBe('He acertado 0 de 4 en «¿Cuál es más antiguo?» en el paseo El Cairo copto con Cairo Walks');
+  });
+});
+
+describe('across Cairo', () => {
+  const all = [place(1, 641, undefined, 'a'), place(2, 1356, undefined, 'b'), place(3, 1830, undefined, 'c'), place(4, undefined, undefined, 'a')];
+
+  it('takes dated places from every route', () => {
+    expect(datedPlaces(all, null).map(p => p.id)).toEqual([1, 2, 3]);
+    expect(hasQuiz(all, null)).toBe(true);
+    // No route on its own has enough.
+    expect(['a', 'b', 'c'].some(r => hasQuiz(all, r))).toBe(false);
+  });
+
+  it('pairs places from different routes', () => {
+    const rounds = quizRounds(all, null, seq(0.3, 0.8));
+    expect(rounds).toHaveLength(3);
+    expect(rounds.every(r => r.a.routeId !== r.b.routeId)).toBe(true);
+  });
+
+  it('shares a score across Cairo', () => {
+    expect(quizShareText(4, 5, null, 'en')).toBe('I got 4 of 5 on "Which came first?" across Cairo with Cairo Walks');
+    expect(quizShareText(4, 5, null, 'ar')).toContain('عن آثار القاهرة');
   });
 });

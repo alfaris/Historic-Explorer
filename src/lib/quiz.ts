@@ -16,9 +16,14 @@ const MAX_USES = 2;
 type Dated = BuiltFields & { id: number; routeId: string };
 export type Round<T> = { a: T; b: T; older: T };
 
-/** The route's places with a build year. */
-export const datedPlaces = <T extends Dated>(places: T[], routeId: string): T[] =>
-  places.filter(p => p.routeId === routeId && Number.isInteger(p.builtFrom));
+/** A route's ID, or null for every route at once (the quiz "across Cairo", from Through the ages). */
+export type QuizScope = string | null;
+/** Where the best score of the all-of-Cairo quiz is kept, beside the routes' own (see quiz-best). */
+export const ALL_CAIRO_KEY = 'all-of-cairo';
+
+/** The places with a build year on a route, or on every route. */
+export const datedPlaces = <T extends Dated>(places: T[], scope: QuizScope): T[] =>
+  places.filter(p => (scope === null || p.routeId === scope) && Number.isInteger(p.builtFrom));
 
 /** The years between two places' building, or a negative number when their building overlapped. */
 export function yearsApart(a: BuiltFields, b: BuiltFields): number {
@@ -39,8 +44,8 @@ export function fairPairs<T extends Dated>(dated: T[]): [T, T][] {
 }
 
 /** Whether the route has a quiz: enough dated places, and at least one fair pair. */
-export const hasQuiz = (places: Dated[], routeId: string) => {
-  const dated = datedPlaces(places, routeId);
+export const hasQuiz = (places: Dated[], scope: QuizScope) => {
+  const dated = datedPlaces(places, scope);
   return dated.length >= QUIZ_MIN_PLACES && fairPairs(dated).length > 0;
 };
 
@@ -49,8 +54,8 @@ export const hasQuiz = (places: Dated[], routeId: string) => {
  * MAX_USES rounds, each pair shown in a random order. `random` returns [0, 1),
  * like Math.random, so tests can fix it.
  */
-export function quizRounds<T extends Dated>(places: T[], routeId: string, random: () => number = Math.random): Round<T>[] {
-  const pairs = fairPairs(datedPlaces(places, routeId));
+export function quizRounds<T extends Dated>(places: T[], scope: QuizScope, random: () => number = Math.random): Round<T>[] {
+  const pairs = fairPairs(datedPlaces(places, scope));
   // A shuffle can use up a place early and leave a short game; keep the longest of a few.
   let best: Round<T>[] = [];
   for (let attempt = 0; attempt < 20 && best.length < Math.min(QUIZ_ROUNDS, pairs.length); attempt++) {
@@ -77,12 +82,4 @@ function oneGame<T extends Dated>(pairs: [T, T][], random: () => number): Round<
     rounds.push({ a, b, older: x.builtFrom! < y.builtFrom! ? x : y });
   }
   return rounds;
-}
-
-/** The text shared after a game: "I got 4 of 5 on "Which came first?" on the Coptic Cairo walk with Cairo Walks". */
-export function quizShareText(score: number, of: number, routeName: string, lang: 'en' | 'ar' | 'fr' | 'es'): string {
-  if (lang === 'ar') return `أجبت ${score} من ${of} في مسابقة «أيهما بُني أولاً؟» في جولة ${routeName} مع Cairo Walks`;
-  if (lang === 'fr') return `J’ai trouvé ${score} sur ${of} à « Lequel est le plus ancien ? » sur la visite ${routeName} avec Cairo Walks`;
-  if (lang === 'es') return `He acertado ${score} de ${of} en «¿Cuál es más antiguo?» en el paseo ${routeName} con Cairo Walks`;
-  return `I got ${score} of ${of} on "Which came first?" on the ${routeName} walk with Cairo Walks`;
 }
