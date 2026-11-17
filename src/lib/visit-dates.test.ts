@@ -74,6 +74,25 @@ describe('marking visits', () => {
     expect(stored()).toEqual({ 8: '2026-11-17', 5: '2026-11-20' });
   });
 
+  it("keeps a date it couldn't save when the stored dates are read again", async () => {
+    const { toggleVisited } = await import('./visited');
+    const { recordVisitDate } = await import('./visit-dates');
+    const ls = (window as unknown as { localStorage: { setItem: (k: string, v: string) => void } }).localStorage;
+    const setItem = ls.setItem;
+    // Storage is full for the dates (the visited set still saves).
+    ls.setItem = (k, v) => {
+      if (k === VISIT_DATES_KEY) throw new Error('QuotaExceededError');
+      setItem(k, v);
+    };
+    toggleVisited(5);
+    recordVisitDate(9); // reads the stored dates again: 5 must not be lost
+    expect(stored()).toEqual({});
+    // Room again: the next save writes both.
+    ls.setItem = setItem;
+    recordVisitDate(10);
+    expect(stored()).toEqual({ 5: '2026-11-17', 9: '2026-11-17', 10: '2026-11-17' });
+  });
+
   it('gives no date to a place already visited before dates were kept', async () => {
     store.set('cairo-walks:visited', JSON.stringify([7]));
     const { markVisited } = await import('./visited');

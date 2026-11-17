@@ -53,12 +53,30 @@ const read = (): VisitDates => {
   }
 };
 const current = () => (dates ??= typeof window === 'undefined' ? {} : read());
-const save = (next: VisitDates) => {
+
+// Changes this tab couldn't write (storage full or blocked): a date to set, or
+// null to forget it. They're applied over whatever is stored, so they aren't
+// lost when the stored dates are read again, and written with the next save
+// that works.
+const pending = new Map<string, string | null>();
+const withPending = (base: VisitDates): VisitDates => {
+  if (!pending.size) return base;
+  const out = { ...base };
+  for (const [id, d] of pending) {
+    if (d === null) delete out[id];
+    else out[id] = d;
+  }
+  return out;
+};
+
+const save = (next: VisitDates, changes: [string, string | null][]) => {
+  for (const [id, d] of changes) pending.set(id, d);
   dates = next;
   try {
     window.localStorage.setItem(VISIT_DATES_KEY, JSON.stringify(next));
+    pending.clear();
   } catch {
-    // Not kept after the page closes; still shown now.
+    // Not saved: kept for this visit, and written with the next save that works.
   }
   listeners.forEach(l => l());
 };
@@ -69,45 +87,52 @@ const storageWorks = () => {
     return false;
   }
 };
-// Build on the saved dates when storage works (they're the truth: a date another
-// tab removed stays removed), and on this tab's copy only when it doesn't.
-const latest = (): VisitDates => (storageWorks() ? read() : { ...current() });
+// Build on the saved dates when storage can be read (they're the truth: a date
+// another tab removed stays removed), with this tab's unsaved changes on top;
+// on this tab's copy only when storage can't be read.
+const latest = (): VisitDates => (storageWorks() ? withPending(read()) : { ...current() });
+
+/** Takes in what's stored now, keeping the same object when nothing changed (a stable snapshot for React). */
+const refresh = () => {
+  const next = latest();
+  if (JSON.stringify(next) !== JSON.stringify(current())) {
+    dates = next;
+    return true;
+  }
+  return false;
+};
 
 /** Records today's Cairo date for a place just marked visited (the first date is kept). */
 export function recordVisitDate(id: number, at = new Date()) {
   const base = latest();
   if (base[id]) {
-    if (dates?.[id] !== base[id]) {
-      dates = base;
-      listeners.forEach(l => l());
-    }
+    if (refresh()) listeners.forEach(l => l());
     return;
   }
-  save({ ...base, [id]: cairoDate(at) });
+  const day = cairoDate(at);
+  save({ ...base, [id]: day }, [[String(id), day]]);
 }
 
 /** Forgets the dates of places no longer visited (unmarked, or a route walked again). */
 export function forgetVisitDates(ids: number[]) {
   const base = latest();
   if (!ids.some(id => base[id])) {
-    dates = base;
+    if (refresh()) listeners.forEach(l => l());
     return;
   }
   const next = { ...base };
   for (const id of ids) delete next[id];
-  save(next);
+  save(next, ids.map(id => [String(id), null]));
 }
 
 const subscribe = (listener: () => void) => {
   // Dates another tab changed while nothing here was listening (the passport closed).
-  if (storageWorks()) {
-    const stored = read();
-    if (JSON.stringify(stored) !== JSON.stringify(current())) dates = stored;
-  }
+  refresh();
   listeners.add(listener);
   const onStorage = (e: StorageEvent) => {
     if (e.key === VISIT_DATES_KEY || e.key === null) {
-      dates = read();
+      // Another tab's dates, with this tab's unsaved changes on top.
+      dates = withPending(read());
       listener();
     }
   };
