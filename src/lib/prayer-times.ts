@@ -104,3 +104,38 @@ export function prayerText(status: PrayerStatus, lang: Lang): { label: string; d
     detail: lang === 'ar' ? `تتوقف الزيارات نحو ${mins} دقيقة` : lang === 'fr' ? `visites suspendues environ ${mins} min` : lang === 'es' ? `las visitas se pausan unos ${mins} min` : `visits pause for about ${mins} min`,
   };
 }
+
+// --- Best light for photos ---------------------------------------------------
+
+/** About how long the golden hour lasts after sunrise and before sunset, in minutes. */
+export const GOLDEN_MINUTES = 60;
+
+export type Span = { start: Date; end: Date };
+export type GoldenHours = { morning: Span; evening: Span; tomorrow: boolean };
+
+/**
+ * Cairo's golden hours, from the same sun times as the prayers (so offline):
+ * the hour after sunrise and the hour before sunset. Today's, or tomorrow's
+ * once today's evening light is over.
+ */
+export function goldenHours(at: Date): GoldenHours {
+  const on = (addDays: number) => {
+    const t = new PrayerTimes(CAIRO, cairoDay(at, addDays), CalculationMethod.Egyptian());
+    return {
+      morning: { start: t.sunrise, end: new Date(t.sunrise.getTime() + GOLDEN_MINUTES * MIN) },
+      evening: { start: new Date(t.sunset.getTime() - GOLDEN_MINUTES * MIN), end: t.sunset },
+    };
+  };
+  const today = on(0);
+  return today.evening.end > at ? { ...today, tomorrow: false } : { ...on(1), tomorrow: true };
+}
+
+/** "Best light today: 6:12–7:12 am and 3:58–4:58 pm" in the visitor's language. */
+export function goldenText(g: GoldenHours, lang: Lang): string {
+  const span = (s: Span) => `${clock(s.start, lang)}–${clock(s.end, lang)}`;
+  const [m, e] = [span(g.morning), span(g.evening)];
+  if (lang === 'ar') return `${g.tomorrow ? 'أفضل إضاءة غداً' : 'أفضل إضاءة اليوم'}: ${m} و${e}`;
+  if (lang === 'fr') return `${g.tomorrow ? 'Meilleure lumière demain' : 'Meilleure lumière aujourd’hui'} : ${m} et ${e}`;
+  if (lang === 'es') return `${g.tomorrow ? 'Mejor luz mañana' : 'Mejor luz hoy'}: ${m} y ${e}`;
+  return `${g.tomorrow ? 'Best light tomorrow' : 'Best light today'}: ${m} and ${e}`;
+}
