@@ -84,11 +84,20 @@ export function recordScore(routeId: string, score: number, of: number): boolean
   return old !== undefined || score > 0;
 }
 
-const subscribe = (listener: () => void) => {
+/** Takes in scores saved by other tabs, keeping the same object when nothing changed (a stable snapshot for React). */
+const refresh = () => {
+  const merged = mergeBests(current(), read());
+  if (JSON.stringify(merged) !== JSON.stringify(current())) bests = merged;
+};
+
+/** Listens for changes (exported for tests; components use useQuizBests). */
+export const subscribeBests = (listener: () => void) => {
+  // Scores another tab saved while nothing here was listening (the passport or quiz closed).
+  refresh();
   listeners.add(listener);
   const onStorage = (e: StorageEvent) => {
     if (e.key === QUIZ_BEST_KEY || e.key === null) {
-      bests = mergeBests(current(), read());
+      refresh();
       listener();
     }
   };
@@ -99,4 +108,7 @@ const subscribe = (listener: () => void) => {
   };
 };
 
-export const useQuizBests = () => useSyncExternalStore(subscribe, current, () => ({}) as Bests);
+/** The scores now, outside React. */
+export const bestsNow = () => current();
+
+export const useQuizBests = () => useSyncExternalStore(subscribeBests, current, () => ({}) as Bests);

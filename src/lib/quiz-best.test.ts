@@ -58,3 +58,29 @@ describe('recordScore', () => {
     expect(recordScore('r1', 9, 5)).toBe(false);
   });
 });
+
+describe('subscribing again', () => {
+  it("takes in another tab's scores saved while nothing here listened", async () => {
+    const store = new Map<string, string>();
+    (globalThis as { window?: unknown }).window = {
+      localStorage: { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => store.set(k, v) },
+      addEventListener() {},
+      removeEventListener() {},
+    };
+    const { vi } = await import('vitest');
+    vi.resetModules();
+    const { bestsNow, subscribeBests } = await import('./quiz-best');
+    expect(bestsNow()).toEqual({});
+    // The passport was opened and closed, then another tab saved a score.
+    subscribeBests(() => {})();
+    store.set(QUIZ_BEST_KEY, JSON.stringify({ r: { score: 3, of: 4 } }));
+    const stale = bestsNow();
+    subscribeBests(() => {})();
+    expect(bestsNow()).toEqual({ r: { score: 3, of: 4 } });
+    expect(bestsNow()).not.toBe(stale);
+    // Nothing new: the same object, so React doesn't re-render for nothing.
+    const same = bestsNow();
+    subscribeBests(() => {})();
+    expect(bestsNow()).toBe(same);
+  });
+});
