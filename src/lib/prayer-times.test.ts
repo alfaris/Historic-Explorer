@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { cairoTime } from './opening-hours';
-import { isActiveMosque, prayerOnArrival, prayersOn, prayerStatus, prayerText } from './prayer-times';
+import { GOLDEN_MINUTES, goldenHours, goldenText, isActiveMosque, prayerOnArrival, prayersOn, prayerStatus, prayerText } from './prayer-times';
 
 // Cairo is UTC+2 in winter. 2026-01-05 was a Monday; 2026-01-09 a Friday.
 const cairo = (date: string, hhmm: string) => {
@@ -87,5 +87,49 @@ describe('prayerText', () => {
     expect(t.label).toBe('Prayer time now');
     expect(t.detail).toMatch(/^visits resume around /);
     expect(prayerText(prayerStatus(at(10))!, 'fr').detail).toMatch(/^visites reprises vers 12 h/);
+  });
+});
+
+describe('goldenHours', () => {
+  const near = (d: Date, hhmm: string, slack = 10) => {
+    const [h, m] = hhmm.split(':').map(Number);
+    return Math.abs(minutes(d) - (h * 60 + m)) <= slack;
+  };
+
+  it('is the hour after sunrise and the hour before sunset, in winter', () => {
+    // Cairo, 5 January: sunrise about 06:50, sunset about 17:08.
+    const g = goldenHours(cairo('2026-01-05', '10:00'));
+    expect(g.tomorrow).toBe(false);
+    expect(near(g.morning.start, '06:50')).toBe(true);
+    expect(near(g.evening.end, '17:08')).toBe(true);
+    expect(g.morning.end.getTime() - g.morning.start.getTime()).toBe(GOLDEN_MINUTES * 60_000);
+    expect(g.evening.end.getTime() - g.evening.start.getTime()).toBe(GOLDEN_MINUTES * 60_000);
+  });
+
+  it('follows summer time: sunrise about 05:54 and sunset about 19:59 in late June', () => {
+    const g = goldenHours(new Date(Date.UTC(2026, 5, 21, 6, 0)));
+    expect(near(g.morning.start, '05:54')).toBe(true);
+    expect(near(g.evening.end, '19:59')).toBe(true);
+  });
+
+  it('is right after the clocks go back: sunset just before 17:00 in mid-November', () => {
+    const g = goldenHours(cairo('2026-11-17', '09:00'));
+    expect(near(g.morning.start, '06:17')).toBe(true);
+    expect(near(g.evening.end, '16:59')).toBe(true);
+  });
+
+  it("gives tomorrow's once today's evening light is over", () => {
+    const g = goldenHours(cairo('2026-01-05', '20:00'));
+    expect(g.tomorrow).toBe(true);
+    expect(g.morning.start.getTime()).toBeGreaterThan(cairo('2026-01-06', '06:00').getTime());
+  });
+
+  it('reads in each language', () => {
+    const g = goldenHours(cairo('2026-01-05', '10:00'));
+    expect(goldenText(g, 'en')).toMatch(/^Best light today: \d+:\d\d am–\d+(:\d\d)? am and \d+(:\d\d)? pm–\d+(:\d\d)? pm$/);
+    expect(goldenText(g, 'ar')).toMatch(/^أفضل إضاءة اليوم: .+ ص.+ و.+ م$/);
+    expect(goldenText(g, 'fr')).toMatch(/^Meilleure lumière aujourd’hui : 6 h \d\d–7 h \d\d et 16 h \d\d–17 h \d\d$/);
+    expect(goldenText(g, 'es')).toMatch(/^Mejor luz hoy: 6:\d\d–7:\d\d y 16:\d\d–17:\d\d$/);
+    expect(goldenText({ ...g, tomorrow: true }, 'en')).toMatch(/^Best light tomorrow/);
   });
 });
