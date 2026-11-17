@@ -5,6 +5,7 @@ import { photoAltOf, photoForPlace } from '../data/photo-resolve';
 import { L, byLang, currentLang, nameOf } from '../i18n/lang';
 import { builtLabel } from '../lib/eras';
 import { quizRounds, type Round } from '../lib/quiz';
+import { recordScore, useQuizBests } from '../lib/quiz-best';
 import { PlacePhoto } from './PlacePhoto';
 
 // "Which came first?" on the finish screen (loaded when it's opened): a few
@@ -17,9 +18,17 @@ export default function WhichCameFirst({ places, routeId, onClose }: { places: L
   const [picked, setPicked] = useState<Location | null>(null);
   const [score, setScore] = useState(0);
   const heading = useRef<HTMLHeadingElement>(null);
+  // This game's result against the best on this device: null until the game ends.
+  const [newBest, setNewBest] = useState<boolean | null>(null);
+  const best = useQuizBests()[routeId];
   const lang = currentLang();
   const done = index >= rounds.length;
   const round = done ? null : rounds[index];
+
+  // A finished game is recorded once, as it ends.
+  useEffect(() => {
+    if (done && newBest === null && rounds.length) setNewBest(recordScore(routeId, score, rounds.length));
+  }, [done, newBest, rounds.length, routeId, score]);
 
   // Each new round (and the score) starts reading from the top for screen readers and keyboards.
   useEffect(() => {
@@ -40,6 +49,7 @@ export default function WhichCameFirst({ places, routeId, onClose }: { places: L
     setIndex(0);
     setPicked(null);
     setScore(0);
+    setNewBest(null);
   };
 
   const right = picked && round && picked.id === round.older.id;
@@ -135,6 +145,20 @@ export default function WhichCameFirst({ places, routeId, onClose }: { places: L
               es: `Has acertado ${score} de ${rounds.length}`,
             })}
           </p>
+          {newBest ? (
+            <p className="mt-1 text-sm font-bold text-nile">{L('New best!', 'أفضل نتيجة جديدة!')}</p>
+          ) : (
+            best && (
+              <p className="mt-1 text-sm text-stone-600">
+                {byLang({
+                  en: `Your best: ${best.score} of ${best.of}`,
+                  ar: `أفضل نتيجة لك: ${best.score} من ${best.of}`,
+                  fr: `Votre record : ${best.score} sur ${best.of}`,
+                  es: `Tu mejor resultado: ${best.score} de ${best.of}`,
+                })}
+              </p>
+            )
+          )}
           <button
             type="button"
             onClick={again}

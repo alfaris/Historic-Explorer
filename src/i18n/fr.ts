@@ -349,6 +349,7 @@ export const FR: Record<string, string> = {
   'Next': 'Suivant',
   'See my score': 'Voir mon score',
   'Play again': 'Rejouer',
+  'New best!': 'Nouveau record !',
   'Through the ages': 'À travers les âges',
   'Places on every route, from the oldest.': 'Les lieux de tous les parcours, du plus ancien au plus récent.',
   'Era': 'Époque',

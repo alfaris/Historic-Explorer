@@ -351,6 +351,7 @@ export const ES: Record<string, string> = {
   'Next': 'Siguiente',
   'See my score': 'Ver mi resultado',
   'Play again': 'Jugar otra vez',
+  'New best!': '¡Nuevo récord!',
   'Through the ages': 'A través de los siglos',
   'Places on every route, from the oldest.': 'Los lugares de todas las rutas, del más antiguo al más reciente.',
   'Era': 'Época',

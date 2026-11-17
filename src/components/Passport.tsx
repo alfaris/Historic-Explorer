@@ -1,7 +1,8 @@
 import React, { lazy, useState } from 'react';
-import { Binoculars, Stamp as StampIcon } from 'lucide-react';
+import { Binoculars, Hourglass, Stamp as StampIcon } from 'lucide-react';
 import type { Location, Route } from '../data/locations';
 import { stampCount, stampDate, useStamps, type Stamp } from '../lib/passport';
+import type { Best } from '../lib/quiz-best';
 import { L, byLang, currentLang, nameOf } from '../i18n/lang';
 import { LazyBoundary } from './LazyBoundary';
 import { SheetFailed } from './SheetFailed';
@@ -30,7 +31,8 @@ const spotsLabel = (s: Stamp) =>
   byLang({ en: `Spotted ${s.found} of ${s.spots}`, ar: `وجدت ${s.found} من ${s.spots}`, fr: `Repéré ${s.found} sur ${s.spots}`, es: `Encontrado ${s.found} de ${s.spots}` });
 
 /** One stamp: the route's name and the day it was finished; dashed and grey until then. */
-export function StampBadge({ route, stamp, size = 'md' }: { route: Route; stamp?: Stamp; size?: 'md' | 'lg' }) {
+/** `quiz`: the best "Which came first?" score on the route, shown under the stamp. */
+export function StampBadge({ route, stamp, quiz, size = 'md' }: { route: Route; stamp?: Stamp; quiz?: Best; size?: 'md' | 'lg' }) {
   const box = size === 'lg' ? 'w-36 h-36' : 'w-28 h-28 sm:w-32 sm:h-32';
   return (
     <div className="flex flex-col items-center gap-1 text-center">
@@ -50,6 +52,12 @@ export function StampBadge({ route, stamp, size = 'md' }: { route: Route; stamp?
         <span className="flex items-center gap-1 text-[11px] text-stone-500">
           <Binoculars className="w-3 h-3" aria-hidden="true" />
           {spotsLabel(stamp)}
+        </span>
+      )}
+      {quiz && (
+        <span className="flex items-center gap-1 text-[11px] text-stone-500">
+          <Hourglass className="w-3 h-3" aria-hidden="true" />
+          {byLang({ en: `Quiz ${quiz.score}/${quiz.of}`, ar: `المسابقة ${quiz.score}/${quiz.of}`, fr: `Quiz ${quiz.score}/${quiz.of}`, es: `Juego ${quiz.score}/${quiz.of}` })}
         </span>
       )}
     </div>
