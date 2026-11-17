@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addEvents, cleanEvents, dayKey, emptyDay, helpfulness, languageShares, MAX_EVENTS_PER_REQUEST, parseDay, routeRatings, sumDays, listenBand, furtherBand, listening, mostStopEarly, missQuery, topMisses, MAX_MISSES_PER_DAY } from './stats';
+import { addEvents, cleanEvents, dayKey, emptyDay, helpfulness, languageShares, MAX_EVENTS_PER_REQUEST, parseDay, routeRatings, sumDays, listenBand, furtherBand, listening, mostStopEarly, missQuery, topMisses, MAX_MISSES_PER_DAY, quizStats } from './stats';
 
 const known = { placeIds: new Set([1, 2]), routeIds: new Set(['ahl-al-bayt']) };
 
@@ -29,7 +29,7 @@ describe('cleanEvents', () => {
 describe('addEvents / sumDays / parseDay', () => {
   it('counts events into the right totals', () => {
     const day = addEvents(emptyDay(), [{ t: 'play', id: 1 }, { t: 'play', id: 1 }, { t: 'route', id: 'r' }, { t: 'arrive', id: 2 }]);
-    expect(day).toEqual({ plays: { 1: 2 }, routes: { r: 1 }, arrivals: { 2: 1 }, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {}, langs: {}, listens: {}, misses: {} });
+    expect(day).toEqual({ plays: { 1: 2 }, routes: { r: 1 }, arrivals: { 2: 1 }, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {}, langs: {}, listens: {}, misses: {}, quiz: {} });
   });
 
   it('adds days together', () => {
@@ -39,7 +39,7 @@ describe('addEvents / sumDays / parseDay', () => {
   });
 
   it('drops malformed stored values', () => {
-    expect(parseDay({ plays: { 1: 3, 2: -1, 3: 1.5, 4: 'x' }, routes: 'bad' })).toEqual({ plays: { 1: 3 }, routes: {}, arrivals: {}, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {}, langs: {}, listens: {}, misses: {} });
+    expect(parseDay({ plays: { 1: 3, 2: -1, 3: 1.5, 4: 'x' }, routes: 'bad' })).toEqual({ plays: { 1: 3 }, routes: {}, arrivals: {}, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {}, langs: {}, listens: {}, misses: {}, quiz: {} });
     expect(parseDay(null)).toEqual(emptyDay());
   });
 
@@ -48,7 +48,7 @@ describe('addEvents / sumDays / parseDay', () => {
     const events = cleanEvents([{ t: 'up', id: 1 }, { t: 'down', id: 1 }, { t: 'up', id: 9 }, { t: 'up', id: '1' }], known);
     expect(events).toEqual([{ t: 'up', id: 1 }, { t: 'down', id: 1 }]);
     expect(addEvents(emptyDay(), events)).toMatchObject({ helpful: { 1: 1 }, unhelpful: { 1: 1 } });
-    expect(parseDay({ plays: { 1: 2 } })).toEqual({ plays: { 1: 2 }, routes: {}, arrivals: {}, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {}, langs: {}, listens: {}, misses: {} });
+    expect(parseDay({ plays: { 1: 2 } })).toEqual({ plays: { 1: 2 }, routes: {}, arrivals: {}, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {}, langs: {}, listens: {}, misses: {}, quiz: {} });
   });
 
   it('lists helpfulness per place, most disliked or most voted first', () => {
@@ -254,5 +254,40 @@ describe('searches that found nothing', () => {
     const next = addEvents(day, [{ t: 'miss', q: 'brand new' }, { t: 'miss', q: 'place a0' }]);
     expect(next.misses['brand new']).toBeUndefined();
     expect(next.misses['place a0']).toBe(2);
+  });
+});
+
+describe('quiz games', () => {
+  it('keeps only possible scores for known routes', () => {
+    const raw = [
+      { t: 'quiz', id: 'ahl-al-bayt', s: 4, n: 5 },
+      { t: 'quiz', id: 'ahl-al-bayt', s: 0, n: 3 },
+      { t: 'quiz', id: 'nope', s: 1, n: 3 },
+      { t: 'quiz', id: 'ahl-al-bayt', s: 6, n: 5 },
+      { t: 'quiz', id: 'ahl-al-bayt', s: 1, n: 9 },
+      { t: 'quiz', id: 'ahl-al-bayt', s: -1, n: 3 },
+      { t: 'quiz', id: 'ahl-al-bayt', s: 1.5, n: 3 },
+      { t: 'quiz', id: 'ahl-al-bayt', s: '2', n: 3 },
+      { t: 'quiz', id: 'ahl-al-bayt', s: 0, n: 0 },
+    ];
+    expect(cleanEvents(raw, known)).toEqual([
+      { t: 'quiz', id: 'ahl-al-bayt', s: 4, n: 5 },
+      { t: 'quiz', id: 'ahl-al-bayt', s: 0, n: 3 },
+    ]);
+  });
+
+  it('adds up games, right answers and rounds per route, and reads them back', () => {
+    const day = addEvents(emptyDay(), [{ t: 'quiz', id: 'r', s: 4, n: 5 }, { t: 'quiz', id: 'r', s: 0, n: 3 }]);
+    expect(day.quiz).toEqual({ 'r:g': 2, 'r:r': 4, 'r:n': 8 });
+    expect(parseDay(JSON.parse(JSON.stringify(day))).quiz).toEqual(day.quiz);
+    expect(parseDay({ quiz: { 'r:g': 1, 'r:x': 3, 'R R:g': 2, 'r:n': -1 } }).quiz).toEqual({ 'r:g': 1 });
+    expect(sumDays([day, day]).quiz).toEqual({ 'r:g': 4, 'r:r': 8, 'r:n': 16 });
+  });
+
+  it('gives each route its games and share of right answers', () => {
+    const day = addEvents(emptyDay(), [{ t: 'quiz', id: 'a', s: 3, n: 4 }, { t: 'quiz', id: 'a', s: 1, n: 4 }]);
+    expect(quizStats(day, ['a', 'b'])).toEqual([{ id: 'a', games: 2, right: 4, rounds: 8, pct: 50 }]);
+    // Days stored before games were counted have none.
+    expect(quizStats({ ...emptyDay(), quiz: undefined as never }, ['a'])).toEqual([]);
   });
 });

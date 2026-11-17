@@ -129,6 +129,18 @@ describe('statsCsv', () => {
     expect(row[header.indexOf('Low rating: too hot or tiring')]).toBe('1');
   });
 
+  it("adds each route's quiz games and share of right answers", () => {
+    const played = { ...data, total: addEvents(total, [{ t: 'quiz', id: route.id, s: 4, n: 5 }, { t: 'quiz', id: route.id, s: 2, n: 5 }]) };
+    const rows = readCsv(statsCsv(played, content, 7, today).text);
+    const header = rows.find(r => r[0] === 'Route ID')!;
+    const row = section(rows, 'Per route').find(r => r[0] === route.id)!;
+    expect(row[header.indexOf('Quiz games')]).toBe('2');
+    expect(row[header.indexOf('Quiz right answers (%)')]).toBe('60');
+    const other = section(rows, 'Per route').find(r => r[0] !== route.id && r[0] !== 'Route ID')!;
+    expect(other[header.indexOf('Quiz games')]).toBe('0');
+    expect(other[header.indexOf('Quiz right answers (%)')]).toBe('');
+  });
+
   it('lists the searches that found nothing, most frequent first', () => {
     expect(section(rows, 'Searches that found nothing')).toEqual([['citadel', '2'], ['khan', '1']]);
   });

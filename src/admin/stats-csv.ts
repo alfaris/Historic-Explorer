@@ -3,7 +3,7 @@
 
 import type { Content } from '../data/content';
 import { walkStops } from '../lib/walk';
-import { languageShares, listening, topMisses, LISTEN_BANDS, REASONS, ROUTE_REASONS, routeRatings, type ListenBand, type Reason, type RouteReason } from '../lib/stats';
+import { languageShares, listening, topMisses, LISTEN_BANDS, quizStats, REASONS, ROUTE_REASONS, routeRatings, type ListenBand, type Reason, type RouteReason } from '../lib/stats';
 import { CSV_TYPE, csvText } from './backup';
 import type { StatsResponse } from './api';
 import { LANGUAGES } from '../i18n/lang';
@@ -52,6 +52,7 @@ export function statsCsv(data: StatsResponse, content: Content, days: number, to
   const daily = dailySeries(data.perDay, days, today);
   const ratings = new Map(routeRatings(total, content.routes.map(r => r.id)).map(r => [r.id, r]));
   const languages = languageShares(total);
+  const quiz = new Map(quizStats(total, content.routes.map(r => r.id)).map(r => [r.id, r]));
   const listens = new Map(listening(total, content.places.map(p => p.id)).map(r => [r.id, r]));
   const from = daily[0].date;
   const to = daily[daily.length - 1].date;
@@ -88,7 +89,7 @@ export function statsCsv(data: StatsResponse, content: Content, days: number, to
     ]),
     [],
     ['Per route'],
-    ['Route ID', 'Route', 'Route opens', 'Audio plays at its stops', 'Near me arrivals at its stops', 'Ratings', 'Average rating', ...ROUTE_REASONS.map(r => ROUTE_REASON_HEADERS[r])],
+    ['Route ID', 'Route', 'Route opens', 'Audio plays at its stops', 'Near me arrivals at its stops', 'Ratings', 'Average rating', ...ROUTE_REASONS.map(r => ROUTE_REASON_HEADERS[r]), 'Quiz games', 'Quiz right answers (%)'],
     ...content.routes.map(r => {
       const stops = walkStops(content.places, r.id);
       const rating = ratings.get(r.id);
@@ -101,6 +102,8 @@ export function statsCsv(data: StatsResponse, content: Content, days: number, to
         rating?.count ?? 0,
         rating ? rating.average : '',
         ...ROUTE_REASONS.map(x => rating?.reasons[x] ?? 0),
+        quiz.get(r.id)?.games ?? 0,
+        quiz.has(r.id) ? quiz.get(r.id)!.pct : '',
       ];
     }),
     [],
