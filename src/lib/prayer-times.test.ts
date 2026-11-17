@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { cairoTime } from './opening-hours';
-import { GOLDEN_MINUTES, goldenHours, goldenText, isActiveMosque, prayerOnArrival, prayersOn, prayerStatus, prayerText } from './prayer-times';
+import { GOLDEN_MINUTES, goldenHours, goldenOn, inBestLight, goldenText, isActiveMosque, prayerOnArrival, prayersOn, prayerStatus, prayerText } from './prayer-times';
 
 // Cairo is UTC+2 in winter. 2026-01-05 was a Monday; 2026-01-09 a Friday.
 const cairo = (date: string, hhmm: string) => {
@@ -131,5 +131,30 @@ describe('goldenHours', () => {
     expect(goldenText(g, 'fr')).toMatch(/^Meilleure lumière aujourd’hui : 6 h \d\d–7 h \d\d et 16 h \d\d–17 h \d\d$/);
     expect(goldenText(g, 'es')).toMatch(/^Mejor luz hoy: 6:\d\d–7:\d\d y 16:\d\d–17:\d\d$/);
     expect(goldenText({ ...g, tomorrow: true }, 'en')).toMatch(/^Best light tomorrow/);
+  });
+});
+
+describe('inBestLight', () => {
+  // A day other than today: the chosen day's light, not today's.
+  const day = cairo('2026-03-10', '12:00');
+  const { morning, evening } = goldenOn(day);
+  const at = (d: Date, min: number) => new Date(d.getTime() + min * 60_000);
+
+  it('is true for a visit inside or across the edge of a golden hour', () => {
+    expect(inBestLight(at(morning.start, 10), at(morning.start, 30))).toBe(true);
+    expect(inBestLight(at(evening.start, -10), at(evening.start, 10))).toBe(true);
+    expect(inBestLight(at(evening.end, -5), at(evening.end, 15))).toBe(true);
+  });
+
+  it('is false just outside, and when the visit only touches an edge', () => {
+    expect(inBestLight(at(morning.end, 1), at(morning.end, 21))).toBe(false);
+    expect(inBestLight(at(evening.start, -20), evening.start)).toBe(false);
+    expect(inBestLight(cairo('2026-03-10', '12:00'), cairo('2026-03-10', '12:20'))).toBe(false);
+  });
+
+  it("uses each day's own light", () => {
+    const later = goldenOn(day, 100);
+    expect(later.evening.end.getTime() - evening.end.getTime()).not.toBe(100 * 24 * 3_600_000);
+    expect(inBestLight(at(later.evening.start, 5), at(later.evening.start, 25))).toBe(true);
   });
 });

@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { CalendarPlus, CheckCircle2, Clock, MoonStar, TriangleAlert, X, Zap } from 'lucide-react';
+import { CalendarPlus, CheckCircle2, Clock, MoonStar, Sun, TriangleAlert, X, Zap } from 'lucide-react';
 import type { Location, Route } from '../data/locations';
 import { cairoTime, dayName, formatTime, statusText, toMinutes } from '../lib/opening-hours';
-import { prayerText } from '../lib/prayer-times';
+import { inBestLight, prayerText } from '../lib/prayer-times';
+import { photoTipOf } from '../lib/spot-it';
 import { useDialog } from '../lib/useDialog';
 import {
   STAY_OPTIONS, cairoDaysBetween, cairoHHMM, cairoInstant, defaultStay, nextQuarter, suggestStart, visitPlan, type PlanFlag, type VisitPlan,
@@ -146,6 +147,11 @@ export default function PlanVisitDialog({ route, places, walkPlaces = places, on
   const pace = usePace();
   const plan = useMemo(() => visitPlan(walkPlaces, route.id, start, stay, undefined, specialPeriods), [walkPlaces, route.id, start, stay, specialPeriods, pace]); // eslint-disable-line react-hooks/exhaustive-deps
   const suggestion = useMemo(() => suggestStart(walkPlaces, route.id, start, stay, now, specialPeriods), [walkPlaces, route.id, start, stay, now, specialPeriods, pace]);
+  // Photo stops (with a Photo tip) the visit reaches in a golden hour of the chosen day: a bonus, not a flag.
+  const bestLight = useMemo(
+    () => new Set(plan.stops.filter(s => photoTipOf(s.place) && inBestLight(s.arrive, s.leave)).map(s => s.place.id)),
+    [plan],
+  );
   const short = walkPlaces !== places;
   const event = useMemo(() => planEvent(route, plan, start, short, lang), [route, plan, start, short, lang]);
 
@@ -211,6 +217,17 @@ export default function PlanVisitDialog({ route, places, walkPlaces = places, on
                 {startFinish(start, plan.finish, lang)}
               </p>
             )}
+            {bestLight.size > 0 && (
+              <p className="flex items-center gap-2 text-sm text-ink">
+                <Sun className="w-4 h-4 shrink-0 text-gold-ink" aria-hidden="true" />
+                {byLang({
+                  en: `${bestLight.size} photo ${bestLight.size === 1 ? 'stop' : 'stops'} in the best light`,
+                  ar: bestLight.size === 1 ? 'محطة تصوير واحدة في أفضل إضاءة' : bestLight.size === 2 ? 'محطتا تصوير في أفضل إضاءة' : `${bestLight.size} محطات تصوير في أفضل إضاءة`,
+                  fr: `${bestLight.size} étape${bestLight.size === 1 ? '' : 's'} photo dans la plus belle lumière`,
+                  es: `${bestLight.size} parada${bestLight.size === 1 ? '' : 's'} de fotos con la mejor luz`,
+                })}
+              </p>
+            )}
             {plan.finish && (
               <WeatherAdvice
                 start={start}
@@ -260,6 +277,12 @@ export default function PlanVisitDialog({ route, places, walkPlaces = places, on
                       {nameOf(stop.place)}
                     </span>
                     {stop.flags.map((flag, i) => <FlagLine key={i} flag={flag} at={stop.arrive} lang={lang} />)}
+                    {bestLight.has(stop.place.id) && (
+                      <span className="mt-0.5 flex items-center gap-1.5 text-xs text-gold-ink">
+                        <Sun className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                        {L('Best light for photos', 'أفضل إضاءة للتصوير')}
+                      </span>
+                    )}
                   </span>
                 </button>
               </li>
