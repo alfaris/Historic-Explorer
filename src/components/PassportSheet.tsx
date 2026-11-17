@@ -8,6 +8,7 @@ import { lastStamped } from '../lib/next-walk';
 import { NextWalk } from './NextWalk';
 import { L, byLang, currentLang, nameOf } from '../i18n/lang';
 import { StampBadge, walksLabel } from './Passport';
+import { useQuizBests } from '../lib/quiz-best';
 
 // The passport sheet, loaded when it's opened (see Passport.tsx).
 
@@ -18,6 +19,7 @@ const ARABIC = 'Cairo, Tahoma, sans-serif';
 /** The passport: every route's stamp, and Share my passport. */
 export default function PassportSheet({ routes, places, onClose, onShowRoute }: { routes: Route[]; places?: Location[]; onClose: () => void; onShowRoute?: (id: string) => void }) {
   const stamps = useStamps();
+  const bests = useQuizBests();
   // Next walk: from where the latest stamped walk ended.
   const last = lastStamped(routes, stamps);
   const n = stampCount(stamps, routes);
@@ -45,7 +47,7 @@ export default function PassportSheet({ routes, places, onClose, onShowRoute }: 
         <ul className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-5 justify-items-center">
           {routes.map(r => (
             <li key={r.id}>
-              <StampBadge route={r} stamp={stamps[r.id]} />
+              <StampBadge route={r} stamp={stamps[r.id]} quiz={bests[r.id]} />
             </li>
           ))}
         </ul>
