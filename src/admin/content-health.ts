@@ -9,6 +9,7 @@ import { DETOUR_FACTOR, walkMinutes, walkPlan } from '../lib/walk';
 import type { GlossaryTerm } from '../lib/glossary';
 import type { SpecialPeriod } from '../lib/special-hours';
 import { eraOf } from '../lib/eras';
+import { QUIZ_MIN_PLACES, datedPlaces, fairPairs } from '../lib/quiz';
 
 export type Gap = 'photo' | 'photoAlt' | 'hours' | 'era' | 'spot' | 'photoTip' | 'summary' | OptionalLang;
 
@@ -53,6 +54,29 @@ export function placeGaps(place: Location): Gap[] {
     if (!hasLang(place as unknown as Record<string, unknown>, lang, needsDescription ? ['name', 'description'] : ['name'])) gaps.push(lang);
   }
   return gaps;
+}
+
+export type QuizGap = {
+  /** Places on the route with a build year. */
+  dated: number;
+  /** Too few dated places, or enough but all within MIN_GAP_YEARS of each other. */
+  reason: 'few' | 'close';
+  /** How many more dated places it needs (for 'few'). */
+  needs: number;
+  /** The route's monuments without a build year, in walking order: where a year would help. */
+  undated: Location[];
+};
+
+/**
+ * Why a route has no "Which came first?" quiz on its finish screen, by the
+ * app's own rule (hasQuiz): null when it has one.
+ */
+export function quizGap(places: Location[], routeId: string): QuizGap | null {
+  const dated = datedPlaces(places, routeId);
+  const undated = places.filter(p => p.routeId === routeId && needsEra(p) && !Number.isInteger(p.builtFrom));
+  if (dated.length < QUIZ_MIN_PLACES) return { dated: dated.length, reason: 'few', needs: QUIZ_MIN_PLACES - dated.length, undated };
+  if (fairPairs(dated).length === 0) return { dated: dated.length, reason: 'close', needs: 0, undated };
+  return null;
 }
 
 /** Languages a route is missing: name and description, and highlights when it has English ones (as the editor's fill button asks). */

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { bundledContent } from '../data/content';
 import { walkPlan } from '../lib/walk';
-import { glossaryGaps, missingText, periodGaps, placeGaps, plannedKm, plannedWalk, progress, routeGaps, translationPriority, draftsToReview, markReviewed } from './content-health';
+import { quizGap, glossaryGaps, missingText, periodGaps, placeGaps, plannedKm, plannedWalk, progress, routeGaps, translationPriority, draftsToReview, markReviewed } from './content-health';
 
 const place = bundledContent.places[0];
 
@@ -162,5 +162,30 @@ describe('markReviewed', () => {
     const next = markReviewed(content, []);
     expect(next.places).toBe(content.places);
     expect(next.help).toBe(content.help);
+  });
+});
+
+describe('quizGap', () => {
+  const routeId = 'r';
+  const at = (id: number, builtFrom?: number, category = 'monument') =>
+    ({ ...place, id, routeId, category, ...(builtFrom ? { builtFrom } : { builtFrom: undefined }) }) as typeof place;
+
+  it('says how many more dated places a route needs, and which places could have a year', () => {
+    const places = [at(1, 879), at(2), at(3, 1356), at(4), at(5, undefined, 'coffee')];
+    const gap = quizGap(places, routeId)!;
+    expect(gap).toMatchObject({ dated: 2, reason: 'few', needs: 1 });
+    expect(gap.undated.map(p => p.id)).toEqual([2, 4]);
+  });
+
+  it('says when every dated place was built within 20 years of the others', () => {
+    expect(quizGap([at(1, 1300), at(2, 1305), at(3, 1310)], routeId)).toMatchObject({ dated: 3, reason: 'close', needs: 0, undated: [] });
+  });
+
+  it('is null for a route that has a quiz', () => {
+    expect(quizGap([at(1, 879), at(2, 1356), at(3, 1830)], routeId)).toBeNull();
+  });
+
+  it('counts a route with no dated places at all', () => {
+    expect(quizGap([at(1), at(2)], routeId)).toMatchObject({ dated: 0, reason: 'few', needs: 3 });
   });
 });
