@@ -1,10 +1,15 @@
-import React, { useMemo, useState } from 'react';
+import React, { lazy, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronRight, Hourglass, Landmark, X } from 'lucide-react';
 import type { Location, Route } from '../data/locations';
 import { builtLabel, ERAS, isEraId, timeline, yearsText, eraOf, type EraId } from '../lib/eras';
 import { useDialog } from '../lib/useDialog';
 import { L, currentLang, fallbackLang, nameOf } from '../i18n/lang';
+import { hasQuiz } from '../lib/quiz';
+import { LazyBoundary } from './LazyBoundary';
+
+// "Which came first?" across every route, loaded when it's opened.
+const WhichCameFirst = lazy(() => import('./WhichCameFirst'));
 
 /** "Built 1356–1363 · Mamluk" under a place's name; nothing when it has no date or era. */
 export function BuiltBadge({ place, className = '' }: { place: Location; className?: string }) {
@@ -62,6 +67,8 @@ function AgesSheet({ places, routes, onOpen, onClose }: {
   const ar = lang === 'ar';
   const groups = useMemo(() => timeline(places, p => nameOf(p)), [places]);
   const routeName = new Map(routes.map(r => [r.id, nameOf(r)]));
+  const quiz = useMemo(() => hasQuiz(places, null), [places]);
+  const [quizOpen, setQuizOpen] = useState(false);
 
   return createPortal(
     <div className="fixed inset-0 z-[7100] flex items-end sm:items-center justify-center bg-ink/50 p-0 sm:p-4" onClick={onClose}>
@@ -85,7 +92,23 @@ function AgesSheet({ places, routes, onOpen, onClose }: {
           </button>
           <h2 id="ages-title" className={`text-2xl text-ink pe-10 ${ar ? 'font-arabic font-bold' : 'font-serif'}`}>{L('Through the ages', 'عبر العصور')}</h2>
           <p className="text-sm text-stone-500">{L('Places on every route, from the oldest.', 'أماكن كل المسارات، من الأقدم.')}</p>
+          {quiz && !quizOpen && (
+            <button
+              type="button"
+              onClick={() => setQuizOpen(true)}
+              className="mt-3 inline-flex items-center justify-center gap-2 min-h-11 rounded-2xl border border-sand px-4 text-sm font-bold text-ink hover:border-nile/60"
+            >
+              <Hourglass className="w-4 h-4 text-gold-ink" aria-hidden="true" /> {L('Which came first?', 'أيهما بُني أولاً؟')}
+            </button>
+          )}
         </div>
+        {quizOpen && (
+          <div className="px-5 pt-4">
+            <LazyBoundary loading={null} failed={null}>
+              <WhichCameFirst places={places} routeId={null} routeName={null} routeNames={routeName} onClose={() => setQuizOpen(false)} />
+            </LazyBoundary>
+          </div>
+        )}
         <ol className="px-5 py-4 space-y-6">
           {groups.map(({ era, places: items }) => (
             <li key={era.id}>
