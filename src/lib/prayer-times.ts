@@ -119,15 +119,23 @@ export type GoldenHours = { morning: Span; evening: Span; tomorrow: boolean };
  * once today's evening light is over.
  */
 export function goldenHours(at: Date): GoldenHours {
-  const on = (addDays: number) => {
-    const t = new PrayerTimes(CAIRO, cairoDay(at, addDays), CalculationMethod.Egyptian());
-    return {
-      morning: { start: t.sunrise, end: new Date(t.sunrise.getTime() + GOLDEN_MINUTES * MIN) },
-      evening: { start: new Date(t.sunset.getTime() - GOLDEN_MINUTES * MIN), end: t.sunset },
-    };
+  const today = goldenOn(at);
+  return today.evening.end > at ? { ...today, tomorrow: false } : { ...goldenOn(at, 1), tomorrow: true };
+}
+
+/** The golden hours of the Cairo day `at` falls on (or `addDays` after it). */
+export function goldenOn(at: Date, addDays = 0): { morning: Span; evening: Span } {
+  const t = new PrayerTimes(CAIRO, cairoDay(at, addDays), CalculationMethod.Egyptian());
+  return {
+    morning: { start: t.sunrise, end: new Date(t.sunrise.getTime() + GOLDEN_MINUTES * MIN) },
+    evening: { start: new Date(t.sunset.getTime() - GOLDEN_MINUTES * MIN), end: t.sunset },
   };
-  const today = on(0);
-  return today.evening.end > at ? { ...today, tomorrow: false } : { ...on(1), tomorrow: true };
+}
+
+/** Whether a visit from `arrive` to `leave` overlaps a golden hour of its day (touching an edge doesn't count). */
+export function inBestLight(arrive: Date, leave: Date): boolean {
+  const { morning, evening } = goldenOn(arrive);
+  return [morning, evening].some(w => arrive < w.end && leave > w.start);
 }
 
 /** "Best light today: 6:12–7:12 am and 3:58–4:58 pm" in the visitor's language. */
