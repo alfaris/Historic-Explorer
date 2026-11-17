@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle2, ChevronRight } from 'lucide-react';
 import { glossaryOf, type Content } from '../data/content';
 import { LANGS, LANGUAGES, OPTIONAL_LANGS, type Lang, type OptionalLang } from '../i18n/lang';
-import { draftLang, draftSection, draftsToReview, markReviewed, GAPS, glossaryGaps, periodGaps, placeGaps, progress, routeGaps, translationPriority, type DraftRow, type Gap, type PlaceSection } from './content-health';
+import { draftLang, draftSection, draftsToReview, markReviewed, GAPS, glossaryGaps, periodGaps, placeGaps, progress, quizGap, routeGaps, translationPriority, type DraftRow, type Gap, type PlaceSection } from './content-health';
 import { draftLabel } from './DraftReview';
 import { distanceLabel, pinsToCheck, withPinConfirmed } from './pin-check';
 import { importTranslations, missingRows, translationSheet } from './translation-sheet';
@@ -59,6 +59,7 @@ export function ContentTab({ content, onEditPlace, onEditRoute, onEditTerm, onEd
         .filter(({ place, gaps }) => gaps.length > 0 && (filter === 'all' || gaps.includes(filter)) && (routeFilter === 'all' || place.routeId === routeFilter)),
     [content.places, filter, routeFilter],
   );
+  const noQuiz = content.routes.map(route => ({ route, gap: quizGap(content.places, route.id) })).filter(r => r.gap);
   const routesMissing = content.routes.map(route => ({ route, gaps: routeGaps(route) })).filter(r => r.gaps.length > 0);
   const termsMissing = glossaryOf(content).map(t => ({ id: t.id, name: t.termEn, gaps: glossaryGaps(t) })).filter(r => r.gaps.length > 0);
   const periodsMissing = (content.specialPeriods ?? []).map(p => ({ id: p.id, name: p.nameEn, gaps: periodGaps(p) })).filter(r => r.gaps.length > 0);
@@ -116,6 +117,41 @@ export function ContentTab({ content, onEditPlace, onEditRoute, onEditTerm, onEd
       />
       <PinsList content={content} save={save} onEdit={id => onEditPlace(id, 'location')} />
       <MissingList title="Routes" rows={routesMissing.map(({ route, gaps }) => ({ id: route.id, name: route.nameEn, gaps }))} onEdit={onEditRoute} />
+      {noQuiz.length > 0 && (
+        <div className="bg-white rounded-2xl border border-sand/50 p-4">
+          <p className="text-xs font-bold uppercase tracking-widest text-stone-500 mb-1">Routes without a "Which came first?" quiz ({noQuiz.length})</p>
+          <p className="text-[11px] text-stone-400 mb-2">The quiz needs 3 places with a build year, at least two of them 20 or more years apart.</p>
+          <ul className="divide-y divide-sand/40">
+            {noQuiz.map(({ route, gap }) => (
+              <li key={route.id} className="py-2 text-sm">
+                <p>
+                  {route.nameEn}{' '}
+                  <span className="text-xs text-amber-800">
+                    {gap!.reason === 'few'
+                      ? `${gap!.dated} dated ${gap!.dated === 1 ? 'place' : 'places'}, needs ${gap!.needs} more`
+                      : `${gap!.dated} dated places, all built within 20 years of each other`}
+                  </span>
+                </p>
+                {gap!.undated.length > 0 && (
+                  <p className="mt-1 flex flex-wrap items-center gap-x-1 text-xs text-stone-500">
+                    <span>Add a build year to:</span>
+                    {gap!.undated.map(p => (
+                      <button
+                        key={p.id}
+                        onClick={() => onEditPlace(p.id, 'built')}
+                        className="min-h-9 px-1.5 font-bold text-nile hover:underline"
+                        aria-label={`Add a build year to ${p.nameEn}`}
+                      >
+                        {p.nameEn}
+                      </button>
+                    ))}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <MissingList title="Glossary terms" rows={termsMissing} onEdit={onEditTerm} />
       <MissingList title="Special hours" rows={periodsMissing} onEdit={onEditPeriod} />
       {ended.length > 0 && (
