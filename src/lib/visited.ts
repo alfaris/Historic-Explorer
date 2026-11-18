@@ -22,8 +22,8 @@ export const toggleVisited = (id: number) => {
 /** Marks a place visited (no change if it already is), undoing a skip of it. */
 export const markVisited = (id: number) => {
   // Already visited (perhaps before dates were kept): its day stays as it is.
-  const first = !store.get().has(id);
-  store.add(id);
+  // Judged on the latest saved set, the one add() builds on, not this tab's copy.
+  const first = store.add(id);
   removeSkipped([id]);
   if (first) recordVisitDate(id);
 };

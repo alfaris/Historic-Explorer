@@ -85,11 +85,12 @@ export function createIdSetStore(storageKey: string) {
       else next.add(id);
       update(next);
     },
-    /** Adds the ID (no change if it's already there). */
-    add(id: number) {
+    /** Adds the ID (no change if it's already there). Returns whether it was added, judged on the latest saved set. */
+    add(id: number): boolean {
       const now = latest();
-      if (now.has(id)) return;
+      if (now.has(id)) return false;
       update(new Set([...now, id]));
+      return true;
     },
     remove(remove: number[]) {
       const next = new Set(latest());

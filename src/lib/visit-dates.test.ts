@@ -93,6 +93,18 @@ describe('marking visits', () => {
     expect(stored()).toEqual({ 5: '2026-11-17', 9: '2026-11-17', 10: '2026-11-17' });
   });
 
+  it('dates a visit marked again after another tab walked the route again', async () => {
+    const { toggleVisited, markVisited } = await import('./visited');
+    toggleVisited(5); // visited on the 17th, in this tab's copy too
+    // Another tab walks the route again: both stores cleared, and this tab hasn't heard yet.
+    store.set('cairo-walks:visited', JSON.stringify([]));
+    store.set(VISIT_DATES_KEY, JSON.stringify({}));
+    vi.setSystemTime(new Date('2026-11-19T08:00:00Z'));
+    markVisited(5); // walk mode
+    expect(JSON.parse(store.get('cairo-walks:visited')!)).toEqual([5]);
+    expect(stored()).toEqual({ 5: '2026-11-19' });
+  });
+
   it('gives no date to a place already visited before dates were kept', async () => {
     store.set('cairo-walks:visited', JSON.stringify([7]));
     const { markVisited } = await import('./visited');
