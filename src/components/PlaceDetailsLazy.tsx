@@ -1,4 +1,5 @@
 import React, { lazy } from 'react';
+import { RotateCw } from 'lucide-react';
 import { L } from '../i18n/lang';
 import { LazyBoundary } from './LazyBoundary';
 
@@ -22,12 +23,27 @@ if (typeof window !== 'undefined') {
  * A place card's body, loaded the first time a card opens (it's most of a
  * card's code and only needed then). The placeholder keeps some height, so the
  * card's opening animation doesn't jump; offline, the service worker has it.
+ * If its download fails, the card offers to reload the page.
  */
 export function PlaceDetailsLazy(props: React.ComponentProps<typeof PlaceDetails>) {
   return (
     <LazyBoundary
       loading={<div className="min-h-64" aria-busy="true" />}
-      failed={<p className="text-sm text-stone-500 mb-6">{L("This place's details couldn't load. Check your connection and open it again.", 'تعذر تحميل تفاصيل هذا المكان. تحقق من الاتصال وافتحه مرة أخرى.')}</p>}
+      failed={
+        // Browsers remember a failed module download for the rest of the page's life
+        // (see SheetFailed), so trying again means reloading the page.
+        <div className="mb-6">
+          <p className="text-sm text-stone-500">{L("This couldn't load. Check your connection, then reload the page.", 'تعذر التحميل. تحقق من اتصالك، ثم أعد تحميل الصفحة.')}</p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="mt-2 inline-flex items-center gap-2 min-h-11 px-4 rounded-xl bg-nile text-white text-xs font-bold uppercase tracking-widest"
+          >
+            <RotateCw className="w-4 h-4" aria-hidden="true" />
+            {L('Reload', 'إعادة التحميل')}
+          </button>
+        </div>
+      }
     >
       <PlaceDetails {...props} />
     </LazyBoundary>

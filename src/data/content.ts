@@ -37,8 +37,6 @@ export interface Content {
 
 export const bundledContent: Content = { routes, places: locations };
 
-/** The glossary in use: the saved one, or the built-in one. */
-
 export const CATEGORY_IDS = categories.map(c => c.id) as Category[];
 
 // Roughly Greater Cairo. Generous, but catches swapped lat/lng and typos.

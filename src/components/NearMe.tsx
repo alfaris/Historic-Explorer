@@ -6,12 +6,14 @@ import { distanceMeters, formatDistance, MAX_ACCURACY_METERS, updateArrival, typ
 import { useVisited } from '../lib/visited';
 import { LazyBoundary } from './LazyBoundary';
 
-// The audio guide is only needed once a place is reached: loaded then.
-const AudioGuide = lazy(() => import('./AudioGuide').then(m => ({ default: m.AudioGuide })));
 import { useLanguage } from '../i18n/LanguageContext';
 import { VisitedToggle } from './Visited';
 
 import { L, nameOf, descriptionOf, currentLang } from '../i18n/lang';
+
+// The audio guide is only needed once a place is reached: loaded then.
+const AudioGuide = lazy(() => import('./AudioGuide').then(m => ({ default: m.AudioGuide })));
+
 type Fix = { lat: number; lng: number; accuracy: number };
 
 export interface NearMeState {

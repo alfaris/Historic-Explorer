@@ -357,7 +357,6 @@ export const ES: Record<string, string> = {
   'My visits': 'Mis visitas',
   'Earlier': 'Antes',
   'Kept on this device only.': 'Se guarda solo en este dispositivo.',
-  "This place's details couldn't load. Check your connection and open it again.": 'No se pudieron cargar los detalles de este lugar. Comprueba tu conexión y vuelve a abrirlo.',
   'Through the ages': 'A través de los siglos',
   'Places on every route, from the oldest.': 'Los lugares de todas las rutas, del más antiguo al más reciente.',
   'Era': 'Época',
