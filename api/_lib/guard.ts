@@ -45,7 +45,13 @@ const clientIp = (request: Request) =>
  * Makes a limiter allowing `max` requests per IP per `windowMs`. The limiter
  * returns a 429 response when the caller is over the limit, otherwise null.
  */
-export function createRateLimiter(max: number, windowMs: number, message = 'Too many requests, please try again in a minute.') {
+export function createRateLimiter(
+  max: number,
+  windowMs: number,
+  message = 'Too many requests, please try again in a minute.',
+  /** Called once per address per window, on its first refused request (to log it without flooding the logs). */
+  onLimited?: () => void,
+) {
   const hits = new Map<string, { count: number; resetAt: number }>();
   return (request: Request, now = Date.now()): Response | null => {
     if (hits.size > 10_000) {
@@ -59,6 +65,7 @@ export function createRateLimiter(max: number, windowMs: number, message = 'Too 
     }
     entry.count += 1;
     if (entry.count <= max) return null;
+    if (entry.count === max + 1) onLimited?.();
     const retryAfter = Math.ceil((entry.resetAt - now) / 1000);
     return json({ error: message }, 429, { 'Retry-After': String(retryAfter) });
   };

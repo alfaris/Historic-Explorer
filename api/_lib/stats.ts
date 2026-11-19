@@ -16,8 +16,15 @@ import { hasBlobStore, json, readJson } from './http.js';
 const PREFIX = 'stats/days/';
 const dayPath = (key: string) => `${PREFIX}${key}.json`;
 
-// A visit sends one batch every so often; this is plenty for real use.
-export const statsRateLimit = createRateLimiter(20, 60_000);
+// A phone sends at most one batch every 30 s (SEND_AFTER_MS in src/lib/track.ts),
+// so 2 a minute. A tour group behind one guide's hotspot or hotel Wi-Fi shares
+// one address: 120 a minute leaves room for 60 phones while still stopping a
+// flood. A refused address is logged once per minute (never the address itself),
+// since sendBeacon doesn't retry and the counts would otherwise vanish unseen.
+export const STATS_PER_MINUTE = 120;
+export const statsRateLimit = createRateLimiter(STATS_PER_MINUTE, 60_000, undefined, () =>
+  console.warn(`Stats: refusing requests from one address (over ${STATS_PER_MINUTE} a minute); their counts are lost.`),
+);
 
 const noContent = () => new Response(null, { status: 204, headers: { 'Cache-Control': 'no-store' } });
 

@@ -44,7 +44,7 @@ vi.mock('@vercel/blob', () => {
   };
 });
 
-const { MAX_TRIES, backoffMs, byDay, handleStats, readStats, recordEvents } = await import('./stats');
+const { MAX_TRIES, STATS_PER_MINUTE, backoffMs, byDay, handleStats, readStats, recordEvents, statsRateLimit } = await import('./stats');
 const { _resetContentCache } = await import('./content');
 
 let ip = 0;
@@ -83,12 +83,29 @@ describe('POST /api/stats', () => {
     expect(store.size).toBe(0);
   });
 
-  it('rate-limits a single IP', async () => {
-    let last = 0;
-    for (let i = 0; i < 22; i++) {
-      last = (await handleStats(new Request('https://x/api/stats', { method: 'POST', body: '{"events":[]}', headers: { 'x-real-ip': '7.7.7.7' } }))).status;
+  it('lets a tour group on one address through: 30 phones sending every 30 s', async () => {
+    const t0 = Date.now() + 10 * 60_000; // a fresh window for this address
+    const req = () => new Request('https://x/api/stats', { method: 'POST', body: '{"events":[]}', headers: { 'x-real-ip': '8.8.8.8' } });
+    for (let round = 0; round < 4; round++) {
+      for (let phone = 0; phone < 30; phone++) expect(statsRateLimit(req(), t0 + round * 30_000 + phone * 100)).toBeNull();
     }
-    expect(last).toBe(429);
+  });
+
+  it('still refuses a flood from one address, and logs it once a minute', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const t0 = Date.now() + 20 * 60_000;
+      const req = () => new Request('https://x/api/stats', { method: 'POST', body: '{"events":[]}', headers: { 'x-real-ip': '7.7.7.7' } });
+      const statuses = Array.from({ length: STATS_PER_MINUTE + 30 }, (_, i) => statsRateLimit(req(), t0 + i)?.status ?? 200);
+      expect(statuses.slice(0, STATS_PER_MINUTE).every(s => s === 200)).toBe(true);
+      expect(statuses.slice(STATS_PER_MINUTE).every(s => s === 429)).toBe(true);
+      expect(warn.mock.calls.filter(([m]) => /refusing requests from one address/.test(String(m)))).toHaveLength(1);
+      expect(String(warn.mock.calls[0][0])).not.toContain('7.7.7.7');
+      // Through the endpoint too.
+      expect((await handleStats(req())).status).toBe(429);
+    } finally {
+      warn.mockRestore();
+    }
   });
 });
 
