@@ -3,6 +3,7 @@
 
 import { createIdSetStore, parseIds, serializeIds } from './id-set-store';
 import { removeSkipped } from './skipped';
+import { forgetVisitDates, recordVisitDate } from './visit-dates';
 
 const store = createIdSetStore('cairo-walks:visited');
 
@@ -13,13 +14,22 @@ export const serializeVisited = serializeIds;
 // Visiting a stop, however it's marked (walk mode, its card, arriving with Near me), undoes a skip of it.
 export const toggleVisited = (id: number) => {
   store.toggle(id);
-  if (store.get().has(id)) removeSkipped([id]);
+  if (store.get().has(id)) {
+    removeSkipped([id]);
+    recordVisitDate(id);
+  } else forgetVisitDates([id]);
 };
 /** Marks a place visited (no change if it already is), undoing a skip of it. */
 export const markVisited = (id: number) => {
-  store.add(id);
+  // Already visited (perhaps before dates were kept): its day stays as it is.
+  // Judged on the latest saved set, the one add() builds on, not this tab's copy.
+  const first = store.add(id);
   removeSkipped([id]);
+  if (first) recordVisitDate(id);
 };
-export const clearVisited = (ids: number[]) => store.remove(ids);
+export const clearVisited = (ids: number[]) => {
+  store.remove(ids);
+  forgetVisitDates(ids);
+};
 /** The set of visited place IDs. Re-renders when it changes. */
 export const useVisited = () => store.useIds();

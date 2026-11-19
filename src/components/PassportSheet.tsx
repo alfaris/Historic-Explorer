@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Image as ImageIcon, X } from 'lucide-react';
+import { CalendarDays, ChevronRight, Image as ImageIcon, X } from 'lucide-react';
 import type { Location, Route } from '../data/locations';
 import { stampCount, stampDate, useStamps } from '../lib/passport';
 import { useDialog } from '../lib/useDialog';
@@ -9,6 +9,8 @@ import { NextWalk } from './NextWalk';
 import { L, byLang, currentLang, nameOf } from '../i18n/lang';
 import { StampBadge, walksLabel } from './Passport';
 import { useQuizBests } from '../lib/quiz-best';
+import { useVisited } from '../lib/visited';
+import { useVisitDates, visitsByDay } from '../lib/visit-dates';
 
 // The passport sheet, loaded when it's opened (see Passport.tsx).
 
@@ -17,7 +19,14 @@ const SANS = 'Inter, system-ui, sans-serif';
 const ARABIC = 'Cairo, Tahoma, sans-serif';
 
 /** The passport: every route's stamp, and Share my passport. */
-export default function PassportSheet({ routes, places, onClose, onShowRoute }: { routes: Route[]; places?: Location[]; onClose: () => void; onShowRoute?: (id: string) => void }) {
+export default function PassportSheet({ routes, places, onClose, onShowRoute, onOpenPlace }: {
+  routes: Route[];
+  places?: Location[];
+  onClose: () => void;
+  onShowRoute?: (id: string) => void;
+  /** Opens a place from My visits. */
+  onOpenPlace?: (id: number) => void;
+}) {
   const stamps = useStamps();
   const bests = useQuizBests();
   // Next walk: from where the latest stamped walk ended.
@@ -60,6 +69,7 @@ export default function PassportSheet({ routes, places, onClose, onShowRoute }: 
           {n > 0 && <SharePassport routes={routes} />}
           {last && places && onShowRoute && <NextWalk fromRouteId={last.id} routes={routes} places={places} onShowRoute={onShowRoute} className="mt-3" />}
         </div>
+        {places && <MyVisits places={places} routes={routes} onOpenPlace={onOpenPlace} />}
       </div>
       <span {...guard('end')} />
     </div>,
@@ -133,5 +143,60 @@ function SharePassport({ routes }: { routes: Route[] }) {
       </button>
       {message && <p className={`text-xs ${message.error ? 'text-red-700' : 'text-nile'}`} role={message.error ? 'alert' : 'status'}>{message.text}</p>}
     </>
+  );
+}
+
+/**
+ * "My visits": the places marked visited, by the day they were first marked
+ * (newest first), then those visited before days were kept ("Earlier").
+ */
+function MyVisits({ places, routes, onOpenPlace }: { places: Location[]; routes: Route[]; onOpenPlace?: (id: number) => void }) {
+  const visited = useVisited();
+  const dates = useVisitDates();
+  const days = useMemo(() => visitsByDay(visited, dates, places.map(p => p.id)), [visited, dates, places]);
+  const byId = useMemo(() => new Map(places.map(p => [p.id, p])), [places]);
+  const routeName = useMemo(() => new Map(routes.map(r => [r.id, nameOf(r)])), [routes]);
+  const lang = currentLang();
+  if (days.length === 0) return null;
+  return (
+    <section aria-labelledby="my-visits-title" className="border-t border-sand/50 px-5 py-4">
+      <h3 id="my-visits-title" className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-stone-500 mb-3">
+        <CalendarDays className="w-4 h-4" aria-hidden="true" />
+        {L('My visits', 'زياراتي')}
+      </h3>
+      <ol className="space-y-4">
+        {days.map(day => (
+          <li key={day.date ?? 'earlier'}>
+            <h4 className="text-sm font-bold text-ink mb-1">{day.date ? stampDate(day.date, lang) : L('Earlier', 'سابقاً')}</h4>
+            <ul className="divide-y divide-sand/40">
+              {day.ids.map(id => {
+                const place = byId.get(id)!;
+                const body = (
+                  <>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm text-ink">{nameOf(place)}</span>
+                      <span className="block truncate text-xs text-stone-500">{routeName.get(place.routeId)}</span>
+                    </span>
+                    {onOpenPlace && <ChevronRight className={`w-4 h-4 shrink-0 text-stone-300 ${lang === 'ar' ? 'rotate-180' : ''}`} aria-hidden="true" />}
+                  </>
+                );
+                return (
+                  <li key={id}>
+                    {onOpenPlace ? (
+                      <button type="button" onClick={() => onOpenPlace(id)} className="flex w-full min-h-11 items-center gap-3 rounded-xl px-1 py-1 text-start hover:bg-chalk">
+                        {body}
+                      </button>
+                    ) : (
+                      <div className="flex min-h-11 items-center gap-3 px-1 py-1">{body}</div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </li>
+        ))}
+      </ol>
+      <p className="mt-3 text-xs text-stone-500">{L('Kept on this device only.', 'محفوظة على هذا الجهاز فقط.')}</p>
+    </section>
   );
 }

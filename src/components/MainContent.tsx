@@ -634,7 +634,7 @@ export const MainContent: React.FC = () => {
               {t('routes')}
             </h2>
             <div className="h-px flex-1 min-w-4 bg-sand/50"></div>
-            <PassportButton routes={routes} places={locations} onShowRoute={showRoute} />
+            <PassportButton routes={routes} places={locations} onShowRoute={showRoute} onOpenPlace={openPlace} />
             <SavedButton places={locations} routes={routes} onOpen={openPlace} />
           </div>
           <div className="flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
@@ -1137,7 +1137,7 @@ export const MainContent: React.FC = () => {
         </LazyBoundary>
       )}
       {sharedIds && <SharedListSheet ids={sharedIds} places={locations} routes={routes} onOpen={openPlace} onClose={closeShared} />}
-      {passportOpen && <PassportSheet routes={routes} places={locations} onClose={() => setPassportOpen(false)} onShowRoute={id => { setPassportOpen(false); showRoute(id); }} />}
+      {passportOpen && <PassportSheet routes={routes} places={locations} onClose={() => setPassportOpen(false)} onShowRoute={id => { setPassportOpen(false); showRoute(id); }} onOpenPlace={id => { setPassportOpen(false); openPlace(id); }} />}
       {walking && (
         <LazyBoundary
           key={walkAttempt}
