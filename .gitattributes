@@ -1,2 +1,3 @@
 contracts/**/*.json text eol=lf
 contracts/vectors/*.json linguist-generated=true
+contracts/strings/*.json linguist-generated=true
