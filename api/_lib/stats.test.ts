@@ -7,6 +7,8 @@ const store = new Map<string, { body: string; etag: string }>();
 let etagCounter = 0;
 // Conditional writes to refuse next, as if another request had just written.
 const clash = { next: 0 };
+// Called after each write that lands (a test can move the clock on).
+const hooks = { afterPut: () => {} };
 
 vi.mock('@vercel/blob', () => {
   class BlobNotFoundError extends Error {}
@@ -25,6 +27,7 @@ vi.mock('@vercel/blob', () => {
       if (existing && opts.ifMatch === undefined && !opts.allowOverwrite) throw new Error('Vercel Blob: This blob already exists');
       const etag = `"e${++etagCounter}"`;
       store.set(pathname, { body, etag });
+      hooks.afterPut();
       return { pathname, etag };
     },
     async get(pathname: string) {
@@ -123,6 +126,28 @@ describe('recordEvents', () => {
     expect(ok).toBe(false);
     expect(waited).toBe(0); // one try, no wait past the deadline
     clash.next = 0;
+  });
+  it("doesn't start another day's batch past the deadline, and logs it", async () => {
+    const realNow = Date.now.bind(Date);
+    let offset = 0;
+    const now = vi.spyOn(Date, 'now').mockImplementation(() => realNow() + offset);
+    hooks.afterPut = () => {
+      offset = 60_000; // the first batch took far too long
+    };
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+      const days = byDay([{ t: 'play', id: 201 }, { t: 'listen', id: 201, b: 'done', w: 'q1', d: yesterday }]);
+      expect([...days.keys()].sort()).toEqual([yesterday, today].sort());
+      expect((await send({ events: [{ t: 'play', id: 201 }, { t: 'listen', id: 201, b: 'done', w: 'q1', d: yesterday }] })).status).toBe(204);
+      expect(warn).toHaveBeenCalledWith(expect.stringMatching(/dropped 1 event\(s\) for .*no time left/));
+      expect(store.size).toBe(1); // only the first day's file was written
+    } finally {
+      hooks.afterPut = () => {};
+      now.mockRestore();
+      warn.mockRestore();
+    }
   });
   it('keeps the total wait bounded', () => {
     const total = Array.from({ length: MAX_TRIES - 1 }, (_, i) => backoffMs(i)).reduce((a, b) => a + b, 0);

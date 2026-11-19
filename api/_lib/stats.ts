@@ -112,6 +112,14 @@ export async function handleStats(request: Request): Promise<Response> {
   if (events.length === 0) return noContent();
   const deadline = Date.now() + STATS_DEADLINE_MS;
   for (const [key, group] of byDay(events)) {
+    // Past the deadline, a later batch isn't started at all. (A Blob read or write
+    // already under way isn't cut short: aborting a conditional write that may have
+    // landed could count its events twice on the retry. The deadline leaves most of
+    // the function's time limit for it.)
+    if (Date.now() > deadline) {
+      console.warn(`Stats: dropped ${group.length} event(s) for ${key}: no time left after the other day's batch.`);
+      continue;
+    }
     try {
       // Still clashing at the last try or the deadline: say so in the runtime logs rather than lose the counts silently.
       if (!(await recordEvents(group, new Date(), key, sleep, deadline))) console.warn(`Stats: dropped ${group.length} event(s) for ${key}: still clashing after retries (too many at once).`);
