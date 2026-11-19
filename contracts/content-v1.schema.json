@@ -6,24 +6,25 @@
       "type": "object",
       "properties": {
         "schemaVersion": {
-          "type": "number"
+          "type": "integer"
         },
         "contentVersion": {
           "type": "string",
           "description": "A hash of everything in the response: changes whenever the content, the audio URLs or the versions change."
         },
         "minAppVersion": {
-          "type": "number"
+          "type": "integer"
         },
         "content": {
-          "$ref": "#/definitions/Content"
+          "$ref": "#/definitions/Content",
+          "description": "The content as visitors get it, with what the server fills in already applied: the glossary is the built-in one until the admin saves one, so an app never needs its own copy."
         },
         "audio": {
           "type": "object",
           "additionalProperties": {
             "$ref": "#/definitions/AudioUrls"
           },
-          "description": "By place ID: the audio guide URL in each language that has a description to narrate (a missing language has no guide). The URLs are relative to the API's origin. Use them as they are; never rebuild them."
+          "description": "By place ID (the ID as a string, as JSON keys are): the audio guide URL in each language that has a description to narrate (a missing language has no guide). The URLs are relative to the API's origin. Use them as they are; never rebuild them."
         }
       },
       "required": [
@@ -50,7 +51,7 @@
           }
         },
         "maxPlaceId": {
-          "type": "number",
+          "type": "integer",
           "description": "Highest place ID ever used, so IDs of deleted places are never reused."
         },
         "glossary": {
@@ -178,8 +179,7 @@
           "type": "string"
         },
         "startId": {
-          "type": "number",
-          "description": "Getting there (optional): the place the walk starts from, when not the first stop (a meeting point, say)."
+          "type": "integer"
         },
         "metroEn": {
           "type": "string",
@@ -195,7 +195,7 @@
           "type": "string"
         },
         "metroMinutes": {
-          "type": "number"
+          "type": "integer"
         },
         "gettingThereEn": {
           "type": "string",
@@ -242,10 +242,11 @@
           "description": "Path under public/, e.g. /images/photos/place-1.webp"
         },
         "width": {
-          "type": "number"
+          "type": "integer",
+          "description": "In pixels."
         },
         "height": {
-          "type": "number"
+          "type": "integer"
         },
         "author": {
           "type": "string"
@@ -278,7 +279,7 @@
       "type": "object",
       "properties": {
         "id": {
-          "type": "number"
+          "type": "integer"
         },
         "routeId": {
           "type": "string"
@@ -385,10 +386,11 @@
           "description": "When it was built and in which era (Through the ages); all optional. See lib/eras."
         },
         "builtFrom": {
-          "type": "number"
+          "type": "integer",
+          "description": "A year; negative for BC."
         },
         "builtTo": {
-          "type": "number"
+          "type": "integer"
         },
         "hours": {
           "$ref": "#/definitions/OpeningHours",
@@ -608,10 +610,11 @@
           "description": "Path under public/, e.g. /images/photos/place-1.webp"
         },
         "width": {
-          "type": "number"
+          "type": "integer",
+          "description": "In pixels."
         },
         "height": {
-          "type": "number"
+          "type": "integer"
         },
         "author": {
           "type": "string"
@@ -923,7 +926,7 @@
           "description": "Where it shows: one route, one place, or (neither) everywhere."
         },
         "placeId": {
-          "type": "number"
+          "type": "integer"
         },
         "important": {
           "type": "boolean",

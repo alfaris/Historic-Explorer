@@ -40,12 +40,14 @@ export interface Route {
   photoAltFr?: string;
   photoAltEs?: string;
   /** Getting there (optional): the place the walk starts from, when not the first stop (a meeting point, say). */
+  /** @asType integer */
   startId?: number;
   /** The nearest metro station to the start, in each language, and the walk from it in minutes. */
   metroEn?: string;
   metroAr?: string;
   metroFr?: string;
   metroEs?: string;
+  /** @asType integer */
   metroMinutes?: number;
   /** A note on getting to the start, in each language ("Ask for Bab Zuweila: cars can't enter the street"). */
   gettingThereEn?: string;
@@ -57,6 +59,7 @@ export interface Route {
 }
 
 export interface Location {
+  /** @asType integer */
   id: number;
   routeId: string;
   nameEn: string;
@@ -104,7 +107,9 @@ export interface Location {
   photoTipEs?: string;
   /** When it was built and in which era (Through the ages); all optional. See lib/eras. */
   era?: EraId;
+  /** A year; negative for BC. @asType integer */
   builtFrom?: number;
+  /** @asType integer */
   builtTo?: number;
   /** Weekly opening hours, in Cairo time. Optional: without them the app shows nothing rather than a guess. */
   hours?: OpeningHours;

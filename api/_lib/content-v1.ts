@@ -7,6 +7,7 @@
 
 import { createHash } from 'node:crypto';
 import type { Content } from '../../src/data/content.js';
+import { glossaryOf } from '../../src/data/glossary-of.js';
 import { descriptionOf, LANGS, type Lang } from '../../src/i18n/lang.js';
 import { narrationSource } from '../../src/lib/guide-kind.js';
 import { audioVersion } from '../../src/lib/text-hash.js';
@@ -23,13 +24,20 @@ export const MIN_APP_VERSION = 1;
 export type AudioUrls = Partial<Record<Lang, string>>;
 
 export interface ContentV1 {
+  /** @asType integer */
   schemaVersion: number;
   /** A hash of everything in the response: changes whenever the content, the audio URLs or the versions change. */
   contentVersion: string;
+  /** @asType integer */
   minAppVersion: number;
+  /**
+   * The content as visitors get it, with what the server fills in already applied:
+   * the glossary is the built-in one until the admin saves one, so an app never
+   * needs its own copy.
+   */
   content: Content;
   /**
-   * By place ID: the audio guide URL in each language that has a description to
+   * By place ID (the ID as a string, as JSON keys are): the audio guide URL in each language that has a description to
    * narrate (a missing language has no guide). The URLs are relative to the API's
    * origin. Use them as they are; never rebuild them.
    */
@@ -48,7 +56,9 @@ export function audioUrlsFor(place: Content['places'][number]): AudioUrls {
   return urls;
 }
 
-export function contentV1(content: Content, audioFor: (place: Content['places'][number]) => AudioUrls = audioUrlsFor): ContentV1 {
+export function contentV1(stored: Content, audioFor: (place: Content['places'][number]) => AudioUrls = audioUrlsFor): ContentV1 {
+  // What the web falls back to on its own (glossaryOf), sent filled in.
+  const content: Content = { ...stored, glossary: glossaryOf(stored) };
   const audio: Record<string, AudioUrls> = {};
   for (const place of content.places) audio[place.id] = audioFor(place);
   // The version covers everything an app keeps, not only the content: audio URLs

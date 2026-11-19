@@ -12,7 +12,8 @@ const checkedIn = readFileSync(new URL(`../../${SCHEMA_PATH}`, import.meta.url),
 
 describe('content schema', () => {
   it('is up to date with the TypeScript types (run npm run gen:schema)', () => {
-    expect(checkedIn).toBe(contentSchemaText());
+    // Compared as JSON, so a checkout with CRLF line endings doesn't fail it.
+    expect(JSON.parse(checkedIn)).toEqual(JSON.parse(contentSchemaText()));
   }, 30_000);
 
   it('accepts the v1 response for the built-in content, and for content with every optional part', () => {
@@ -33,5 +34,19 @@ describe('content schema', () => {
     const v1 = JSON.parse(JSON.stringify(contentV1(normalizeContent(structuredClone(bundledContent)))));
     delete v1.content.places;
     expect(validate(v1)).toBe(false);
+  });
+
+  it('types IDs and counts as integers, so app models get Int rather than Double', () => {
+    const validate = new Ajv({ strict: false }).compile(JSON.parse(checkedIn));
+    const fresh = () => JSON.parse(JSON.stringify(contentV1(normalizeContent(structuredClone(bundledContent)))));
+    const fractionalId = fresh();
+    fractionalId.content.places[0].id = 1.5;
+    expect(validate(fractionalId)).toBe(false);
+    const fractionalVersion = fresh();
+    fractionalVersion.minAppVersion = 1.5;
+    expect(validate(fractionalVersion)).toBe(false);
+    const fractionalLat = fresh();
+    fractionalLat.content.places[0].lat = 30.0459;
+    expect(validate(fractionalLat)).toBe(true);
   });
 });
