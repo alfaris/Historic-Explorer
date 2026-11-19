@@ -8,6 +8,7 @@
 import { createHash } from 'node:crypto';
 import type { Content } from '../../src/data/content.js';
 import { glossaryOf } from '../../src/data/glossary-of.js';
+import { YEAR_MAX, YEAR_MIN } from '../../src/lib/eras.js';
 import { descriptionOf, LANGS, type Lang } from '../../src/i18n/lang.js';
 import { narrationSource } from '../../src/lib/guide-kind.js';
 import { audioVersion } from '../../src/lib/text-hash.js';
@@ -56,31 +57,47 @@ export function audioUrlsFor(place: Content['places'][number]): AudioUrls {
   return urls;
 }
 
-const sized = (photo: { width: number; height: number } | undefined) =>
-  !!photo && Number.isInteger(photo.width) && Number.isInteger(photo.height) && photo.width >= 1 && photo.height >= 1;
+const within = (n: number | undefined, min: number, max: number) => Number.isInteger(n) && n! >= min && n! <= max;
+const sized = (photo: { width: number; height: number } | undefined) => !!photo && within(photo.width, 1, 4000) && within(photo.height, 1, 4000);
 
 /**
- * Leaves out photos whose size isn't whole pixels. validateContent refuses them,
- * but a restored old version could still hold one, and the apps decode sizes as
- * integers (one bad size would fail the whole response).
+ * The content less what an app couldn't decode, by the limits validateContent
+ * already sets: validation refuses these on save, but a restored old version
+ * could still hold one, and the apps decode these fields as 32-bit integers
+ * (one bad value would fail the whole response). Leaves out photos whose size
+ * isn't whole pixels, years and metro minutes out of range, and a route start
+ * (startId) that isn't one of the places sent.
  */
-function withSizedPhotos(content: Content): Content {
-  const routes = content.routes.map(r => (r.photo && !sized(r.photo) ? (({ photo: _bad, ...rest }) => rest)(r) : r));
+export function forApps(content: Content): Content {
+  const placeIds = new Set(content.places.map(p => p.id));
+  const routes = content.routes.map(r => {
+    const { photo, startId, metroMinutes, ...rest } = r;
+    return {
+      ...rest,
+      ...(sized(photo) ? { photo } : {}),
+      ...(Number.isInteger(startId) && placeIds.has(startId!) ? { startId } : {}),
+      ...(within(metroMinutes, 1, 60) ? { metroMinutes } : {}),
+    };
+  });
   const places = content.places.map(p => {
-    let place = p;
-    if (place.photo && !sized(place.photo)) place = (({ photo: _bad, ...rest }) => rest)(place);
-    if (place.gallery?.some(g => !sized(g))) {
-      const gallery = place.gallery.filter(sized);
-      place = gallery.length ? { ...place, gallery } : (({ gallery: _none, ...rest }) => rest)(place);
-    }
-    return place;
+    const { photo, gallery, builtFrom, builtTo, ...rest } = p;
+    const sizedGallery = gallery?.filter(sized);
+    const from = within(builtFrom, YEAR_MIN, YEAR_MAX) ? builtFrom : undefined;
+    const to = from !== undefined && within(builtTo, YEAR_MIN, YEAR_MAX) ? builtTo : undefined;
+    return {
+      ...rest,
+      ...(sized(photo) ? { photo } : {}),
+      ...(sizedGallery?.length ? { gallery: sizedGallery } : {}),
+      ...(from !== undefined ? { builtFrom: from } : {}),
+      ...(to !== undefined ? { builtTo: to } : {}),
+    };
   });
   return { ...content, routes, places };
 }
 
 export function contentV1(stored: Content, audioFor: (place: Content['places'][number]) => AudioUrls = audioUrlsFor): ContentV1 {
   // What the web falls back to on its own (glossaryOf), sent filled in.
-  const content: Content = withSizedPhotos({ ...stored, glossary: glossaryOf(stored) });
+  const content: Content = forApps({ ...stored, glossary: glossaryOf(stored) });
   const audio: Record<string, AudioUrls> = {};
   for (const place of content.places) audio[place.id] = audioFor(place);
   // The version covers everything an app keeps, not only the content: audio URLs

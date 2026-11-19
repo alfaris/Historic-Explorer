@@ -4,7 +4,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import Ajv from 'ajv';
-import { bundledContent, normalizeContent } from '../../src/data/content';
+import { bundledContent, normalizeContent, usableContent } from '../../src/data/content';
 import { contentSchemaText, SCHEMA_PATH } from '../../scripts/content-schema';
 import { contentV1 } from './content-v1';
 
@@ -58,6 +58,22 @@ describe('content schema', () => {
     expect(place.photo).toBeUndefined();
     expect(place.gallery).toHaveLength(1);
     expect(served.content.routes[0].photo).toBeUndefined();
+    // Values an app couldn't decode (out of the ranges validation allows) are left out too.
+    const odd = structuredClone(bundledContent);
+    // A start at a place that isn't sent: normalizing keeps it (the stored place exists), usableContent drops the place.
+    odd.places.push({ ...odd.places[0], id: 1.5, routeId: odd.routes[0].id });
+    odd.routes[0].startId = 1.5;
+    odd.routes[0].metroMinutes = 1e12;
+    odd.places[0].builtFrom = 99_999_999_999;
+    odd.places[0].builtTo = 1400;
+    odd.places[1].photo = { ...upload, width: 1e12 };
+    const oddServed = JSON.parse(JSON.stringify(contentV1(usableContent(normalizeContent(odd))!)));
+    expect(validate(oddServed), JSON.stringify(validate.errors)).toBe(true);
+    expect(oddServed.content.routes[0].startId).toBeUndefined();
+    expect(oddServed.content.routes[0].metroMinutes).toBeUndefined();
+    expect(oddServed.content.places[0].builtFrom).toBeUndefined();
+    expect(oddServed.content.places[0].builtTo).toBeUndefined();
+    expect(oddServed.content.places.find((p: { id: number }) => p.id === odd.places[1].id).photo).toBeUndefined();
     const fractionalLat = fresh();
     fractionalLat.content.places[0].lat = 30.0459;
     expect(validate(fractionalLat)).toBe(true);
