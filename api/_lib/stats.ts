@@ -34,23 +34,30 @@ async function readDay(key: string): Promise<{ day: DayStats; etag: string | nul
 
 // A tour group's phones can all send at the same moment: each clash waits a
 // little longer (with jitter, so they don't clash again in step) before
-// re-reading. The waits add up to under 2.5 s, well inside the
-// function's time limit.
+// re-reading. The waits add up to under 2.5 s, and a request stops retrying at
+// its deadline (STATS_DEADLINE_MS for all its batches), so it stays well inside
+// the function's time limit.
 export const MAX_TRIES = 8;
 const BASE_WAIT_MS = 25;
 const MAX_WAIT_MS = 800;
 /** The longest wait after the given failed try (0-based); the actual wait is a random part of it. */
 export const backoffMs = (attempt: number) => Math.min(MAX_WAIT_MS, BASE_WAIT_MS * 2 ** attempt);
 const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+export const STATS_DEADLINE_MS = 4_000;
 
 /**
  * Adds events to a day's totals. Uses the file's ETag so two requests at the
  * same moment can't overwrite each other's counts; on a clash it waits a
- * moment, re-reads and tries again. False when every try clashed.
+ * moment, re-reads and tries again, up to MAX_TRIES or until `deadline` (a
+ * Date.now() time). False when every try clashed.
  */
-export async function recordEvents(events: Parameters<typeof addEvents>[1], now = new Date(), key = dayKey(now), wait = sleep) {
+export async function recordEvents(events: Parameters<typeof addEvents>[1], now = new Date(), key = dayKey(now), wait = sleep, deadline = Infinity) {
   for (let attempt = 0; attempt < MAX_TRIES; attempt++) {
-    if (attempt > 0) await wait(Math.random() * backoffMs(attempt - 1));
+    if (attempt > 0) {
+      const ms = Math.random() * backoffMs(attempt - 1);
+      if (Date.now() + ms > deadline) return false;
+      await wait(ms);
+    }
     const { day, etag } = await readDay(key);
     try {
       await put(dayPath(key), JSON.stringify(addEvents(day, events)), {
@@ -103,14 +110,15 @@ export async function handleStats(request: Request): Promise<Response> {
     routeIds: new Set(content.routes.map(r => r.id)),
   });
   if (events.length === 0) return noContent();
-  try {
-    for (const [key, group] of byDay(events)) {
-      // Still clashing after every try: say so in the runtime logs rather than lose the counts silently.
-      if (!(await recordEvents(group, new Date(), key))) console.warn(`Stats: dropped ${group.length} event(s) for ${key} after ${MAX_TRIES} tries (too many at once).`);
+  const deadline = Date.now() + STATS_DEADLINE_MS;
+  for (const [key, group] of byDay(events)) {
+    try {
+      // Still clashing at the last try or the deadline: say so in the runtime logs rather than lose the counts silently.
+      if (!(await recordEvents(group, new Date(), key, sleep, deadline))) console.warn(`Stats: dropped ${group.length} event(s) for ${key}: still clashing after retries (too many at once).`);
+    } catch (err) {
+      // Stats are best-effort: never show visitors an error for them. Another day's batch still goes ahead.
+      console.warn('Recording stats failed:', err);
     }
-  } catch (err) {
-    // Stats are best-effort: never show visitors an error for them.
-    console.warn('Recording stats failed:', err);
   }
   return noContent();
 }

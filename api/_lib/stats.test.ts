@@ -113,8 +113,16 @@ describe('recordEvents', () => {
       vi.useRealTimers();
       clash.next = 0;
     }
-    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/dropped 2 event\(s\) .* after 8 tries/));
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/dropped 2 event\(s\) for .*still clashing/));
     warn.mockRestore();
+  });
+  it('stops retrying at the deadline', async () => {
+    clash.next = MAX_TRIES;
+    let waited = 0;
+    const ok = await recordEvents([{ t: 'play', id: 1 }], new Date(), undefined, async () => void waited++, Date.now() - 1);
+    expect(ok).toBe(false);
+    expect(waited).toBe(0); // one try, no wait past the deadline
+    clash.next = 0;
   });
   it('keeps the total wait bounded', () => {
     const total = Array.from({ length: MAX_TRIES - 1 }, (_, i) => backoffMs(i)).reduce((a, b) => a + b, 0);
