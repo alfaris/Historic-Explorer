@@ -3,7 +3,8 @@
 // translator, and reading it back. Import fills only fields that are still
 // empty, so it never overwrites a translation made meanwhile. Pure.
 
-import { glossaryOf, type Content } from '../data/content';
+import { type Content } from '../data/content';
+import { glossaryOf } from '../data/glossary-of';
 import { LANGUAGES, OPTIONAL_LANGS, type OptionalLang } from '../i18n/lang';
 import { missingText } from './content-health';
 import { missingPlaceText } from './translations';

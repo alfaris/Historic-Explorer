@@ -32,7 +32,8 @@ import { HoursBadge, useNow } from './PlaceHours';
 import { anyFilter, NO_FILTERS, passesFilters, withoutHours, type PlaceFilters } from '../lib/place-filters';
 import { EraFilter, ThroughTheAgesButton } from './PlaceEra';
 import { WeatherAdvice } from './WeatherAdvice';
-import { PlaceBadges, PlaceDetails } from './PlaceDetails';
+import { PlaceBadges } from './PlaceBadges';
+import { PlaceDetailsLazy as PlaceDetails, preloadPlaceDetails } from './PlaceDetailsLazy';
 import { breakCount } from '../lib/weather';
 import { nextQuarter } from '../lib/visit-plan';
 import { PrayerNotice } from './PrayerTimes';
@@ -164,6 +165,8 @@ export const MainContent: React.FC = () => {
     // Check URL for shared location. Re-checked when the live content
     // arrives, so links to places added in the admin dashboard work too.
     const locId = placeFromLocation(window.location);
+    // A place link opens its card at once: start loading the card's body now.
+    if (locId !== null) preloadPlaceDetails();
     if (locId !== null) {
       const loc = locations.find(l => l.id === locId);
       if (loc) {

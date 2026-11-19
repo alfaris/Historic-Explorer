@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { importTranslations, missingRows, parseCsv, translationSheet } from './translation-sheet';
 import { csvText } from './backup';
-import { bundledContent, glossaryOf, normalizeContent, type Content } from '../data/content';
+import { bundledContent, normalizeContent, type Content } from '../data/content';
+import { glossaryOf } from '../data/glossary-of';
 
 // With one glossary term not yet in French or Spanish (the built-in ones are).
 const base = (): Content => {

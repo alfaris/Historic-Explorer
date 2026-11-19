@@ -1,7 +1,8 @@
 // Backups of the content the admin can keep outside the app: the whole content
 // as JSON (which can be restored), and the places as a spreadsheet (CSV).
 
-import { glossaryOf, normalizeContent, validateContent, type Content } from '../data/content';
+import { normalizeContent, validateContent, type Content } from '../data/content';
+import { glossaryOf } from '../data/glossary-of';
 import { categories } from '../data/locations';
 import { placePhoto } from '../data/photos';
 import { LANGS, LANGUAGES } from '../i18n/lang';

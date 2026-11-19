@@ -3,9 +3,7 @@ import type { Location } from '../data/locations';
 import { L, currentLang, descriptionOf, fallbackLang } from '../i18n/lang';
 import { AudioGuide } from './AudioGuide';
 import { GlossaryText } from './GlossaryText';
-import { BuiltBadge } from './PlaceEra';
-import { HoursBadge, PlaceHours } from './PlaceHours';
-import { PrayerNotice } from './PrayerTimes';
+import { PlaceHours } from './PlaceHours';
 import { SpotIt } from './SpotIt';
 import { summaryOf } from '../lib/spot-it';
 import { PhotoTip } from './PhotoTip';
@@ -18,19 +16,9 @@ import { LazyBoundary } from './LazyBoundary';
 // Only places with extra photos load the gallery.
 const PlaceGallery = lazy(() => import('./PlaceGallery'));
 
-// The parts of a place's card shared by the list, the map and the admin's
-// preview, so the preview shows exactly what visitors see.
-
-/** Under the name: when it was built, open or closed now, and a prayer pause at a mosque. */
-export function PlaceBadges({ place }: { place: Location }) {
-  return (
-    <>
-      <BuiltBadge place={place} className="mt-2" />
-      <HoursBadge place={place} className="mt-2" />
-      <PrayerNotice place={place} className="mt-1.5" />
-    </>
-  );
-}
+// The body of a place's card, shared by the list, the map and the admin's
+// preview, so the preview shows exactly what visitors see. Loaded when a card
+// first opens (see PlaceDetailsLazy); the badges under the name are in PlaceBadges.
 
 /**
  * The open card's body: the description with its glossary links, the audio
@@ -68,3 +56,5 @@ export function PlaceDetails({ place, audioNote, onOpenPlace }: { place: Locatio
     </>
   );
 }
+
+export default PlaceDetails;

@@ -2,7 +2,7 @@ import React, { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } f
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { useContent } from '../data/ContentContext';
-import { glossaryOf } from '../data/content';
+import { glossaryOf } from '../data/glossary-of';
 import { glossarySegments, glossaryText, type GlossaryTerm } from '../lib/glossary';
 import { L, LANGUAGES, currentLang } from '../i18n/lang';
 

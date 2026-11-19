@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle2, ChevronRight } from 'lucide-react';
-import { glossaryOf, type Content } from '../data/content';
+import { type Content } from '../data/content';
+import { glossaryOf } from '../data/glossary-of';
 import { LANGS, LANGUAGES, OPTIONAL_LANGS, type Lang, type OptionalLang } from '../i18n/lang';
 import { draftLang, draftSection, draftsToReview, markReviewed, GAPS, glossaryGaps, periodGaps, placeGaps, progress, quizGap, routeGaps, translationPriority, type DraftRow, type Gap, type PlaceSection } from './content-health';
 import { draftLabel } from './DraftReview';

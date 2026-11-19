@@ -1,7 +1,8 @@
 // What content is still missing: the admin's Content checklist, and the
 // planned walk for the route editor. Pure, so it's easy to test.
 
-import { glossaryOf, type Content, type Location, type Route } from '../data/content';
+import { type Content, type Location, type Route } from '../data/content';
+import { glossaryOf } from '../data/glossary-of';
 import { draftedOf, withoutDrafted } from '../lib/drafted';
 import { photoForPlace } from '../data/photo-resolve';
 import { LANGS, LANGUAGES, OPTIONAL_LANGS, type Lang, type OptionalLang } from '../i18n/lang';

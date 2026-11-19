@@ -7,7 +7,8 @@
 // description or credit changed) rather than shown as data. Unchanged items
 // are left out. Pure.
 
-import { glossaryOf, type Content } from '../data/content';
+import { type Content } from '../data/content';
+import { glossaryOf } from '../data/glossary-of';
 import { distanceMeters } from '../lib/geo';
 import { walkStops } from '../lib/walk';
 

@@ -9,7 +9,8 @@ import { LANGS, LANGUAGES, descriptionOf, fallbackLang, loadDictionary, nameOf, 
 import { useDialog } from '../lib/useDialog';
 import { HistoricPlaceholder } from '../components/HistoricPlaceholder';
 import { PlacePhoto } from '../components/PlacePhoto';
-import { PlaceBadges, PlaceDetails } from '../components/PlaceDetails';
+import { PlaceBadges } from '../components/PlaceBadges';
+import { PlaceDetails } from '../components/PlaceDetails';
 
 /** The content with the draft in place of the saved place (or added, for a new one). Nothing is saved. */
 export const withDraft = (content: Content, place: Location): Content => ({

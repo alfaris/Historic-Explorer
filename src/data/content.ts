@@ -11,7 +11,6 @@ import { parseDistanceKm, parseHours, routeText } from '../lib/route-format.js';
 import { hoursProblems, normalizeHours } from '../lib/opening-hours.js';
 import { normalizeTips, tipsProblems } from '../lib/visitor-tips.js';
 import { glossaryProblems, normalizeGlossary, type GlossaryTerm } from '../lib/glossary.js';
-import { DEFAULT_GLOSSARY } from './glossary.js';
 import { normalizePeriods, periodProblems, type SpecialPeriod } from '../lib/special-hours.js';
 import { builtProblems, normalizeBuilt } from '../lib/eras.js';
 import { normalizeDrafted } from '../lib/drafted.js';
@@ -39,7 +38,6 @@ export interface Content {
 export const bundledContent: Content = { routes, places: locations };
 
 /** The glossary in use: the saved one, or the built-in one. */
-export const glossaryOf = (content: Content): GlossaryTerm[] => content.glossary ?? DEFAULT_GLOSSARY;
 
 export const CATEGORY_IDS = categories.map(c => c.id) as Category[];
 
