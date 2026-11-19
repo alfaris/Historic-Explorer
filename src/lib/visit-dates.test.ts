@@ -49,7 +49,7 @@ describe('marking visits', () => {
     const { toggleVisited, markVisited, clearVisited } = await import('./visited');
     toggleVisited(5);
     expect(stored()).toEqual({ 5: '2026-11-17' });
-    // Marked again the next day: the first day stays.
+    // Marked again while still visited: the first day stays.
     vi.setSystemTime(new Date('2026-11-18T08:00:00Z'));
     markVisited(5);
     markVisited(6);
@@ -85,12 +85,67 @@ describe('marking visits', () => {
       setItem(k, v);
     };
     toggleVisited(5);
-    recordVisitDate(9); // reads the stored dates again: 5 must not be lost
+    toggleVisited(9); // reads the stored dates again: 5 must not be lost
     expect(stored()).toEqual({});
     // Room again: the next save writes both.
     ls.setItem = setItem;
-    recordVisitDate(10);
+    toggleVisited(10);
     expect(stored()).toEqual({ 5: '2026-11-17', 9: '2026-11-17', 10: '2026-11-17' });
+  });
+
+  // Makes this tab's date writes fail until the returned function is called.
+  const failDateWrites = () => {
+    const ls = (window as unknown as { localStorage: { setItem: (k: string, v: string) => void } }).localStorage;
+    const setItem = ls.setItem;
+    ls.setItem = (k, v) => {
+      if (k === VISIT_DATES_KEY) throw new Error('QuotaExceededError');
+      setItem(k, v);
+    };
+    return () => {
+      ls.setItem = setItem;
+    };
+  };
+
+  it('dates a place marked again on a later day afresh, over a date a failed forget left behind', async () => {
+    store.set('cairo-walks:visited', JSON.stringify([201]));
+    store.set(VISIT_DATES_KEY, JSON.stringify({ 201: '2026-11-15' }));
+    const { toggleVisited } = await import('./visited');
+    const restore = failDateWrites();
+    toggleVisited(201); // tab A unmarks 201, but its date stays in storage
+    expect(stored()).toEqual({ 201: '2026-11-15' });
+    restore();
+    // Tab B (same storage, its own copy of the stores) marks 201 again on the 17th.
+    vi.resetModules();
+    const tabB = await import('./visited');
+    tabB.toggleVisited(201);
+    expect(stored()).toEqual({ 201: '2026-11-17' });
+    // Tab A saves again later: its unsaved forget isn't replayed over the new visit.
+    toggleVisited(7);
+    expect(stored()).toEqual({ 201: '2026-11-17', 7: '2026-11-17' });
+  });
+
+  it('keeps visits and their dates for the session when storage can be read but not written', async () => {
+    const ls = (window as unknown as { localStorage: { setItem: (k: string, v: string) => void } }).localStorage;
+    ls.setItem = () => {
+      throw new Error('QuotaExceededError');
+    };
+    const { toggleVisited, markVisited } = await import('./visited');
+    const { forgetVisitDates, getVisitDates } = await import('./visit-dates');
+    toggleVisited(5);
+    markVisited(6); // the second visit doesn't wipe out the first
+    forgetVisitDates([99]); // a later refresh of the dates keeps both
+    expect(getVisitDates()).toEqual({ 5: '2026-11-17', 6: '2026-11-17' });
+  });
+
+  it("doesn't replay a date it couldn't save for a place another tab unmarked since", async () => {
+    const { toggleVisited } = await import('./visited');
+    const restore = failDateWrites();
+    toggleVisited(201); // tab A marks 201; its date isn't saved
+    restore();
+    // Tab B unmarks 201.
+    store.set('cairo-walks:visited', JSON.stringify([]));
+    toggleVisited(7); // tab A saves again
+    expect(stored()).toEqual({ 7: '2026-11-17' });
   });
 
   it('dates a visit marked again after another tab walked the route again', async () => {

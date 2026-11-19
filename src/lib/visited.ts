@@ -3,9 +3,11 @@
 
 import { createIdSetStore, parseIds, serializeIds } from './id-set-store';
 import { removeSkipped } from './skipped';
-import { forgetVisitDates, recordVisitDate } from './visit-dates';
+import { forgetVisitDates, recordVisitDate, setVisitedCheck } from './visit-dates';
 
 const store = createIdSetStore('cairo-walks:visited');
+// Dates this tab couldn't save are replayed only while they still match the visited set.
+setVisitedCheck(id => store.latest().has(id));
 
 /** Reads a stored value, ignoring anything malformed. */
 export const parseVisited = parseIds;

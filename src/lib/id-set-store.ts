@@ -21,19 +21,45 @@ export const serializeIds = (ids: Set<number>) => JSON.stringify([...ids].sort((
 export function createIdSetStore(storageKey: string) {
   // localStorage can be missing or throw (private mode, blocked storage);
   // the set then lasts until the page is closed.
-  const read = () => {
+  const readRaw = () => {
     try {
-      return parseIds(window.localStorage.getItem(storageKey));
+      return window.localStorage.getItem(storageKey);
     } catch {
-      return new Set<number>();
+      return null;
     }
   };
 
-  const write = (ids: Set<number>) => {
+  // Changes this tab couldn't write (storage full): true for an ID added,
+  // false for one removed. They're applied over what's stored, so the next
+  // change here doesn't wipe them out, and written with the next save that
+  // works. They hold only while the stored set is the one they were made over:
+  // once another tab saves a change (perhaps marking the same place again),
+  // the stored set is the truth and they're dropped.
+  const unsaved = new Map<number, boolean>();
+  let unsavedOver: string | null = null;
+  const read = () => {
+    const raw = readRaw();
+    const stored = parseIds(raw);
+    if (!unsaved.size) return stored;
+    if (raw !== unsavedOver) {
+      unsaved.clear();
+      return stored;
+    }
+    for (const [id, added] of unsaved) {
+      if (added) stored.add(id);
+      else stored.delete(id);
+    }
+    return stored;
+  };
+
+  const write = (ids: Set<number>, changes: [number, boolean][]) => {
     try {
       window.localStorage.setItem(storageKey, serializeIds(ids));
+      unsaved.clear();
     } catch {
-      // Not saved; the in-memory state still updates.
+      // Not saved; the in-memory state still updates, and the change is kept for the next save.
+      if (!unsaved.size) unsavedOver = readRaw();
+      for (const [id, added] of changes) unsaved.set(id, added);
     }
   };
 
@@ -42,9 +68,9 @@ export function createIdSetStore(storageKey: string) {
 
   const current = () => (ids ??= typeof window === 'undefined' ? new Set<number>() : read());
 
-  const update = (next: Set<number>) => {
+  const update = (next: Set<number>, changes: [number, boolean][]) => {
     ids = next;
-    write(next);
+    write(next, changes);
     listeners.forEach(listener => listener());
   };
 
@@ -54,6 +80,9 @@ export function createIdSetStore(storageKey: string) {
     // e.newValue, which may be older than a change made since.
     const onStorage = (e: StorageEvent) => {
       if (e.key === storageKey || e.key === null) {
+        // Another tab saved: the stored set is the truth now, even if it reads
+        // the same as before (it unmarked and marked a place again).
+        unsaved.clear();
         ids = read();
         listener();
       }
@@ -75,27 +104,29 @@ export function createIdSetStore(storageKey: string) {
 
   // Changes start from the latest saved set, not this tab's copy, so a change
   // made in another tab moments earlier isn't overwritten. Without storage,
-  // read() is empty, so fall back to the in-memory set.
+  // read() is empty, so fall back to the in-memory set. read() puts this tab's
+  // unsaved changes on top.
   const latest = () => (storageWorks() ? read() : current());
 
   return {
     toggle(id: number) {
       const next = new Set(latest());
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      update(next);
+      const added = !next.has(id);
+      if (added) next.add(id);
+      else next.delete(id);
+      update(next, [[id, added]]);
     },
     /** Adds the ID (no change if it's already there). Returns whether it was added, judged on the latest saved set. */
     add(id: number): boolean {
       const now = latest();
       if (now.has(id)) return false;
-      update(new Set([...now, id]));
+      update(new Set([...now, id]), [[id, true]]);
       return true;
     },
     remove(remove: number[]) {
       const next = new Set(latest());
       remove.forEach(id => next.delete(id));
-      update(next);
+      update(next, remove.map(id => [id, false]));
     },
     /** The set. Re-renders when it changes. */
     useIds(): Set<number> {
@@ -103,5 +134,9 @@ export function createIdSetStore(storageKey: string) {
     },
     /** The set now, outside React. */
     get: current,
+    /** Calls the listener when the set changes, here or in another tab; returns the unsubscribe. */
+    subscribe,
+    /** The latest saved set (another tab's changes included), or this tab's when storage can't be read. */
+    latest,
   };
 }
