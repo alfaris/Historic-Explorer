@@ -1,0 +1,73 @@
+{
+  "about": "Which notices show on a Cairo date in one place on screen (noticesFor in src/lib/notices.ts): the app-wide ones (no route or place), a route's, or a place's, active from `from` to `until` inclusive, important ones first, otherwise in the listed order. `shown` lists indexes into `notices`.",
+  "notices": [
+    {
+      "textEn": "Everywhere, no dates",
+      "textAr": "في كل مكان"
+    },
+    {
+      "textEn": "Everywhere, important, December",
+      "textAr": "مهم",
+      "from": "2026-12-01",
+      "until": "2026-12-31",
+      "important": true
+    },
+    {
+      "textEn": "Route only, from the 10th",
+      "textAr": "المسار",
+      "routeId": "al-muizz",
+      "from": "2026-12-10"
+    },
+    {
+      "textEn": "Place only, until the 5th",
+      "textAr": "المكان",
+      "placeId": 1,
+      "until": "2026-12-05"
+    },
+    {
+      "textEn": "Place, important, one day",
+      "textAr": "يوم واحد",
+      "placeId": 1,
+      "from": "2026-12-05",
+      "until": "2026-12-05",
+      "important": true
+    }
+  ],
+  "cases": [
+    {"date":"2026-11-30","scope":{"app":true},"shown":[0]},
+    {"date":"2026-11-30","scope":{"routeId":"al-muizz"},"shown":[]},
+    {"date":"2026-11-30","scope":{"routeId":"coptic-cairo"},"shown":[]},
+    {"date":"2026-11-30","scope":{"placeId":1},"shown":[3]},
+    {"date":"2026-11-30","scope":{"placeId":2},"shown":[]},
+    {"date":"2026-12-01","scope":{"app":true},"shown":[1,0]},
+    {"date":"2026-12-01","scope":{"routeId":"al-muizz"},"shown":[]},
+    {"date":"2026-12-01","scope":{"routeId":"coptic-cairo"},"shown":[]},
+    {"date":"2026-12-01","scope":{"placeId":1},"shown":[3]},
+    {"date":"2026-12-01","scope":{"placeId":2},"shown":[]},
+    {"date":"2026-12-05","scope":{"app":true},"shown":[1,0]},
+    {"date":"2026-12-05","scope":{"routeId":"al-muizz"},"shown":[]},
+    {"date":"2026-12-05","scope":{"routeId":"coptic-cairo"},"shown":[]},
+    {"date":"2026-12-05","scope":{"placeId":1},"shown":[4,3]},
+    {"date":"2026-12-05","scope":{"placeId":2},"shown":[]},
+    {"date":"2026-12-06","scope":{"app":true},"shown":[1,0]},
+    {"date":"2026-12-06","scope":{"routeId":"al-muizz"},"shown":[]},
+    {"date":"2026-12-06","scope":{"routeId":"coptic-cairo"},"shown":[]},
+    {"date":"2026-12-06","scope":{"placeId":1},"shown":[]},
+    {"date":"2026-12-06","scope":{"placeId":2},"shown":[]},
+    {"date":"2026-12-10","scope":{"app":true},"shown":[1,0]},
+    {"date":"2026-12-10","scope":{"routeId":"al-muizz"},"shown":[2]},
+    {"date":"2026-12-10","scope":{"routeId":"coptic-cairo"},"shown":[]},
+    {"date":"2026-12-10","scope":{"placeId":1},"shown":[]},
+    {"date":"2026-12-10","scope":{"placeId":2},"shown":[]},
+    {"date":"2026-12-31","scope":{"app":true},"shown":[1,0]},
+    {"date":"2026-12-31","scope":{"routeId":"al-muizz"},"shown":[2]},
+    {"date":"2026-12-31","scope":{"routeId":"coptic-cairo"},"shown":[]},
+    {"date":"2026-12-31","scope":{"placeId":1},"shown":[]},
+    {"date":"2026-12-31","scope":{"placeId":2},"shown":[]},
+    {"date":"2027-01-01","scope":{"app":true},"shown":[0]},
+    {"date":"2027-01-01","scope":{"routeId":"al-muizz"},"shown":[2]},
+    {"date":"2027-01-01","scope":{"routeId":"coptic-cairo"},"shown":[]},
+    {"date":"2027-01-01","scope":{"placeId":1},"shown":[]},
+    {"date":"2027-01-01","scope":{"placeId":2},"shown":[]}
+  ]
+}

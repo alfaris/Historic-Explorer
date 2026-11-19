@@ -1,0 +1,71 @@
+{
+  "about": "Distances and arrival (src/lib/geo.ts). distanceMeters is the haversine distance with Earth radius 6,371,000 m. Distances are stored rounded to 2 decimals: a port's unrounded value must be within 0.005 m. `nearest` picks the closest place (lowest distance, first on a tie). `arrival` is one walk of GPS fixes fed in order to updateArrival, starting from {atId: null}: arriving needs ≤ 30 m, leaving needs > 60 m from the place arrived at, and fixes less precise than 50 m are ignored.",
+  "places": [
+    {
+      "id": 1,
+      "lat": 30.043,
+      "lng": 31.257
+    },
+    {
+      "id": 2,
+      "lat": 30.044347466762485,
+      "lng": 31.257
+    },
+    {
+      "id": 3,
+      "lat": 30.043898311174992,
+      "lng": 31.257518865167267
+    },
+    {
+      "id": 4,
+      "lat": 30.040305066475025,
+      "lng": 31.257
+    },
+    {
+      "id": 5,
+      "lat": 30.043,
+      "lng": 31.25907546066907
+    },
+    {
+      "id": 6,
+      "lat": 30.043,
+      "lng": 31.254924539330933
+    },
+    {
+      "id": 7,
+      "lat": 30.04677290693496,
+      "lng": 31.257
+    },
+    {
+      "id": 8,
+      "lat": 30.046683075817462,
+      "lng": 31.25720754606691
+    },
+    {
+      "id": 9,
+      "lat": 30.06,
+      "lng": 31.26
+    }
+  ],
+  "cases": [
+    {"distance":[1,2],"meters":149.83},
+    {"distance":[1,3],"meters":111.68},
+    {"distance":[1,4],"meters":299.66},
+    {"distance":[1,5],"meters":199.78},
+    {"distance":[1,6],"meters":199.78},
+    {"distance":[1,7],"meters":419.53},
+    {"distance":[1,8],"meters":410.03},
+    {"distance":[1,9],"meters":1912.24},
+    {"nearest":{"lat":30.04479662234998,"lng":31.257},"id":2,"meters":49.94},
+    {"nearest":{"lat":30.043278476464245,"lng":31.257},"id":1,"meters":30.97},
+    {"nearest":{"lat":30.043260510240746,"lng":31.257},"id":1,"meters":28.97},
+    {"nearest":{"lat":30.0430898311175,"lng":31.257},"id":1,"meters":9.99},
+    {"nearest":{"lat":30.043404240028746,"lng":31.257},"id":1,"meters":44.95},
+    {"nearest":{"lat":30.043224577793747,"lng":31.257},"id":1,"meters":24.97},
+    {"nearest":{"lat":30.043547969816743,"lng":31.257},"id":1,"meters":60.93},
+    {"nearest":{"lat":30.043179662234998,"lng":31.257},"id":1,"meters":19.98},
+    {"nearest":{"lat":30.04304491555875,"lng":31.257},"id":1,"meters":4.99},
+    {"nearest":{"lat":30.047491555874956,"lng":31.257},"id":7,"meters":79.91},
+    {"arrival":[{"fix":{"lat":30.04479662234998,"lng":31.257,"accuracy":10},"state":{"atId":null},"arrivedId":null},{"fix":{"lat":30.043278476464245,"lng":31.257,"accuracy":10},"state":{"atId":null},"arrivedId":null},{"fix":{"lat":30.043260510240746,"lng":31.257,"accuracy":10},"state":{"atId":1},"arrivedId":1},{"fix":{"lat":30.0430898311175,"lng":31.257,"accuracy":10},"state":{"atId":1},"arrivedId":null},{"fix":{"lat":30.043404240028746,"lng":31.257,"accuracy":10},"state":{"atId":1},"arrivedId":null},{"fix":{"lat":30.043224577793747,"lng":31.257,"accuracy":10},"state":{"atId":1},"arrivedId":null},{"fix":{"lat":30.043547969816743,"lng":31.257,"accuracy":10},"state":{"atId":null},"arrivedId":null},{"fix":{"lat":30.043179662234998,"lng":31.257,"accuracy":10},"state":{"atId":1},"arrivedId":1},{"fix":{"lat":30.04304491555875,"lng":31.257,"accuracy":51},"state":{"atId":1},"arrivedId":null},{"fix":{"lat":30.047491555874956,"lng":31.257,"accuracy":10},"state":{"atId":null},"arrivedId":null}]}
+  ]
+}

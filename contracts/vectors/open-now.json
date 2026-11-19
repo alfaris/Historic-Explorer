@@ -1,0 +1,296 @@
+{
+  "about": "A route's \"open now\" summary (routeOpenNow in src/lib/open-now.ts): of its stops, how many have known hours, how many are open, and how many of those close within the hour. Stops are the places of special-hours.json, with its periods.",
+  "places": [
+    {
+      "id": 1,
+      "hours": {
+        "days": [
+          [
+            {
+              "open": "09:00",
+              "close": "17:00"
+            }
+          ],
+          [
+            {
+              "open": "09:00",
+              "close": "17:00"
+            }
+          ],
+          [
+            {
+              "open": "09:00",
+              "close": "17:00"
+            }
+          ],
+          [
+            {
+              "open": "09:00",
+              "close": "17:00"
+            }
+          ],
+          [
+            {
+              "open": "09:00",
+              "close": "17:00"
+            }
+          ],
+          [
+            {
+              "open": "09:00",
+              "close": "17:00"
+            }
+          ],
+          [
+            {
+              "open": "09:00",
+              "close": "17:00"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "hours": {
+        "days": [
+          [
+            {
+              "open": "18:00",
+              "close": "02:00"
+            }
+          ],
+          [],
+          [
+            {
+              "open": "18:00",
+              "close": "02:00"
+            }
+          ],
+          [
+            {
+              "open": "18:00",
+              "close": "02:00"
+            }
+          ],
+          [
+            {
+              "open": "18:00",
+              "close": "02:00"
+            }
+          ],
+          [
+            {
+              "open": "18:00",
+              "close": "02:00"
+            }
+          ],
+          [
+            {
+              "open": "18:00",
+              "close": "02:00"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "hours": {
+        "days": [
+          [
+            {
+              "open": "09:00",
+              "close": "17:00"
+            }
+          ],
+          [
+            {
+              "open": "09:00",
+              "close": "17:00"
+            }
+          ],
+          [
+            {
+              "open": "09:00",
+              "close": "17:00"
+            }
+          ],
+          [
+            {
+              "open": "09:00",
+              "close": "17:00"
+            }
+          ],
+          [
+            {
+              "open": "09:00",
+              "close": "17:00"
+            }
+          ],
+          [
+            {
+              "open": "09:00",
+              "close": "11:30"
+            },
+            {
+              "open": "13:30",
+              "close": "17:00"
+            }
+          ],
+          [
+            {
+              "open": "09:00",
+              "close": "17:00"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "id": 4
+    }
+  ],
+  "periods": [
+    {
+      "id": "ramadan-2027",
+      "nameEn": "Ramadan",
+      "nameAr": "رمضان",
+      "from": "2027-02-08",
+      "to": "2027-03-09",
+      "places": {
+        "1": {
+          "days": [
+            [
+              {
+                "open": "10:00",
+                "close": "15:00"
+              },
+              {
+                "open": "20:00",
+                "close": "01:00"
+              }
+            ],
+            [
+              {
+                "open": "10:00",
+                "close": "15:00"
+              },
+              {
+                "open": "20:00",
+                "close": "01:00"
+              }
+            ],
+            [
+              {
+                "open": "10:00",
+                "close": "15:00"
+              },
+              {
+                "open": "20:00",
+                "close": "01:00"
+              }
+            ],
+            [
+              {
+                "open": "10:00",
+                "close": "15:00"
+              },
+              {
+                "open": "20:00",
+                "close": "01:00"
+              }
+            ],
+            [
+              {
+                "open": "10:00",
+                "close": "15:00"
+              },
+              {
+                "open": "20:00",
+                "close": "01:00"
+              }
+            ],
+            [
+              {
+                "open": "10:00",
+                "close": "15:00"
+              },
+              {
+                "open": "20:00",
+                "close": "01:00"
+              }
+            ],
+            [
+              {
+                "open": "10:00",
+                "close": "15:00"
+              },
+              {
+                "open": "20:00",
+                "close": "01:00"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "eid-2027",
+      "nameEn": "Eid",
+      "nameAr": "العيد",
+      "from": "2027-03-10",
+      "to": "2027-03-12",
+      "places": {
+        "1": {
+          "closed": true
+        }
+      }
+    },
+    {
+      "id": "works",
+      "nameEn": "Works",
+      "nameAr": "صيانة",
+      "from": "2027-05-01",
+      "to": "2027-05-01",
+      "places": {
+        "3": {
+          "closed": true
+        }
+      }
+    }
+  ],
+  "cases": [
+    {"at":"2026-01-04T06:59:00Z","withoutPeriods":{"known":3,"open":0,"closingSoon":0},"withPeriods":{"known":3,"open":0,"closingSoon":0}},
+    {"at":"2026-01-04T07:00:00Z","withoutPeriods":{"known":3,"open":2,"closingSoon":0},"withPeriods":{"known":3,"open":2,"closingSoon":0}},
+    {"at":"2026-01-04T14:59:00Z","withoutPeriods":{"known":3,"open":2,"closingSoon":2},"withPeriods":{"known":3,"open":2,"closingSoon":2}},
+    {"at":"2026-01-04T15:00:00Z","withoutPeriods":{"known":3,"open":0,"closingSoon":0},"withPeriods":{"known":3,"open":0,"closingSoon":0}},
+    {"at":"2026-01-04T22:30:00Z","withoutPeriods":{"known":3,"open":1,"closingSoon":0},"withPeriods":{"known":3,"open":1,"closingSoon":0}},
+    {"at":"2026-01-05T00:30:00Z","withoutPeriods":{"known":3,"open":0,"closingSoon":0},"withPeriods":{"known":3,"open":0,"closingSoon":0}},
+    {"at":"2026-01-05T16:00:00Z","withoutPeriods":{"known":3,"open":0,"closingSoon":0},"withPeriods":{"known":3,"open":0,"closingSoon":0}},
+    {"at":"2026-01-05T23:59:00Z","withoutPeriods":{"known":3,"open":0,"closingSoon":0},"withPeriods":{"known":3,"open":0,"closingSoon":0}},
+    {"at":"2026-01-09T09:29:00Z","withoutPeriods":{"known":3,"open":2,"closingSoon":1},"withPeriods":{"known":3,"open":2,"closingSoon":1}},
+    {"at":"2026-01-09T09:30:00Z","withoutPeriods":{"known":3,"open":1,"closingSoon":0},"withPeriods":{"known":3,"open":1,"closingSoon":0}},
+    {"at":"2026-01-09T11:30:00Z","withoutPeriods":{"known":3,"open":2,"closingSoon":0},"withPeriods":{"known":3,"open":2,"closingSoon":0}},
+    {"at":"2026-01-09T11:31:00Z","withoutPeriods":{"known":3,"open":2,"closingSoon":0},"withPeriods":{"known":3,"open":2,"closingSoon":0}},
+    {"at":"2026-01-10T17:59:00Z","withoutPeriods":{"known":3,"open":1,"closingSoon":0},"withPeriods":{"known":3,"open":1,"closingSoon":0}},
+    {"at":"2026-01-10T18:00:00Z","withoutPeriods":{"known":3,"open":1,"closingSoon":0},"withPeriods":{"known":3,"open":1,"closingSoon":0}},
+    {"at":"2026-01-10T23:00:00Z","withoutPeriods":{"known":3,"open":1,"closingSoon":1},"withPeriods":{"known":3,"open":1,"closingSoon":1}},
+    {"at":"2026-01-11T00:59:00Z","withoutPeriods":{"known":3,"open":0,"closingSoon":0},"withPeriods":{"known":3,"open":0,"closingSoon":0}},
+    {"at":"2026-01-11T01:00:00Z","withoutPeriods":{"known":3,"open":0,"closingSoon":0},"withPeriods":{"known":3,"open":0,"closingSoon":0}},
+    {"at":"2027-02-07T12:00:00Z","withoutPeriods":{"known":3,"open":2,"closingSoon":0},"withPeriods":{"known":3,"open":2,"closingSoon":0}},
+    {"at":"2027-02-07T22:30:00Z","withoutPeriods":{"known":3,"open":1,"closingSoon":0},"withPeriods":{"known":3,"open":1,"closingSoon":0}},
+    {"at":"2027-02-08T07:59:00Z","withoutPeriods":{"known":3,"open":2,"closingSoon":0},"withPeriods":{"known":3,"open":1,"closingSoon":0}},
+    {"at":"2027-02-08T08:00:00Z","withoutPeriods":{"known":3,"open":2,"closingSoon":0},"withPeriods":{"known":3,"open":2,"closingSoon":0}},
+    {"at":"2027-02-08T13:00:00Z","withoutPeriods":{"known":3,"open":2,"closingSoon":0},"withPeriods":{"known":3,"open":1,"closingSoon":0}},
+    {"at":"2027-02-08T18:00:00Z","withoutPeriods":{"known":3,"open":0,"closingSoon":0},"withPeriods":{"known":3,"open":1,"closingSoon":0}},
+    {"at":"2027-02-08T22:30:00Z","withoutPeriods":{"known":3,"open":0,"closingSoon":0},"withPeriods":{"known":3,"open":1,"closingSoon":1}},
+    {"at":"2027-02-08T23:30:00Z","withoutPeriods":{"known":3,"open":0,"closingSoon":0},"withPeriods":{"known":3,"open":0,"closingSoon":0}},
+    {"at":"2027-03-09T22:30:00Z","withoutPeriods":{"known":3,"open":1,"closingSoon":0},"withPeriods":{"known":3,"open":2,"closingSoon":1}},
+    {"at":"2027-03-10T09:00:00Z","withoutPeriods":{"known":3,"open":2,"closingSoon":0},"withPeriods":{"known":3,"open":1,"closingSoon":0}},
+    {"at":"2027-03-12T21:59:00Z","withoutPeriods":{"known":3,"open":1,"closingSoon":0},"withPeriods":{"known":3,"open":1,"closingSoon":0}},
+    {"at":"2027-03-12T22:00:00Z","withoutPeriods":{"known":3,"open":1,"closingSoon":0},"withPeriods":{"known":3,"open":1,"closingSoon":0}},
+    {"at":"2027-03-13T09:00:00Z","withoutPeriods":{"known":3,"open":2,"closingSoon":0},"withPeriods":{"known":3,"open":2,"closingSoon":0}},
+    {"at":"2027-05-01T09:00:00Z","withoutPeriods":{"known":3,"open":2,"closingSoon":0},"withPeriods":{"known":3,"open":1,"closingSoon":0}}
+  ]
+}

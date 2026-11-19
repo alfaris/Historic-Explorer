@@ -160,7 +160,20 @@ const subscribe = (listener: () => void) => {
   };
 };
 
+/**
+ * Forgets this tab's state, as on a page load (for tests and the vectors' store sequences).
+ * It doesn't remove a window "storage" handler a subscriber added: unsubscribe first.
+ */
+export const _resetVisitDates = () => {
+  dates = null;
+  pending.clear();
+  isVisited = null;
+  listeners.clear();
+};
+
 /** The dates now, outside React. */
 export const getVisitDates = () => current();
 
+/** Calls the listener when the dates change, here or in another tab; returns the unsubscribe. */
+export const subscribeVisitDates = subscribe;
 export const useVisitDates = () => useSyncExternalStore(subscribe, current, () => ({}) as VisitDates);
