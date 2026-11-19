@@ -186,6 +186,7 @@ export const passportVectors: VectorSet = {
       { routeId: 'al-muizz', date: '2026-12-03', spot: { found: 1, total: 5 } }, // walked again, fewer found: the stamp keeps 2 and its date
       { routeId: 'al-muizz', date: '2026-12-04', spot: { found: 4, total: 6 } }, // more found, and a new challenge since
       { routeId: 'coptic-cairo', date: '2026-12-04', spot: { found: 9, total: 3 } }, // found is capped at total
+      { routeId: 'coptic-cairo', date: '2026-12-06', spot: { found: 7, total: 5 } }, // walked again with more found than challenges: capped at the new total
     ];
     let stamps = s0;
     const sequence = steps.map(step => (stamps = withStamp(stamps, step.routeId, step.date, step.spot, step.at)));
