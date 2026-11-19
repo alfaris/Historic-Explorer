@@ -137,7 +137,7 @@ export function NoticesTab({ content, save }: { content: Content; save: SaveFn }
                   Important (safety): can't be closed
                 </label>
                 <Field label="First day (optional)"><input type="date" value={n.from ?? ''} onChange={e => setDate(i, n, 'from', e.target.value)} className={inputClass} /></Field>
-                <Field label="Last day (optional)"><input type="date" value={n.until ?? ''} min={n.from} onChange={e => setDate(i, n, 'until', e.target.value)} className={inputClass} /></Field>
+                <Field label="Last day (optional)"><input type="date" value={n.until ?? ''} onChange={e => setDate(i, n, 'until', e.target.value)} className={inputClass} /></Field>
               </div>
               <button type="button" onClick={() => setDraft(d => d.filter((_, j) => j !== i))} aria-label={`Remove notice ${i + 1}`} className="min-w-11 min-h-11 flex items-center justify-center rounded-lg text-stone-500 hover:bg-red-50 hover:text-red-700">
                 <Trash2 className="w-4 h-4" />
