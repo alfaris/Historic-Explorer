@@ -74,23 +74,25 @@ export function createIdSetStore(storageKey: string) {
     listeners.forEach(listener => listener());
   };
 
+  // Another tab saved the set. One listener for the store, attached when it's
+  // made, so it's heard even while nothing on screen shows this set (its unsaved
+  // changes must still be dropped). Re-read storage rather than trusting
+  // e.newValue, which may be older than a change made since.
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('storage', (e: StorageEvent) => {
+      if (e.key !== storageKey && e.key !== null) return;
+      // The stored set is the truth now, even if it reads the same as before
+      // (the other tab unmarked and marked a place again).
+      unsaved.clear();
+      if (ids !== null) ids = read();
+      listeners.forEach(listener => listener());
+    });
+  }
+
   const subscribe = (listener: () => void) => {
     listeners.add(listener);
-    // Another tab changed the set. Re-read storage rather than trusting
-    // e.newValue, which may be older than a change made since.
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === storageKey || e.key === null) {
-        // Another tab saved: the stored set is the truth now, even if it reads
-        // the same as before (it unmarked and marked a place again).
-        unsaved.clear();
-        ids = read();
-        listener();
-      }
-    };
-    window.addEventListener('storage', onStorage);
     return () => {
       listeners.delete(listener);
-      window.removeEventListener('storage', onStorage);
     };
   };
 
