@@ -13,7 +13,8 @@
     "fetch-photos": "tsx scripts/fetch-photos.ts",
     "test": "vitest run",
     "check:bundle": "node scripts/check-bundle.mjs",
-    "gen:schema": "tsx scripts/gen-schema.ts"
+    "gen:schema": "tsx scripts/gen-schema.ts",
+    "gen:vectors": "tsx scripts/gen-vectors.ts"
   },
   "dependencies": {
     "@google/genai": "^1.50.1",

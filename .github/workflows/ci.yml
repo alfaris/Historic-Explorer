@@ -31,3 +31,20 @@ jobs:
         run: npm run build
       - name: Bundle size
         run: npm run check:bundle
+
+  # The native apps' prayer times must match the web's to the minute (#254):
+  # adhan2 (Kotlin) against the vectors the web exports in contracts/vectors.
+  mobile-parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.14.3
+      - name: Prayer times match the web
+        run: gradle -p mobile/spikes/adhan-parity test --console=plain
