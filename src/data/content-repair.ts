@@ -81,13 +81,15 @@ export function blockingProblems(next: Content, stored: Content): string[] {
  */
 export function withUniqueIds(content: Content): { content: Content; changed: string[] } {
   const changed: string[] = [];
-  const routeIds = new Set<string>();
+  // Every ID in use is reserved first, so a new one never takes another route's (and its places').
+  const taken = new Set(content.routes.map(r => r.id));
+  const seen = new Set<string>();
   const routes = content.routes.map(r => {
-    if (!routeIds.has(r.id)) return routeIds.add(r.id), r;
+    if (!seen.has(r.id)) return seen.add(r.id), r;
     let n = 2;
-    while (routeIds.has(`${r.id}-${n}`)) n++;
+    while (taken.has(`${r.id}-${n}`)) n++;
     const id = `${r.id}-${n}`;
-    routeIds.add(id);
+    taken.add(id);
     changed.push(`Route "${r.nameEn || r.id}" had a repeated ID; it's now "${id}".`);
     return { ...r, id };
   });

@@ -84,6 +84,13 @@ describe('withUniqueIds', () => {
     // Deleting the renumbered place removes it alone.
     expect(content.places.filter(p => p.id !== content.places[2].id)).toHaveLength(c.places.length - 1);
   });
+  it('never gives a repeat the ID of another route', () => {
+    const c = normalizeContent(structuredClone(bundledContent));
+    const [a, b, d] = c.routes;
+    c.routes = [{ ...a, id: 'walk' }, { ...b, id: 'walk' }, { ...d, id: 'walk-2' }, ...c.routes.slice(3)];
+    const { content } = withUniqueIds(c);
+    expect(content.routes.slice(0, 3).map(r => r.id)).toEqual(['walk', 'walk-3', 'walk-2']);
+  });
   it('returns the same content when nothing repeats', () => {
     const c = normalizeContent(structuredClone(bundledContent));
     expect(withUniqueIds(c).content).toBe(c);
