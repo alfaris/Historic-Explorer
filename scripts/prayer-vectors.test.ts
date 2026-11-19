@@ -28,6 +28,7 @@ describe('prayer-time vectors', () => {
 
   it('come out the same whatever the time zone the web runs in', () => {
     // Node applies a change to TZ at once; the web reads the Cairo date through local-time Dates.
+    // TZ is process-wide: safe while vitest runs each file in its own process (the default forks pool).
     const original = process.env.TZ;
     try {
       for (const tz of ['UTC', 'America/Los_Angeles', 'Pacific/Kiritimati', 'Africa/Cairo']) {

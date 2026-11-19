@@ -7,7 +7,9 @@ import type { Location } from '../data/locations.js';
 import { cairoTime, formatTime } from './opening-hours.js';
 import type { Lang } from '../i18n/lang.js';
 
-const CAIRO = new Coordinates(30.0444, 31.2357);
+/** Where Cairo's prayer times are computed for (also in the apps' vectors, contracts/vectors). */
+export const PRAYER_PLACE = { lat: 30.0444, lng: 31.2357 };
+const CAIRO = new Coordinates(PRAYER_PLACE.lat, PRAYER_PLACE.lng);
 
 export type PrayerName = 'fajr' | 'dhuhr' | 'jumuah' | 'asr' | 'maghrib' | 'isha';
 
