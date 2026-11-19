@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { BarChart3, BookOpen, CalendarDays, History, Inbox, LifeBuoy, ListChecks, LogOut, MapPinned, Megaphone, Route as RouteIcon } from 'lucide-react';
 import type { Content } from '../data/content';
-import { normalizeContent, validateContent, withMaxPlaceId } from '../data/content';
+import { normalizeContent, onlyOlderProblems, validateContent, withMaxPlaceId } from '../data/content';
 import { api, ApiError } from './api';
 import { ReportsTab } from './ReportsTab';
 import { HelpTab } from './HelpTab';
@@ -135,16 +135,17 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
     // Remember the highest place ID ever used, so a deleted place's ID isn't reused.
     if (content) next = withMaxPlaceId(next, content);
     const problems = validateContent(next);
-    if (problems.length) {
+    // Problems the saved copy already had (a check added since) can be fixed one save at a time.
+    if (problems.length && !onlyOlderProblems(next, problems, storedIssue?.problems ?? [])) {
       setSaveError({ message: 'Fix these before saving:', problems, conflict: false });
       return false;
     }
     try {
-      const { etag: newEtag } = await api.saveContent(next, etag, note);
+      const { etag: newEtag, problems: left } = await api.saveContent(next, etag, note);
       setContent(next);
       setEtag(newEtag);
-      // A save passed today's checks, so the stored copy now does too.
-      setStoredIssue(null);
+      // What's left of the saved copy's older problems, if any.
+      setStoredIssue(left?.length ? { problems: left, unusable: false } : null);
       setSaveError(null);
       setNotice(`Saved: ${note}. Visitors see it within about a minute.`);
       return true;
@@ -226,8 +227,8 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
           <ErrorBox
             message={
               storedIssue.unusable
-                ? 'The saved content can’t be shown (no routes or places, or broken IDs), so visitors are seeing the built-in content. Restore a version from History.'
-                : `The saved content fails ${storedIssue.problems.length === 1 ? 'a check' : `${storedIssue.problems.length} checks`} added since it was saved. Visitors still see it as it is; fix these to save again:`
+                ? 'Nothing in the saved content can be shown (no route or place left that visitors could see), so visitors are seeing the built-in content. Fix it here, or restore a version from History:'
+                : `The saved content fails ${storedIssue.problems.length === 1 ? 'a check' : `${storedIssue.problems.length} checks`} added since it was saved. Visitors still see it, less any place that can’t be shown; fix them one place at a time (each save must not add a new problem):`
             }
             problems={storedIssue.problems}
           />

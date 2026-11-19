@@ -212,33 +212,56 @@ export function normalizeContent(input: unknown): Content {
 }
 
 /**
+ * The content as visitors can be shown it: places that can't be shown at all
+ * (on a route that doesn't exist, an unknown category, no position, or an ID
+ * already used, the first one kept) are left out, and routes with an ID
+ * already used too. Null when no route or no place is left. Looser than
+ * validateContent on purpose: content saved before a check was added (a new
+ * length limit, say) fails validateContent, but visitors keep seeing it, less
+ * any place that can't be shown, rather than lose everything the admin added
+ * (the admin is asked to fix it).
+ */
+export function usableContent(content: Content): Content | null {
+  const routeIds = new Set<string>();
+  const routes = content.routes.filter(r => !routeIds.has(r.id) && routeIds.add(r.id));
+  const placeIds = new Set<number>();
+  const places = content.places.filter(
+    p =>
+      Number.isInteger(p.id) && !placeIds.has(p.id) && routeIds.has(p.routeId) && CATEGORY_IDS.includes(p.category) &&
+      Number.isFinite(p.lat) && Number.isFinite(p.lng) && placeIds.add(p.id),
+  );
+  if (routes.length === 0 || places.length === 0) return null;
+  return routes.length === content.routes.length && places.length === content.places.length ? content : { ...content, routes, places };
+}
+
+/** Whether every route and place can be shown as it is (usableContent leaves nothing out). */
+export const isUsableContent = (content: Content) => usableContent(content) === content;
+
+/**
+ * Whether a save may go ahead although the content still has problems: it
+ * has something to show (usableContent), and every problem it has was already in the saved copy (one that
+ * fails a check added since it was saved). That lets the admin fix those
+ * problems one at a time, each save leaving fewer, without being able to add
+ * a new one. `before` is the saved copy's problems.
+ */
+export function onlyOlderProblems(content: Content, problems: string[], before: string[]): boolean {
+  if (problems.length === 0) return true;
+  const known = new Set(before);
+  return usableContent(content) !== null && problems.every(p => known.has(p));
+}
+
+/**
  * Checks content before it's published. Returns human-readable problems; an
  * empty list means it's valid. The server refuses to save content with
  * problems, and the tests run this against the bundled data.
  */
-/**
- * Whether normalized content can be shown at all: at least one route and one
- * place, IDs unique, every place on an existing route with a known category
- * and a position. Looser than validateContent on purpose: content saved
- * before a check was added (a new length limit, say) still fails
- * validateContent, but visitors should keep seeing it rather than lose
- * everything the admin added (the admin is asked to fix it).
- */
-export function isUsableContent(content: Content): boolean {
-  if (content.routes.length === 0 || content.places.length === 0) return false;
-  const routeIds = new Set(content.routes.map(r => r.id));
-  if (routeIds.size !== content.routes.length) return false;
-  if (new Set(content.places.map(p => p.id)).size !== content.places.length) return false;
-  return content.places.every(
-    p => Number.isInteger(p.id) && routeIds.has(p.routeId) && CATEGORY_IDS.includes(p.category) && Number.isFinite(p.lat) && Number.isFinite(p.lng),
-  );
-}
-
 export function validateContent(content: Content): string[] {
   const problems: string[] = [];
   const routeIds = new Set<string>();
 
   if (content.routes.length === 0) problems.push('There must be at least one route.');
+  // Content with no place can't be shown (isUsableContent), so it can't be saved either.
+  if (content.places.length === 0) problems.push('There must be at least one place.');
 
   for (const r of content.routes) {
     const label = `Route "${r.nameEn || r.id || '(unnamed)'}"`;

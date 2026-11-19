@@ -53,7 +53,8 @@ export const api = {
   /** problems: what the stored copy fails by today's checks; unusable: it had nothing to show, so this is the built-in content. */
   content: () => call<{ content: Content; etag: string | null; problems?: string[]; unusable?: boolean }>('content'),
   saveContent: (content: Content, etag: string | null, note: string) =>
-    call<{ etag: string }>('content', { method: 'PUT', body: JSON.stringify({ content, etag, note }) }),
+    /** problems: what's still left of the saved copy's older problems (see onlyOlderProblems). */
+    call<{ etag: string; problems?: string[] }>('content', { method: 'PUT', body: JSON.stringify({ content, etag, note }) }),
   /** One page of reports; `places` limits them to those places (a route's, or one), `type` to one kind. */
   reports: (status: Report['status'] | 'all', offset = 0, filter: { places?: number[]; type?: Report['type'] } = {}) =>
     call<{ reports: Report[]; total: number; counts: Record<Report['status'], number> }>(

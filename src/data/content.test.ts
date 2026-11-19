@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bundledContent, isUsableContent, nextPlaceId, normalizeContent, validateContent, withMaxPlaceId, type Content } from './content';
+import { bundledContent, isUsableContent, usableContent, nextPlaceId, onlyOlderProblems, normalizeContent, validateContent, withMaxPlaceId, type Content } from './content';
 
 const clone = (): Content => structuredClone(bundledContent);
 
@@ -185,5 +185,38 @@ describe('isUsableContent', () => {
     const dup = base();
     dup.places[1] = { ...dup.places[1], id: dup.places[0].id };
     expect(isUsableContent(dup)).toBe(false);
+  });
+});
+
+describe('onlyOlderProblems', () => {
+  const c = normalizeContent(structuredClone(bundledContent));
+  it('allows a save that only keeps problems the saved copy had', () => {
+    expect(onlyOlderProblems(c, [], [])).toBe(true);
+    expect(onlyOlderProblems(c, ['a'], ['a', 'b'])).toBe(true);
+    expect(onlyOlderProblems(c, ['a', 'c'], ['a', 'b'])).toBe(false);
+  });
+  it('never allows content that can’t be shown', () => {
+    expect(onlyOlderProblems({ ...c, places: [] }, ['a'], ['a'])).toBe(false);
+  });
+  it('makes an empty place list a problem', () => {
+    expect(validateContent({ ...c, places: [] })).toContain('There must be at least one place.');
+  });
+});
+
+describe('usableContent', () => {
+  const base = () => normalizeContent(structuredClone(bundledContent));
+  it('leaves out only what can’t be shown', () => {
+    const c = base();
+    c.places[0] = { ...c.places[0], routeId: 'nowhere' };
+    c.places[2] = { ...c.places[2], id: c.places[1].id };
+    const u = usableContent(c)!;
+    expect(u.places).toHaveLength(c.places.length - 2);
+    expect(u.places.some(p => p.routeId === 'nowhere')).toBe(false);
+  });
+  it('is the same object when nothing is left out, and null when nothing is left', () => {
+    const c = base();
+    expect(usableContent(c)).toBe(c);
+    expect(usableContent({ ...c, places: [] })).toBeNull();
+    expect(usableContent({ ...c, places: c.places.map(p => ({ ...p, routeId: 'nowhere' })) })).toBeNull();
   });
 });

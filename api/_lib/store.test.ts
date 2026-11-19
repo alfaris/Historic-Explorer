@@ -144,14 +144,83 @@ describe('content', () => {
     expect(data.unusable).toBeUndefined();
     expect(data.problems.some((p: string) => /longer than/.test(p))).toBe(true);
 
-    // Saving it unfixed is refused; fixed, it saves over the stored copy (not over the built-in one).
-    expect((await admin('content', { method: 'PUT', body: JSON.stringify({ content: data.content, etag: data.etag, note: 'unfixed' }) })).status).toBe(422);
+    // Fixed, it saves over the stored copy (not over the built-in one), with nothing left to fix.
     data.content.places[1].descriptionEn = 'Fixed.';
-    expect((await admin('content', { method: 'PUT', body: JSON.stringify({ content: data.content, etag: data.etag, note: 'fixed' }) })).status).toBe(200);
+    const fixed = await admin('content', { method: 'PUT', body: JSON.stringify({ content: data.content, etag: data.etag, note: 'fixed' }) });
+    expect(fixed.status).toBe(200);
+    expect((await fixed.json()).problems).toBeUndefined();
     _resetContentCache();
     const after = await getContent();
     expect(after.places[0].nameEn).toBe('Edited by the admin');
     expect(after.places[1].descriptionEn).toBe('Fixed.');
+  });
+
+  it('lets the admin fix older problems one save at a time, but never add one', async () => {
+    const { content } = await (await admin('content')).json();
+    await admin('content', { method: 'PUT', body: JSON.stringify({ content, etag: null, note: 'first' }) });
+    // Two places fail a check added since the save.
+    const raw = JSON.parse(String(store.get('content/current.json')!.body));
+    raw.places[1].descriptionEn = 'x'.repeat(5000);
+    raw.places[2].descriptionEn = 'y'.repeat(5000);
+    store.set('content/current.json', { body: JSON.stringify(raw), etag: '"two"', uploadedAt: new Date() });
+    _resetContentCache();
+    const data = await (await admin('content')).json();
+    expect(data.problems).toHaveLength(2);
+
+    // Fixing the first saves, and says what's left.
+    data.content.places[1].descriptionEn = 'Fixed one.';
+    const one = await admin('content', { method: 'PUT', body: JSON.stringify({ content: data.content, etag: data.etag, note: 'one' }) });
+    expect(one.status).toBe(200);
+    const { etag, problems } = await one.json();
+    expect(problems).toHaveLength(1);
+
+    // A save that adds a new problem is refused.
+    data.content.places[0].nameEn = '';
+    expect((await admin('content', { method: 'PUT', body: JSON.stringify({ content: data.content, etag, note: 'new problem' }) })).status).toBe(422);
+    data.content.places[0].nameEn = 'Back';
+
+    // Fixing the second leaves none.
+    data.content.places[2].descriptionEn = 'Fixed two.';
+    const two = await admin('content', { method: 'PUT', body: JSON.stringify({ content: data.content, etag, note: 'two' }) });
+    expect(two.status).toBe(200);
+    expect((await two.json()).problems).toBeUndefined();
+  });
+
+  it('leaves out only a place that can’t be shown, and keeps the highest place ID through a fixing save', async () => {
+    const { content } = await (await admin('content')).json();
+    content.places.push({ ...content.places[0], id: 9000, nameEn: 'New Cafe', lat: 30.03, lng: 31.251 });
+    await admin('content', { method: 'PUT', body: JSON.stringify({ content, etag: null, note: 'add 9000' }) });
+    // One place now points at a route that no longer exists.
+    const raw = JSON.parse(String(store.get('content/current.json')!.body));
+    raw.places[1].routeId = 'gone';
+    const total = raw.places.length;
+    store.set('content/current.json', { body: JSON.stringify(raw), etag: '"orphan"', uploadedAt: new Date() });
+    _resetContentCache();
+
+    // Visitors get everything else (9000 included), not the built-in content.
+    const served = await getContent();
+    expect(served.places).toHaveLength(total - 1);
+    expect(served.places.some(p => p.id === 9000)).toBe(true);
+    // The admin gets the whole stored copy, with the problem to fix.
+    const data = await (await admin('content')).json();
+    expect(data.content.places).toHaveLength(total);
+    expect(data.unusable).toBeUndefined();
+    expect(data.problems.some((p: string) => /doesn't exist/.test(p))).toBe(true);
+    // An unrelated edit saves (the orphan was already there), and the highest ID survives.
+    data.content.places[0].nameEn = 'Unrelated edit';
+    const res = await admin('content', { method: 'PUT', body: JSON.stringify({ content: data.content, etag: data.etag, note: 'edit' }) });
+    expect(res.status).toBe(200);
+    const after = JSON.parse(String(store.get('content/current.json')!.body));
+    expect(after.places).toHaveLength(total);
+    expect(after.maxPlaceId).toBeGreaterThanOrEqual(9000);
+  });
+
+  it('refuses to save content with no place (it couldn’t be shown)', async () => {
+    const { content } = await (await admin('content')).json();
+    content.places = [];
+    const res = await admin('content', { method: 'PUT', body: JSON.stringify({ content, etag: null, note: 'empty' }) });
+    expect(res.status).toBe(422);
+    expect((await res.json()).problems).toContain('There must be at least one place.');
   });
 
   it('places added by an admin can be reported', async () => {

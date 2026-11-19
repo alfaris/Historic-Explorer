@@ -3,7 +3,7 @@
 // bundled content from src/data/locations.ts is used.
 
 import { BlobNotFoundError, BlobPreconditionFailedError, get, list, put } from '@vercel/blob';
-import { bundledContent, isUsableContent, normalizeContent, validateContent, withMaxPlaceId, type Content } from '../../src/data/content.js';
+import { bundledContent, normalizeContent, usableContent, validateContent, withMaxPlaceId, type Content } from '../../src/data/content.js';
 import { hasBlobStore } from './http.js';
 
 const CURRENT = 'content/current.json';
@@ -25,49 +25,55 @@ async function readBlobJson(pathname: string): Promise<{ data: unknown; etag: st
 }
 
 export interface StoredContent {
+  /** The stored copy (normalized), or the built-in content when nothing has been saved yet. */
   content: Content;
   /** The stored copy's ETag; null when nothing has been saved yet (the built-in content is in use). */
   etag: string | null;
   /**
    * What's wrong with the stored copy by today's checks (e.g. a rule added
-   * since it was saved). It's still the content in use: the admin sees the
-   * problems and fixes them, and saving needs them fixed.
+   * since it was saved). The admin sees them and fixes them; a save may keep
+   * only problems the copy already had (onlyOlderProblems).
    */
   problems?: string[];
-  /** The stored copy can't be shown at all (see isUsableContent), so visitors get the built-in content until a version is restored. */
+  /** Nothing in the stored copy can be shown (see usableContent), so visitors get the built-in content until it's fixed. */
   unusable?: boolean;
 }
 
 /**
- * The current content plus its ETag, read fresh from Blob. etag is null when
- * nothing has been saved yet (the bundled content is in use).
+ * The stored content plus its ETag, read fresh from Blob, for the admin and
+ * for saving. etag is null when nothing has been saved yet (the bundled
+ * content is in use).
  *
- * A stored copy that fails today's checks is still served as it is (only
- * normalized), never swapped for the built-in content: swapping would hide
- * everything the admin added from visitors, and let the admin's next save
- * replace the real content with "built-in plus one edit". Only a stored copy
- * that can't be shown at all falls back to the built-in content, flagged unusable.
+ * It's always the stored copy, even one that fails today's checks: the admin
+ * fixes that copy, and saving builds on it (its highest place ID included).
+ * It's never swapped for the built-in content, which would let the admin's
+ * next save replace the real content with "built-in plus one edit".
  */
 export async function getContentWithEtag(): Promise<StoredContent> {
   if (!hasBlobStore()) return { content: bundledContent, etag: null };
   const stored = await readBlobJson(CURRENT);
   if (!stored) return { content: bundledContent, etag: null };
   const content = normalizeContent(stored.data);
-  if (!isUsableContent(content)) {
-    console.error('Stored content is unusable (no routes or places, or broken IDs); serving bundled content until a version is restored.');
-    return { content: bundledContent, etag: stored.etag, problems: validateContent(content), unusable: true };
-  }
   const problems = validateContent(content);
-  if (problems.length) console.error(`Stored content fails ${problems.length} check(s); serving it as it is:`, problems.slice(0, 5));
-  memory = { content, at: Date.now() };
-  return problems.length ? { content, etag: stored.etag, problems } : { content, etag: stored.etag };
+  if (!problems.length) return { content, etag: stored.etag };
+  return { content, etag: stored.etag, problems, ...(usableContent(content) ? {} : { unusable: true }) };
 }
 
-/** The current content, cached briefly in memory on warm instances. */
+/**
+ * What visitors are served: the stored copy less any place that can't be
+ * shown (usableContent), even when it fails a check added since it was saved;
+ * the built-in content only when nothing could be shown. Cached briefly in
+ * memory on warm instances.
+ */
 export async function getContent(): Promise<Content> {
   if (memory && Date.now() - memory.at < MEMORY_TTL_MS) return memory.content;
   try {
-    return (await getContentWithEtag()).content;
+    const { content, problems, unusable } = await getContentWithEtag();
+    if (unusable) console.error('Stored content has nothing that can be shown; serving the built-in content.', problems?.slice(0, 5));
+    else if (problems) console.error(`Stored content fails ${problems.length} check(s); serving it, less any place that can't be shown:`, problems.slice(0, 5));
+    const served = usableContent(content) ?? bundledContent;
+    memory = { content: served, at: Date.now() };
+    return served;
   } catch (err) {
     console.error('Reading content from Blob failed; using bundled content:', err);
     return memory?.content ?? bundledContent;
@@ -94,7 +100,6 @@ export async function saveContent(next: Content, expectedEtag: string | null, no
   if (!hasBlobStore()) throw new Error('No Blob store is connected, so content can’t be saved.');
   // Carry the highest-ever place ID forward so deleted IDs are never reused,
   // whatever the browser sent.
-  // An unusable stored copy carries no IDs worth keeping beyond the built-in ones.
   const previous = expectedEtag ? (await getContentWithEtag()).content : bundledContent;
   next = withMaxPlaceId(next, previous);
   const now = new Date();
@@ -117,7 +122,8 @@ export async function saveContent(next: Content, expectedEtag: string | null, no
     if (!expectedEtag && /already exists/i.test(String((err as Error).message))) throw new ContentConflictError();
     throw err;
   }
-  memory = { content: next, at: Date.now() };
+  // What visitors are served (a save may keep problems the stored copy already had).
+  memory = { content: usableContent(next) ?? bundledContent, at: Date.now() };
   await writeHistory(body, now);
   return { etag: result.etag };
 }
