@@ -36,6 +36,25 @@ describe('createIdSetStore', () => {
     expect(data.get('test:ids')).toBe('[1,3,9]');
   });
 
+  it('keeps changes it couldn’t save when storage can be read but not written, and saves them later', () => {
+    const data = fakeWindow();
+    data.set('test:ids', '[1]');
+    const storage = (window as unknown as { localStorage: { setItem: (k: string, v: string) => void } }).localStorage;
+    const setItem = storage.setItem;
+    storage.setItem = () => {
+      throw new Error('QuotaExceededError');
+    };
+    const store = createIdSetStore('test:ids');
+    store.add(5);
+    store.add(6); // builds on the stored set plus 5, not the stored set alone
+    store.remove([1]);
+    expect([...store.latest()].sort()).toEqual([5, 6]);
+    expect(data.get('test:ids')).toBe('[1]');
+    storage.setItem = setItem; // room again: the next change writes everything
+    store.add(7);
+    expect(data.get('test:ids')).toBe('[5,6,7]');
+  });
+
   it('keeps working in memory when storage is blocked', () => {
     fakeWindow(true);
     const store = createIdSetStore('test:ids');

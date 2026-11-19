@@ -29,11 +29,28 @@ export function createIdSetStore(storageKey: string) {
     }
   };
 
-  const write = (ids: Set<number>) => {
+  // Changes this tab couldn't write (storage full or blocked): true for an ID
+  // added, false for one removed. They're applied over whatever is stored, so a
+  // later change (or another tab's) doesn't wipe them out, and written with the
+  // next save that works.
+  const unsaved = new Map<number, boolean>();
+  const withUnsaved = (base: Set<number>) => {
+    if (!unsaved.size) return base;
+    const out = new Set(base);
+    for (const [id, added] of unsaved) {
+      if (added) out.add(id);
+      else out.delete(id);
+    }
+    return out;
+  };
+
+  const write = (ids: Set<number>, changes: [number, boolean][]) => {
+    for (const [id, added] of changes) unsaved.set(id, added);
     try {
       window.localStorage.setItem(storageKey, serializeIds(ids));
+      unsaved.clear();
     } catch {
-      // Not saved; the in-memory state still updates.
+      // Not saved; the in-memory state still updates, and the change is kept for the next save.
     }
   };
 
@@ -42,9 +59,9 @@ export function createIdSetStore(storageKey: string) {
 
   const current = () => (ids ??= typeof window === 'undefined' ? new Set<number>() : read());
 
-  const update = (next: Set<number>) => {
+  const update = (next: Set<number>, changes: [number, boolean][]) => {
     ids = next;
-    write(next);
+    write(next, changes);
     listeners.forEach(listener => listener());
   };
 
@@ -54,7 +71,7 @@ export function createIdSetStore(storageKey: string) {
     // e.newValue, which may be older than a change made since.
     const onStorage = (e: StorageEvent) => {
       if (e.key === storageKey || e.key === null) {
-        ids = read();
+        ids = withUnsaved(read());
         listener();
       }
     };
@@ -75,27 +92,29 @@ export function createIdSetStore(storageKey: string) {
 
   // Changes start from the latest saved set, not this tab's copy, so a change
   // made in another tab moments earlier isn't overwritten. Without storage,
-  // read() is empty, so fall back to the in-memory set.
-  const latest = () => (storageWorks() ? read() : current());
+  // read() is empty, so fall back to the in-memory set. This tab's unsaved
+  // changes go on top.
+  const latest = () => (storageWorks() ? withUnsaved(read()) : current());
 
   return {
     toggle(id: number) {
       const next = new Set(latest());
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      update(next);
+      const added = !next.has(id);
+      if (added) next.add(id);
+      else next.delete(id);
+      update(next, [[id, added]]);
     },
     /** Adds the ID (no change if it's already there). Returns whether it was added, judged on the latest saved set. */
     add(id: number): boolean {
       const now = latest();
       if (now.has(id)) return false;
-      update(new Set([...now, id]));
+      update(new Set([...now, id]), [[id, true]]);
       return true;
     },
     remove(remove: number[]) {
       const next = new Set(latest());
       remove.forEach(id => next.delete(id));
-      update(next);
+      update(next, remove.map(id => [id, false]));
     },
     /** The set. Re-renders when it changes. */
     useIds(): Set<number> {

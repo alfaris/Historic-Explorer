@@ -158,4 +158,7 @@ const subscribe = (listener: () => void) => {
   };
 };
 
+/** The dates now, outside React. */
+export const getVisitDates = () => current();
+
 export const useVisitDates = () => useSyncExternalStore(subscribe, current, () => ({}) as VisitDates);

@@ -124,6 +124,19 @@ describe('marking visits', () => {
     expect(stored()).toEqual({ 201: '2026-11-17', 7: '2026-11-17' });
   });
 
+  it('keeps visits and their dates for the session when storage can be read but not written', async () => {
+    const ls = (window as unknown as { localStorage: { setItem: (k: string, v: string) => void } }).localStorage;
+    ls.setItem = () => {
+      throw new Error('QuotaExceededError');
+    };
+    const { toggleVisited, markVisited } = await import('./visited');
+    const { forgetVisitDates, getVisitDates } = await import('./visit-dates');
+    toggleVisited(5);
+    markVisited(6); // the second visit doesn't wipe out the first
+    forgetVisitDates([99]); // a later refresh of the dates keeps both
+    expect(getVisitDates()).toEqual({ 5: '2026-11-17', 6: '2026-11-17' });
+  });
+
   it("doesn't replay a date it couldn't save for a place another tab unmarked since", async () => {
     const { toggleVisited } = await import('./visited');
     const restore = failDateWrites();
