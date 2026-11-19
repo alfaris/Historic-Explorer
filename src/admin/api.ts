@@ -50,7 +50,8 @@ export const api = {
   session: () => call<{ configured: boolean; signedIn: boolean }>('session'),
   login: (password: string) => call<{ ok: true }>('login', { method: 'POST', body: JSON.stringify({ password }) }),
   logout: () => call<{ ok: true }>('logout', { method: 'POST' }),
-  content: () => call<{ content: Content; etag: string | null }>('content'),
+  /** problems: what the stored copy fails by today's checks; unusable: it had nothing to show, so this is the built-in content. */
+  content: () => call<{ content: Content; etag: string | null; problems?: string[]; unusable?: boolean }>('content'),
   saveContent: (content: Content, etag: string | null, note: string) =>
     call<{ etag: string }>('content', { method: 'PUT', body: JSON.stringify({ content, etag, note }) }),
   /** One page of reports; `places` limits them to those places (a route's, or one), `type` to one kind. */

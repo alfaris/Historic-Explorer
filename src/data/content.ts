@@ -216,6 +216,24 @@ export function normalizeContent(input: unknown): Content {
  * empty list means it's valid. The server refuses to save content with
  * problems, and the tests run this against the bundled data.
  */
+/**
+ * Whether normalized content can be shown at all: at least one route and one
+ * place, IDs unique, every place on an existing route with a known category
+ * and a position. Looser than validateContent on purpose: content saved
+ * before a check was added (a new length limit, say) still fails
+ * validateContent, but visitors should keep seeing it rather than lose
+ * everything the admin added (the admin is asked to fix it).
+ */
+export function isUsableContent(content: Content): boolean {
+  if (content.routes.length === 0 || content.places.length === 0) return false;
+  const routeIds = new Set(content.routes.map(r => r.id));
+  if (routeIds.size !== content.routes.length) return false;
+  if (new Set(content.places.map(p => p.id)).size !== content.places.length) return false;
+  return content.places.every(
+    p => Number.isInteger(p.id) && routeIds.has(p.routeId) && CATEGORY_IDS.includes(p.category) && Number.isFinite(p.lat) && Number.isFinite(p.lng),
+  );
+}
+
 export function validateContent(content: Content): string[] {
   const problems: string[] = [];
   const routeIds = new Set<string>();

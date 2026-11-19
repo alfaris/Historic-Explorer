@@ -118,6 +118,42 @@ describe('content', () => {
     expect((await getContent()).places.length).toBe(bundledContent.places.length);
   });
 
+  it('flags a stored copy that can’t be shown to the admin, with its ETag kept for the fixing save', async () => {
+    store.set('content/current.json', { body: '{"routes":[],"places":[]}', etag: '"x"', uploadedAt: new Date() });
+    const data = await (await admin('content')).json();
+    expect(data).toMatchObject({ etag: '"x"', unusable: true });
+    expect(data.problems.length).toBeGreaterThan(0);
+  });
+
+  it('keeps serving stored content that fails a check added since it was saved, and tells the admin', async () => {
+    // A save, then a field grows past a limit the way a stricter rule would see it.
+    const { content } = await (await admin('content')).json();
+    content.places[0].nameEn = 'Edited by the admin';
+    await admin('content', { method: 'PUT', body: JSON.stringify({ content, etag: null, note: 'edit' }) });
+    const raw = JSON.parse(String(store.get('content/current.json')!.body));
+    raw.places[1].descriptionEn = 'x'.repeat(5000);
+    store.set('content/current.json', { body: JSON.stringify(raw), etag: '"old-rules"', uploadedAt: new Date() });
+    _resetContentCache();
+
+    // Visitors still get the admin's content, not the built-in one.
+    expect((await getContent()).places[0].nameEn).toBe('Edited by the admin');
+    // The admin gets the same content, its real ETag, and what to fix.
+    const data = await (await admin('content')).json();
+    expect(data.content.places[0].nameEn).toBe('Edited by the admin');
+    expect(data.etag).toBe('"old-rules"');
+    expect(data.unusable).toBeUndefined();
+    expect(data.problems.some((p: string) => /longer than/.test(p))).toBe(true);
+
+    // Saving it unfixed is refused; fixed, it saves over the stored copy (not over the built-in one).
+    expect((await admin('content', { method: 'PUT', body: JSON.stringify({ content: data.content, etag: data.etag, note: 'unfixed' }) })).status).toBe(422);
+    data.content.places[1].descriptionEn = 'Fixed.';
+    expect((await admin('content', { method: 'PUT', body: JSON.stringify({ content: data.content, etag: data.etag, note: 'fixed' }) })).status).toBe(200);
+    _resetContentCache();
+    const after = await getContent();
+    expect(after.places[0].nameEn).toBe('Edited by the admin');
+    expect(after.places[1].descriptionEn).toBe('Fixed.');
+  });
+
   it('places added by an admin can be reported', async () => {
     const { content, etag } = await (await admin('content')).json();
     content.places.push({ ...content.places[0], id: 9000, nameEn: 'New Cafe', lat: 30.03, lng: 31.251 });

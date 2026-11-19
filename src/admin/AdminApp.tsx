@@ -95,6 +95,8 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
   const [tab, setTab] = useState<Tab>('reports');
   const [content, setContent] = useState<Content | null>(null);
   const [etag, setEtag] = useState<string | null>(null);
+  // What the stored content fails by today's checks, as loaded (see getContentWithEtag).
+  const [storedIssue, setStoredIssue] = useState<{ problems: string[]; unusable: boolean } | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<{ message: string; problems: string[]; conflict: boolean } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -113,6 +115,7 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
       // The server already normalizes; doing it here too keeps the editors on the current model.
       setContent(normalizeContent(data.content));
       setEtag(data.etag);
+      setStoredIssue(data.problems?.length || data.unusable ? { problems: data.problems ?? [], unusable: !!data.unusable } : null);
       setLoadError(null);
       setSaveError(null);
     } catch (err) {
@@ -140,6 +143,8 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
       const { etag: newEtag } = await api.saveContent(next, etag, note);
       setContent(next);
       setEtag(newEtag);
+      // A save passed today's checks, so the stored copy now does too.
+      setStoredIssue(null);
       setSaveError(null);
       setNotice(`Saved: ${note}. Visitors see it within about a minute.`);
       return true;
@@ -217,6 +222,16 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
           </ErrorBox>
         )}
         {notice && <div className="rounded-2xl bg-nile/10 text-nile text-sm p-4">{notice}</div>}
+        {storedIssue && (
+          <ErrorBox
+            message={
+              storedIssue.unusable
+                ? 'The saved content can’t be shown (no routes or places, or broken IDs), so visitors are seeing the built-in content. Restore a version from History.'
+                : `The saved content fails ${storedIssue.problems.length === 1 ? 'a check' : `${storedIssue.problems.length} checks`} added since it was saved. Visitors still see it as it is; fix these to save again:`
+            }
+            problems={storedIssue.problems}
+          />
+        )}
         {etag === null && content && (
           <div className="rounded-2xl bg-gold/10 text-stone-700 text-sm p-4">
             You’re seeing the built-in content. Your first save stores a live copy that the site will use from then on.

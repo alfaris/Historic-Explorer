@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bundledContent, nextPlaceId, normalizeContent, validateContent, withMaxPlaceId, type Content } from './content';
+import { bundledContent, isUsableContent, nextPlaceId, normalizeContent, validateContent, withMaxPlaceId, type Content } from './content';
 
 const clone = (): Content => structuredClone(bundledContent);
 
@@ -165,5 +165,25 @@ describe('mosque setting', () => {
     const c = normalizeContent({ routes: [], places: [{ ...bundledContent.places[0], mosque: false }, { ...bundledContent.places[1], mosque: 'yes' }] });
     expect(c.places[0].mosque).toBe(false);
     expect(c.places[1]).not.toHaveProperty('mosque');
+  });
+});
+
+describe('isUsableContent', () => {
+  const base = () => normalizeContent(structuredClone(bundledContent));
+  it('accepts content that only fails a newer check', () => {
+    const c = base();
+    c.places[0].descriptionEn = 'x'.repeat(5000);
+    expect(validateContent(c).length).toBeGreaterThan(0);
+    expect(isUsableContent(c)).toBe(true);
+  });
+  it('rejects content that can’t be shown', () => {
+    expect(isUsableContent({ ...base(), places: [] })).toBe(false);
+    expect(isUsableContent({ ...base(), routes: [] })).toBe(false);
+    const orphan = base();
+    orphan.places[0] = { ...orphan.places[0], routeId: 'nowhere' };
+    expect(isUsableContent(orphan)).toBe(false);
+    const dup = base();
+    dup.places[1] = { ...dup.places[1], id: dup.places[0].id };
+    expect(isUsableContent(dup)).toBe(false);
   });
 });
