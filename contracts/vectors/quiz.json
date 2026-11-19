@@ -1,0 +1,29 @@
+{
+  "about": "The \"Which came first?\" quiz (src/lib/quiz.ts) and best scores (src/lib/quiz-best.ts) over the built-in places. A scope is a route ID, or null for all of Cairo. `dated` lists the IDs with a build year; `pairs` the fair pairs in order (≥ 20 years apart, no overlap). Each game lists the random numbers quizRounds drew, in order, and the rounds it made from them: feed the same numbers to get the same rounds. `beats` compares best scores by share, then by rounds.",
+  "cases": [
+    {"scope":null,"dated":[],"pairs":[],"hasQuiz":false},
+    {"scope":"ahl-al-bayt","dated":[],"pairs":[],"hasQuiz":false},
+    {"scope":"al-muizz","dated":[],"pairs":[],"hasQuiz":false},
+    {"scope":"coptic-cairo","dated":[],"pairs":[],"hasQuiz":false},
+    {"scope":"darb-al-ahmar","dated":[],"pairs":[],"hasQuiz":false},
+    {"scope":"fustat-roda","dated":[],"pairs":[],"hasQuiz":false},
+    {"game":{"scope":null,"random":[],"rounds":[]}},
+    {"game":{"scope":"ahl-al-bayt","random":[],"rounds":[]}},
+    {"game":{"scope":"al-muizz","random":[],"rounds":[]}},
+    {"game":{"scope":"coptic-cairo","random":[],"rounds":[]}},
+    {"game":{"scope":"darb-al-ahmar","random":[],"rounds":[]}},
+    {"game":{"scope":"fustat-roda","random":[],"rounds":[]}},
+    {"beats":{"next":{"score":3,"of":5},"old":null},"out":true},
+    {"beats":{"next":{"score":3,"of":5},"old":{"score":3,"of":5}},"out":false},
+    {"beats":{"next":{"score":4,"of":4},"old":{"score":3,"of":3}},"out":true},
+    {"beats":{"next":{"score":2,"of":4},"old":{"score":3,"of":5}},"out":false},
+    {"beats":{"next":{"score":3,"of":5},"old":{"score":2,"of":4}},"out":true},
+    {"beats":{"next":{"score":0,"of":5},"old":{"score":0,"of":3}},"out":true},
+    {"parseBests":"","out":{}},
+    {"parseBests":"null","out":{}},
+    {"parseBests":"[]","out":{}},
+    {"parseBests":"{\"a\":{\"score\":3,\"of\":5}}","out":{"a":{"score":3,"of":5}}},
+    {"parseBests":"{\"a\":{\"score\":6,\"of\":5},\"b\":{\"score\":2,\"of\":21},\"c\":{\"score\":1.5,\"of\":3},\"d\":{\"score\":0,\"of\":1}}","out":{"d":{"score":0,"of":1}}},
+    {"mergeBests":[{"a":{"score":3,"of":5},"b":{"score":1,"of":2}},{"a":{"score":4,"of":5},"b":{"score":1,"of":3},"c":{"score":2,"of":2}}],"out":{"a":{"score":4,"of":5},"b":{"score":1,"of":2},"c":{"score":2,"of":2}}}
+  ]
+}

@@ -32,6 +32,27 @@ jobs:
       - name: Bundle size
         run: npm run check:bundle
 
+  # The visitor logic and the golden vectors (contracts/vectors) don't depend on
+  # the phone's time zone: tourists' phones often keep their home one (#249).
+  timezones:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        tz: [Africa/Cairo, UTC, America/Los_Angeles, Asia/Tokyo]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Tests in ${{ matrix.tz }}
+        run: npm test
+        env:
+          TZ: ${{ matrix.tz }}
+
   # The native apps' prayer times must match the web's to the minute (#254):
   # adhan2 (Kotlin) against the vectors the web exports in contracts/vectors.
   mobile-parity:

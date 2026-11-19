@@ -1,0 +1,321 @@
+{
+  "about": "Hours with special periods (Ramadan, Eid, one-off closures) in force (openStatusAt and effectiveHours in src/lib/special-hours.ts). Each period lists places by ID with their own weekly hours or {closed: true}; the first listed period wins. Statuses are as in opening-hours.json; null means nothing is known. `effective` is the week from the instant's Cairo date as weekly hours, the ID of the period in force today, whether today is a special closure, and the ID of a period on today that doesn't list the place.",
+  "places": [
+    {
+      "id": 1,
+      "hours": {
+        "days": [
+          [
+            {
+              "open": "09:00",
+              "close": "17:00"
+            }
+          ],
+          [
+            {
+              "open": "09:00",
+              "close": "17:00"
+            }
+          ],
+          [
+            {
+              "open": "09:00",
+              "close": "17:00"
+            }
+          ],
+          [
+            {
+              "open": "09:00",
+              "close": "17:00"
+            }
+          ],
+          [
+            {
+              "open": "09:00",
+              "close": "17:00"
+            }
+          ],
+          [
+            {
+              "open": "09:00",
+              "close": "17:00"
+            }
+          ],
+          [
+            {
+              "open": "09:00",
+              "close": "17:00"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "hours": {
+        "days": [
+          [
+            {
+              "open": "18:00",
+              "close": "02:00"
+            }
+          ],
+          [],
+          [
+            {
+              "open": "18:00",
+              "close": "02:00"
+            }
+          ],
+          [
+            {
+              "open": "18:00",
+              "close": "02:00"
+            }
+          ],
+          [
+            {
+              "open": "18:00",
+              "close": "02:00"
+            }
+          ],
+          [
+            {
+              "open": "18:00",
+              "close": "02:00"
+            }
+          ],
+          [
+            {
+              "open": "18:00",
+              "close": "02:00"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "hours": {
+        "days": [
+          [
+            {
+              "open": "09:00",
+              "close": "17:00"
+            }
+          ],
+          [
+            {
+              "open": "09:00",
+              "close": "17:00"
+            }
+          ],
+          [
+            {
+              "open": "09:00",
+              "close": "17:00"
+            }
+          ],
+          [
+            {
+              "open": "09:00",
+              "close": "17:00"
+            }
+          ],
+          [
+            {
+              "open": "09:00",
+              "close": "17:00"
+            }
+          ],
+          [
+            {
+              "open": "09:00",
+              "close": "11:30"
+            },
+            {
+              "open": "13:30",
+              "close": "17:00"
+            }
+          ],
+          [
+            {
+              "open": "09:00",
+              "close": "17:00"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "id": 4
+    }
+  ],
+  "periods": [
+    {
+      "id": "ramadan-2027",
+      "nameEn": "Ramadan",
+      "nameAr": "رمضان",
+      "from": "2027-02-08",
+      "to": "2027-03-09",
+      "places": {
+        "1": {
+          "days": [
+            [
+              {
+                "open": "10:00",
+                "close": "15:00"
+              },
+              {
+                "open": "20:00",
+                "close": "01:00"
+              }
+            ],
+            [
+              {
+                "open": "10:00",
+                "close": "15:00"
+              },
+              {
+                "open": "20:00",
+                "close": "01:00"
+              }
+            ],
+            [
+              {
+                "open": "10:00",
+                "close": "15:00"
+              },
+              {
+                "open": "20:00",
+                "close": "01:00"
+              }
+            ],
+            [
+              {
+                "open": "10:00",
+                "close": "15:00"
+              },
+              {
+                "open": "20:00",
+                "close": "01:00"
+              }
+            ],
+            [
+              {
+                "open": "10:00",
+                "close": "15:00"
+              },
+              {
+                "open": "20:00",
+                "close": "01:00"
+              }
+            ],
+            [
+              {
+                "open": "10:00",
+                "close": "15:00"
+              },
+              {
+                "open": "20:00",
+                "close": "01:00"
+              }
+            ],
+            [
+              {
+                "open": "10:00",
+                "close": "15:00"
+              },
+              {
+                "open": "20:00",
+                "close": "01:00"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "eid-2027",
+      "nameEn": "Eid",
+      "nameAr": "العيد",
+      "from": "2027-03-10",
+      "to": "2027-03-12",
+      "places": {
+        "1": {
+          "closed": true
+        }
+      }
+    },
+    {
+      "id": "works",
+      "nameEn": "Works",
+      "nameAr": "صيانة",
+      "from": "2027-05-01",
+      "to": "2027-05-01",
+      "places": {
+        "3": {
+          "closed": true
+        }
+      }
+    }
+  ],
+  "cases": [
+    {"place":1,"at":"2027-02-07T12:00Z","status":{"open":true,"closes":{"inDays":0,"minutes":1020}},"effective":{"days":[[{"open":"09:00","close":"17:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}]],"period":null,"closedToday":false,"mayDiffer":null}},
+    {"place":2,"at":"2027-02-07T12:00Z","status":{"open":false,"opens":{"inDays":0,"minutes":1080}},"effective":{"days":[[{"open":"18:00","close":"02:00"}],[],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}]],"period":null,"closedToday":false,"mayDiffer":null}},
+    {"place":3,"at":"2027-02-07T12:00Z","status":{"open":true,"closes":{"inDays":0,"minutes":1020}},"effective":{"days":[[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"11:30"},{"open":"13:30","close":"17:00"}],[{"open":"09:00","close":"17:00"}]],"period":null,"closedToday":false,"mayDiffer":null}},
+    {"place":4,"at":"2027-02-07T12:00Z","status":null,"effective":{"days":null,"period":null,"closedToday":false,"mayDiffer":null}},
+    {"place":1,"at":"2027-02-07T22:30Z","status":{"open":false,"opens":{"inDays":0,"minutes":600}},"effective":{"days":[[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}]],"period":"ramadan-2027","closedToday":false,"mayDiffer":null}},
+    {"place":2,"at":"2027-02-07T22:30Z","status":{"open":true,"closes":{"inDays":0,"minutes":120}},"effective":{"days":[[{"open":"18:00","close":"02:00"}],[],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}]],"period":null,"closedToday":false,"mayDiffer":"ramadan-2027"}},
+    {"place":3,"at":"2027-02-07T22:30Z","status":{"open":false,"opens":{"inDays":0,"minutes":540}},"effective":{"days":[[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"11:30"},{"open":"13:30","close":"17:00"}],[{"open":"09:00","close":"17:00"}]],"period":null,"closedToday":false,"mayDiffer":"ramadan-2027"}},
+    {"place":4,"at":"2027-02-07T22:30Z","status":null,"effective":{"days":null,"period":null,"closedToday":false,"mayDiffer":null}},
+    {"place":1,"at":"2027-02-08T07:59Z","status":{"open":false,"opens":{"inDays":0,"minutes":600}},"effective":{"days":[[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}]],"period":"ramadan-2027","closedToday":false,"mayDiffer":null}},
+    {"place":2,"at":"2027-02-08T07:59Z","status":{"open":false,"opens":{"inDays":1,"minutes":1080}},"effective":{"days":[[{"open":"18:00","close":"02:00"}],[],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}]],"period":null,"closedToday":false,"mayDiffer":"ramadan-2027"}},
+    {"place":3,"at":"2027-02-08T07:59Z","status":{"open":true,"closes":{"inDays":0,"minutes":1020}},"effective":{"days":[[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"11:30"},{"open":"13:30","close":"17:00"}],[{"open":"09:00","close":"17:00"}]],"period":null,"closedToday":false,"mayDiffer":"ramadan-2027"}},
+    {"place":4,"at":"2027-02-08T07:59Z","status":null,"effective":{"days":null,"period":null,"closedToday":false,"mayDiffer":null}},
+    {"place":1,"at":"2027-02-08T08:00Z","status":{"open":true,"closes":{"inDays":0,"minutes":900}},"effective":{"days":[[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}]],"period":"ramadan-2027","closedToday":false,"mayDiffer":null}},
+    {"place":2,"at":"2027-02-08T08:00Z","status":{"open":false,"opens":{"inDays":1,"minutes":1080}},"effective":{"days":[[{"open":"18:00","close":"02:00"}],[],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}]],"period":null,"closedToday":false,"mayDiffer":"ramadan-2027"}},
+    {"place":3,"at":"2027-02-08T08:00Z","status":{"open":true,"closes":{"inDays":0,"minutes":1020}},"effective":{"days":[[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"11:30"},{"open":"13:30","close":"17:00"}],[{"open":"09:00","close":"17:00"}]],"period":null,"closedToday":false,"mayDiffer":"ramadan-2027"}},
+    {"place":4,"at":"2027-02-08T08:00Z","status":null,"effective":{"days":null,"period":null,"closedToday":false,"mayDiffer":null}},
+    {"place":1,"at":"2027-02-08T13:00Z","status":{"open":false,"opens":{"inDays":0,"minutes":1200}},"effective":{"days":[[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}]],"period":"ramadan-2027","closedToday":false,"mayDiffer":null}},
+    {"place":2,"at":"2027-02-08T13:00Z","status":{"open":false,"opens":{"inDays":1,"minutes":1080}},"effective":{"days":[[{"open":"18:00","close":"02:00"}],[],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}]],"period":null,"closedToday":false,"mayDiffer":"ramadan-2027"}},
+    {"place":3,"at":"2027-02-08T13:00Z","status":{"open":true,"closes":{"inDays":0,"minutes":1020}},"effective":{"days":[[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"11:30"},{"open":"13:30","close":"17:00"}],[{"open":"09:00","close":"17:00"}]],"period":null,"closedToday":false,"mayDiffer":"ramadan-2027"}},
+    {"place":4,"at":"2027-02-08T13:00Z","status":null,"effective":{"days":null,"period":null,"closedToday":false,"mayDiffer":null}},
+    {"place":1,"at":"2027-02-08T18:00Z","status":{"open":true,"closes":{"inDays":1,"minutes":60}},"effective":{"days":[[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}]],"period":"ramadan-2027","closedToday":false,"mayDiffer":null}},
+    {"place":2,"at":"2027-02-08T18:00Z","status":{"open":false,"opens":{"inDays":1,"minutes":1080}},"effective":{"days":[[{"open":"18:00","close":"02:00"}],[],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}]],"period":null,"closedToday":false,"mayDiffer":"ramadan-2027"}},
+    {"place":3,"at":"2027-02-08T18:00Z","status":{"open":false,"opens":{"inDays":1,"minutes":540}},"effective":{"days":[[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"11:30"},{"open":"13:30","close":"17:00"}],[{"open":"09:00","close":"17:00"}]],"period":null,"closedToday":false,"mayDiffer":"ramadan-2027"}},
+    {"place":4,"at":"2027-02-08T18:00Z","status":null,"effective":{"days":null,"period":null,"closedToday":false,"mayDiffer":null}},
+    {"place":1,"at":"2027-02-08T22:30Z","status":{"open":true,"closes":{"inDays":0,"minutes":60}},"effective":{"days":[[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}]],"period":"ramadan-2027","closedToday":false,"mayDiffer":null}},
+    {"place":2,"at":"2027-02-08T22:30Z","status":{"open":false,"opens":{"inDays":0,"minutes":1080}},"effective":{"days":[[{"open":"18:00","close":"02:00"}],[],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}]],"period":null,"closedToday":false,"mayDiffer":"ramadan-2027"}},
+    {"place":3,"at":"2027-02-08T22:30Z","status":{"open":false,"opens":{"inDays":0,"minutes":540}},"effective":{"days":[[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"11:30"},{"open":"13:30","close":"17:00"}],[{"open":"09:00","close":"17:00"}]],"period":null,"closedToday":false,"mayDiffer":"ramadan-2027"}},
+    {"place":4,"at":"2027-02-08T22:30Z","status":null,"effective":{"days":null,"period":null,"closedToday":false,"mayDiffer":null}},
+    {"place":1,"at":"2027-02-08T23:30Z","status":{"open":false,"opens":{"inDays":0,"minutes":600}},"effective":{"days":[[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}],[{"open":"10:00","close":"15:00"},{"open":"20:00","close":"01:00"}]],"period":"ramadan-2027","closedToday":false,"mayDiffer":null}},
+    {"place":2,"at":"2027-02-08T23:30Z","status":{"open":false,"opens":{"inDays":0,"minutes":1080}},"effective":{"days":[[{"open":"18:00","close":"02:00"}],[],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}]],"period":null,"closedToday":false,"mayDiffer":"ramadan-2027"}},
+    {"place":3,"at":"2027-02-08T23:30Z","status":{"open":false,"opens":{"inDays":0,"minutes":540}},"effective":{"days":[[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"11:30"},{"open":"13:30","close":"17:00"}],[{"open":"09:00","close":"17:00"}]],"period":null,"closedToday":false,"mayDiffer":"ramadan-2027"}},
+    {"place":4,"at":"2027-02-08T23:30Z","status":null,"effective":{"days":null,"period":null,"closedToday":false,"mayDiffer":null}},
+    {"place":1,"at":"2027-03-09T22:30Z","status":{"open":true,"closes":{"inDays":0,"minutes":60}},"effective":{"days":[[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[],[],[],[{"open":"09:00","close":"17:00"}]],"period":"eid-2027","closedToday":true,"mayDiffer":null}},
+    {"place":2,"at":"2027-03-09T22:30Z","status":{"open":true,"closes":{"inDays":0,"minutes":120}},"effective":{"days":[[{"open":"18:00","close":"02:00"}],[],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}]],"period":null,"closedToday":false,"mayDiffer":"eid-2027"}},
+    {"place":3,"at":"2027-03-09T22:30Z","status":{"open":false,"opens":{"inDays":0,"minutes":540}},"effective":{"days":[[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"11:30"},{"open":"13:30","close":"17:00"}],[{"open":"09:00","close":"17:00"}]],"period":null,"closedToday":false,"mayDiffer":"eid-2027"}},
+    {"place":4,"at":"2027-03-09T22:30Z","status":null,"effective":{"days":null,"period":null,"closedToday":false,"mayDiffer":null}},
+    {"place":1,"at":"2027-03-10T09:00Z","status":{"open":false,"opens":{"inDays":3,"minutes":540}},"effective":{"days":[[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[],[],[],[{"open":"09:00","close":"17:00"}]],"period":"eid-2027","closedToday":true,"mayDiffer":null}},
+    {"place":2,"at":"2027-03-10T09:00Z","status":{"open":false,"opens":{"inDays":0,"minutes":1080}},"effective":{"days":[[{"open":"18:00","close":"02:00"}],[],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}]],"period":null,"closedToday":false,"mayDiffer":"eid-2027"}},
+    {"place":3,"at":"2027-03-10T09:00Z","status":{"open":true,"closes":{"inDays":0,"minutes":1020}},"effective":{"days":[[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"11:30"},{"open":"13:30","close":"17:00"}],[{"open":"09:00","close":"17:00"}]],"period":null,"closedToday":false,"mayDiffer":"eid-2027"}},
+    {"place":4,"at":"2027-03-10T09:00Z","status":null,"effective":{"days":null,"period":null,"closedToday":false,"mayDiffer":null}},
+    {"place":1,"at":"2027-03-12T21:59Z","status":{"open":false,"opens":{"inDays":1,"minutes":540}},"effective":{"days":[[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[],[{"open":"09:00","close":"17:00"}]],"period":"eid-2027","closedToday":true,"mayDiffer":null}},
+    {"place":2,"at":"2027-03-12T21:59Z","status":{"open":true,"closes":{"inDays":1,"minutes":120}},"effective":{"days":[[{"open":"18:00","close":"02:00"}],[],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}]],"period":null,"closedToday":false,"mayDiffer":"eid-2027"}},
+    {"place":3,"at":"2027-03-12T21:59Z","status":{"open":false,"opens":{"inDays":1,"minutes":540}},"effective":{"days":[[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"11:30"},{"open":"13:30","close":"17:00"}],[{"open":"09:00","close":"17:00"}]],"period":null,"closedToday":false,"mayDiffer":"eid-2027"}},
+    {"place":4,"at":"2027-03-12T21:59Z","status":null,"effective":{"days":null,"period":null,"closedToday":false,"mayDiffer":null}},
+    {"place":1,"at":"2027-03-12T22:00Z","status":{"open":false,"opens":{"inDays":0,"minutes":540}},"effective":{"days":[[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}]],"period":null,"closedToday":false,"mayDiffer":null}},
+    {"place":2,"at":"2027-03-12T22:00Z","status":{"open":true,"closes":{"inDays":0,"minutes":120}},"effective":{"days":[[{"open":"18:00","close":"02:00"}],[],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}]],"period":null,"closedToday":false,"mayDiffer":null}},
+    {"place":3,"at":"2027-03-12T22:00Z","status":{"open":false,"opens":{"inDays":0,"minutes":540}},"effective":{"days":[[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"11:30"},{"open":"13:30","close":"17:00"}],[{"open":"09:00","close":"17:00"}]],"period":null,"closedToday":false,"mayDiffer":null}},
+    {"place":4,"at":"2027-03-12T22:00Z","status":null,"effective":{"days":null,"period":null,"closedToday":false,"mayDiffer":null}},
+    {"place":1,"at":"2027-03-13T09:00Z","status":{"open":true,"closes":{"inDays":0,"minutes":1020}},"effective":{"days":[[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}]],"period":null,"closedToday":false,"mayDiffer":null}},
+    {"place":2,"at":"2027-03-13T09:00Z","status":{"open":false,"opens":{"inDays":0,"minutes":1080}},"effective":{"days":[[{"open":"18:00","close":"02:00"}],[],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}]],"period":null,"closedToday":false,"mayDiffer":null}},
+    {"place":3,"at":"2027-03-13T09:00Z","status":{"open":true,"closes":{"inDays":0,"minutes":1020}},"effective":{"days":[[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"11:30"},{"open":"13:30","close":"17:00"}],[{"open":"09:00","close":"17:00"}]],"period":null,"closedToday":false,"mayDiffer":null}},
+    {"place":4,"at":"2027-03-13T09:00Z","status":null,"effective":{"days":null,"period":null,"closedToday":false,"mayDiffer":null}},
+    {"place":1,"at":"2027-05-01T09:00Z","status":{"open":true,"closes":{"inDays":0,"minutes":1020}},"effective":{"days":[[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}]],"period":null,"closedToday":false,"mayDiffer":"works"}},
+    {"place":2,"at":"2027-05-01T09:00Z","status":{"open":false,"opens":{"inDays":0,"minutes":1080}},"effective":{"days":[[{"open":"18:00","close":"02:00"}],[],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}],[{"open":"18:00","close":"02:00"}]],"period":null,"closedToday":false,"mayDiffer":"works"}},
+    {"place":3,"at":"2027-05-01T09:00Z","status":{"open":false,"opens":{"inDays":1,"minutes":540}},"effective":{"days":[[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"17:00"}],[{"open":"09:00","close":"11:30"},{"open":"13:30","close":"17:00"}],[]],"period":"works","closedToday":true,"mayDiffer":null}},
+    {"place":4,"at":"2027-05-01T09:00Z","status":null,"effective":{"days":null,"period":null,"closedToday":false,"mayDiffer":null}}
+  ]
+}

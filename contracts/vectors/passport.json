@@ -1,0 +1,14 @@
+{
+  "about": "Passport stamps (src/lib/passport.ts). `withStamp` is applied in order from no stamps; each step lists the stamps after it. A route's first finish keeps its date (and time, `at`, in ms since the epoch); walking it again only raises `found` (capped at `spots`) and `spots`. `mergeStamps` joins two sets: the earlier finish, the most found and spots. `parseStamps` reads a stored value, keeping only well-formed stamps.",
+  "cases": [
+    {"withStamp":[{"routeId":"al-muizz","date":"2026-12-01","spot":{"found":2,"total":5},"at":1796112000000},{"routeId":"al-muizz","date":"2026-12-03","spot":{"found":1,"total":5}},{"routeId":"al-muizz","date":"2026-12-04","spot":{"found":4,"total":6}},{"routeId":"coptic-cairo","date":"2026-12-04","spot":{"found":9,"total":3}}],"after":[{"al-muizz":{"date":"2026-12-01","found":2,"spots":5,"at":1796112000000}},{"al-muizz":{"date":"2026-12-01","found":2,"spots":5,"at":1796112000000}},{"al-muizz":{"date":"2026-12-01","found":4,"spots":6,"at":1796112000000}},{"al-muizz":{"date":"2026-12-01","found":4,"spots":6,"at":1796112000000},"coptic-cairo":{"date":"2026-12-04","found":3,"spots":3}}]},
+    {"mergeStamps":[{"x":{"date":"2026-12-02","found":1,"spots":3},"y":{"date":"2026-12-01","found":2,"spots":2,"at":200}},{"x":{"date":"2026-12-01","found":0,"spots":4,"at":100},"y":{"date":"2026-12-01","found":1,"spots":3,"at":100},"z":{"date":"2026-12-05","found":0,"spots":0}}],"out":{"x":{"date":"2026-12-01","found":1,"spots":4,"at":100},"y":{"date":"2026-12-01","found":2,"spots":3,"at":100},"z":{"date":"2026-12-05","found":0,"spots":0}}},
+    {"mergeStamps":[{"x":{"date":"2026-12-01","found":0,"spots":4,"at":100},"y":{"date":"2026-12-01","found":1,"spots":3,"at":100},"z":{"date":"2026-12-05","found":0,"spots":0}},{"x":{"date":"2026-12-02","found":1,"spots":3},"y":{"date":"2026-12-01","found":2,"spots":2,"at":200}}],"out":{"x":{"date":"2026-12-01","found":1,"spots":4,"at":100},"y":{"date":"2026-12-01","found":2,"spots":3,"at":100},"z":{"date":"2026-12-05","found":0,"spots":0}}},
+    {"parseStamps":"","out":{}},
+    {"parseStamps":"nope","out":{}},
+    {"parseStamps":"[]","out":{}},
+    {"parseStamps":"{\"a\":{\"date\":\"2026-12-01\",\"found\":2,\"spots\":3}}","out":{"a":{"date":"2026-12-01","found":2,"spots":3}}},
+    {"parseStamps":"{\"a\":{\"date\":\"12/01/2026\",\"found\":1,\"spots\":1},\"b\":{\"date\":\"2026-12-01\",\"found\":5,\"spots\":2,\"at\":-1},\"c\":{\"date\":\"2026-12-01\",\"found\":-1,\"spots\":1.5,\"at\":7}}","out":{"b":{"date":"2026-12-01","found":2,"spots":2},"c":{"date":"2026-12-01","found":0,"spots":0,"at":7}}},
+    {"stampCount":{"stamps":{"al-muizz":{"date":"2026-12-01","found":4,"spots":6,"at":1796112000000},"coptic-cairo":{"date":"2026-12-04","found":3,"spots":3}},"routes":["al-muizz","coptic-cairo","darb-al-ahmar"]},"out":2}
+  ]
+}
