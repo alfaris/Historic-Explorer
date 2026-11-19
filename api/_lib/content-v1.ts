@@ -13,18 +13,26 @@ import { audioVersion } from '../../src/lib/text-hash.js';
 
 /** Raised when the shape of the served content changes (additions only, while it is 1). */
 export const SCHEMA_VERSION = 1;
-/** The oldest app build (versionCode / CFBundleVersion) that can read this content. Raise on purpose. */
+/**
+ * The oldest app build that can read this content: Android's versionCode (iOS build
+ * numbers must be plain integers too; give iOS its own field if the counters part).
+ * Raise on purpose.
+ */
 export const MIN_APP_VERSION = 1;
 
 export type AudioUrls = Partial<Record<Lang, string>>;
 
 export interface ContentV1 {
   schemaVersion: number;
-  /** A hash of the content: changes whenever anything visitors see changes. */
+  /** A hash of everything in the response: changes whenever the content, the audio URLs or the versions change. */
   contentVersion: string;
   minAppVersion: number;
   content: Content;
-  /** By place ID: the audio guide URL in each language that has a description to narrate. */
+  /**
+   * By place ID: the audio guide URL in each language that has a description to
+   * narrate (a missing language has no guide). The URLs are relative to the API's
+   * origin. Use them as they are; never rebuild them.
+   */
   audio: Record<string, AudioUrls>;
 }
 
@@ -40,16 +48,15 @@ export function audioUrlsFor(place: Content['places'][number]): AudioUrls {
   return urls;
 }
 
-export function contentV1(content: Content): ContentV1 {
+export function contentV1(content: Content, audioFor: (place: Content['places'][number]) => AudioUrls = audioUrlsFor): ContentV1 {
   const audio: Record<string, AudioUrls> = {};
-  for (const place of content.places) audio[place.id] = audioUrlsFor(place);
-  return {
-    schemaVersion: SCHEMA_VERSION,
-    contentVersion: sha256(JSON.stringify(content)).slice(0, 16),
-    minAppVersion: MIN_APP_VERSION,
-    content,
-    audio,
-  };
+  for (const place of content.places) audio[place.id] = audioFor(place);
+  // The version covers everything an app keeps, not only the content: audio URLs
+  // change on their own when the audio recipe does (a new audioVersion prefix,
+  // a change to how places are narrated), and an app that skipped them would keep
+  // requesting stale URLs.
+  const contentVersion = sha256(JSON.stringify({ schemaVersion: SCHEMA_VERSION, minAppVersion: MIN_APP_VERSION, content, audio })).slice(0, 16);
+  return { schemaVersion: SCHEMA_VERSION, contentVersion, minAppVersion: MIN_APP_VERSION, content, audio };
 }
 
 /** The serialized response and its strong ETag (a hash of exactly those bytes). */

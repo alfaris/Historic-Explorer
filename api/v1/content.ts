@@ -9,8 +9,10 @@ const CACHE = 'public, max-age=0, s-maxage=30, stale-while-revalidate=300';
 export default {
   async fetch(request: Request) {
     const { body, etag } = serializeV1(await getContent());
-    const headers = { 'Content-Type': 'application/json', 'Cache-Control': CACHE, ETag: etag };
-    if (etagMatches(request.headers.get('if-none-match'), etag)) return new Response(null, { status: 304, headers });
-    return new Response(body, { status: 200, headers });
+    if (etagMatches(request.headers.get('if-none-match'), etag)) {
+      // Never cacheable, so no cache in between can answer a plain request with an empty 304.
+      return new Response(null, { status: 304, headers: { ETag: etag, 'Cache-Control': 'private, no-cache' } });
+    }
+    return new Response(body, { status: 200, headers: { 'Content-Type': 'application/json', 'Cache-Control': CACHE, ETag: etag } });
   },
 };

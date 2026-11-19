@@ -43,6 +43,13 @@ describe('contentV1', () => {
     expect(contentV1(edited).audio[edited.places[0].id].en).not.toBe(contentV1(served).audio[served.places[0].id].en);
   });
 
+  it('changes the content version when only the audio URLs change (a new audio recipe)', () => {
+    const before = contentV1(served);
+    const after = contentV1(served, place => ({ en: `/api/audio-guide?id=${place.id}&lang=en&v=00000000` }));
+    expect(after.content).toBe(before.content);
+    expect(after.contentVersion).not.toBe(before.contentVersion);
+  });
+
   it('matches If-None-Match lists, weak validators and *', () => {
     expect(etagMatches('"abc"', '"abc"')).toBe(true);
     expect(etagMatches('"x", W/"abc"', '"abc"')).toBe(true);
@@ -69,6 +76,7 @@ describe('GET /api/v1/content', () => {
     expect(same.status).toBe(304);
     expect(await same.text()).toBe('');
     expect(same.headers.get('etag')).toBe(etag);
+    expect(same.headers.get('cache-control')).toBe('private, no-cache');
     served = { ...served, notices: [{ textEn: 'Closed for works', textAr: 'مغلق للصيانة' }] };
     const changed = await get({ 'If-None-Match': etag });
     expect(changed.status).toBe(200);
