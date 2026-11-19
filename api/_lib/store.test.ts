@@ -75,6 +75,15 @@ describe('content', () => {
     expect(data.content.places.length).toBe(bundledContent.places.length);
   });
 
+  it('serves the same bytes from the instance that saved as from one that reads it fresh', async () => {
+    const { content } = await (await admin('content')).json();
+    content.places[0].nameEn = 'Ibn Tulun (edited)';
+    expect((await admin('content', { method: 'PUT', body: JSON.stringify({ content, etag: null, note: 'rename' }) })).status).toBe(200);
+    const warm = JSON.stringify(await getContent());
+    _resetContentCache();
+    expect(JSON.stringify(await getContent())).toBe(warm);
+  });
+
   it('saves, serves the saved copy, and keeps history', async () => {
     const { content } = await (await admin('content')).json();
     content.places[0].nameEn = 'Ibn Tulun (edited)';
