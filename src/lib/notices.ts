@@ -18,6 +18,7 @@ export interface Notice {
   until?: string;
   /** Where it shows: one route, one place, or (neither) everywhere. */
   routeId?: string;
+  /** @asType integer */
   placeId?: number;
   /** A safety notice: shown first, and can't be dismissed. */
   important?: boolean;

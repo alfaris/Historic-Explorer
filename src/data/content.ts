@@ -23,7 +23,10 @@ export type { Category, Location, Route };
 export interface Content {
   routes: Route[];
   places: Location[];
-  /** Highest place ID ever used, so IDs of deleted places are never reused. */
+  /**
+   * Highest place ID ever used, so IDs of deleted places are never reused.
+   * @asType integer
+   */
   maxPlaceId?: number;
   /** Architecture terms linked in descriptions. Absent until the admin saves one: DEFAULT_GLOSSARY applies. */
   glossary?: GlossaryTerm[];

@@ -139,7 +139,9 @@ function writeDataFile(photos: Record<string, Photo>) {
 export interface Photo {
   /** Path under public/, e.g. /images/photos/place-1.webp */
   src: string;
+  /** In pixels. @asType integer */
   width: number;
+  /** @asType integer */
   height: number;
   author: string;
   license: string;

@@ -1,0 +1,965 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/ContentV1",
+  "definitions": {
+    "ContentV1": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "integer"
+        },
+        "contentVersion": {
+          "type": "string",
+          "description": "A hash of everything in the response: changes whenever the content, the audio URLs or the versions change."
+        },
+        "minAppVersion": {
+          "type": "integer"
+        },
+        "content": {
+          "$ref": "#/definitions/Content",
+          "description": "The content as visitors get it, with what the server fills in already applied: the glossary is the built-in one until the admin saves one, so an app never needs its own copy."
+        },
+        "audio": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/AudioUrls"
+          },
+          "description": "By place ID (the ID as a string, as JSON keys are): the audio guide URL in each language that has a description to narrate (a missing language has no guide). The URLs are relative to the API's origin. Use them as they are; never rebuild them."
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "contentVersion",
+        "minAppVersion",
+        "content",
+        "audio"
+      ]
+    },
+    "Content": {
+      "type": "object",
+      "properties": {
+        "routes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Route"
+          }
+        },
+        "places": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Location"
+          }
+        },
+        "maxPlaceId": {
+          "type": "integer",
+          "description": "Highest place ID ever used, so IDs of deleted places are never reused."
+        },
+        "glossary": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/GlossaryTerm"
+          },
+          "description": "Architecture terms linked in descriptions. Absent until the admin saves one: DEFAULT_GLOSSARY applies."
+        },
+        "specialPeriods": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/SpecialPeriod"
+          },
+          "description": "Ramadan, Eid, one-off closures: dates on which some places keep other hours."
+        },
+        "help": {
+          "$ref": "#/definitions/HelpContent",
+          "description": "The Help sheet's own contacts, tips and phrases (the emergency numbers are fixed in the app)."
+        },
+        "notices": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Notice"
+          },
+          "description": "Announcements for visitors (closures, works, events), app-wide or on a route or place."
+        }
+      },
+      "required": [
+        "routes",
+        "places"
+      ]
+    },
+    "Route": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "nameEn": {
+          "type": "string"
+        },
+        "nameAr": {
+          "type": "string"
+        },
+        "descriptionEn": {
+          "type": "string"
+        },
+        "descriptionAr": {
+          "type": "string"
+        },
+        "image": {
+          "type": "string"
+        },
+        "highlightsEn": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "highlightsAr": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "nameFr": {
+          "type": "string",
+          "description": "French and Spanish (optional): shown in that language, falling back to English when empty."
+        },
+        "descriptionFr": {
+          "type": "string"
+        },
+        "highlightsFr": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "nameEs": {
+          "type": "string"
+        },
+        "descriptionEs": {
+          "type": "string"
+        },
+        "highlightsEs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "distanceKm": {
+          "type": "number",
+          "description": "Length of the walk, in kilometres."
+        },
+        "hoursMin": {
+          "type": "number",
+          "description": "Walking time in hours, as a range (the same number twice for a single value)."
+        },
+        "hoursMax": {
+          "type": "number"
+        },
+        "distance": {
+          "type": "string",
+          "description": "English text of the above, kept for app versions that read it."
+        },
+        "duration": {
+          "type": "string"
+        },
+        "photo": {
+          "$ref": "#/definitions/Photo",
+          "description": "Uploaded in the admin dashboard; replaces the built-in photo."
+        },
+        "photoAltEn": {
+          "type": "string",
+          "description": "What the photo shows, for screen readers, in each language (optional). See photoAltOf."
+        },
+        "photoAltAr": {
+          "type": "string"
+        },
+        "photoAltFr": {
+          "type": "string"
+        },
+        "photoAltEs": {
+          "type": "string"
+        },
+        "startId": {
+          "type": "integer"
+        },
+        "metroEn": {
+          "type": "string",
+          "description": "The nearest metro station to the start, in each language, and the walk from it in minutes."
+        },
+        "metroAr": {
+          "type": "string"
+        },
+        "metroFr": {
+          "type": "string"
+        },
+        "metroEs": {
+          "type": "string"
+        },
+        "metroMinutes": {
+          "type": "integer"
+        },
+        "gettingThereEn": {
+          "type": "string",
+          "description": "A note on getting to the start, in each language (\"Ask for Bab Zuweila: cars can't enter the street\")."
+        },
+        "gettingThereAr": {
+          "type": "string"
+        },
+        "gettingThereFr": {
+          "type": "string"
+        },
+        "gettingThereEs": {
+          "type": "string"
+        },
+        "drafted": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Fields Gemini drafted that no one has checked yet (admin only). See drafted.ts."
+        }
+      },
+      "required": [
+        "id",
+        "nameEn",
+        "nameAr",
+        "descriptionEn",
+        "descriptionAr",
+        "image",
+        "highlightsEn",
+        "highlightsAr",
+        "distanceKm",
+        "hoursMin",
+        "hoursMax",
+        "distance",
+        "duration"
+      ]
+    },
+    "Photo": {
+      "type": "object",
+      "properties": {
+        "src": {
+          "type": "string",
+          "description": "Path under public/, e.g. /images/photos/place-1.webp"
+        },
+        "width": {
+          "type": "integer",
+          "description": "In pixels."
+        },
+        "height": {
+          "type": "integer"
+        },
+        "author": {
+          "type": "string"
+        },
+        "license": {
+          "type": "string"
+        },
+        "licenseUrl": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sourceUrl": {
+          "type": "string",
+          "description": "The file's page on Wikimedia Commons."
+        }
+      },
+      "required": [
+        "src",
+        "width",
+        "height",
+        "author",
+        "license",
+        "licenseUrl",
+        "sourceUrl"
+      ]
+    },
+    "Location": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "routeId": {
+          "type": "string"
+        },
+        "nameEn": {
+          "type": "string"
+        },
+        "nameAr": {
+          "type": "string"
+        },
+        "category": {
+          "$ref": "#/definitions/Category"
+        },
+        "descriptionEn": {
+          "type": "string"
+        },
+        "descriptionAr": {
+          "type": "string"
+        },
+        "nameFr": {
+          "type": "string",
+          "description": "French and Spanish (optional): shown in that language, falling back to English when empty."
+        },
+        "descriptionFr": {
+          "type": "string"
+        },
+        "nameEs": {
+          "type": "string"
+        },
+        "descriptionEs": {
+          "type": "string"
+        },
+        "lat": {
+          "type": "number"
+        },
+        "lng": {
+          "type": "number"
+        },
+        "tips": {
+          "$ref": "#/definitions/VisitorTips",
+          "description": "Practical tips: dress, shoes, photos, access, toilets, a note. Unset: defaults for an active mosque."
+        },
+        "mosque": {
+          "type": "boolean",
+          "description": "Visits pause during prayers. Unset: worked out from the name (a mosque). See isActiveMosque."
+        },
+        "mustSee": {
+          "type": "boolean",
+          "description": "One of the route's must-see stops: the short walk (see lib/short-walk) keeps only these."
+        },
+        "spotEn": {
+          "type": "string",
+          "description": "\"Spot it\": a small find-this challenge for families, and its answer (optional, per language). See lib/spot-it."
+        },
+        "spotAr": {
+          "type": "string"
+        },
+        "spotFr": {
+          "type": "string"
+        },
+        "spotEs": {
+          "type": "string"
+        },
+        "spotAnswerEn": {
+          "type": "string"
+        },
+        "spotAnswerAr": {
+          "type": "string"
+        },
+        "spotAnswerFr": {
+          "type": "string"
+        },
+        "spotAnswerEs": {
+          "type": "string"
+        },
+        "summaryEn": {
+          "type": "string",
+          "description": "\"In short\": one line read before the description, e.g. \"A 9th-century mosque with Cairo's only spiral minaret\" (optional). See summaryOf."
+        },
+        "summaryAr": {
+          "type": "string"
+        },
+        "summaryFr": {
+          "type": "string"
+        },
+        "summaryEs": {
+          "type": "string"
+        },
+        "photoTipEn": {
+          "type": "string",
+          "description": "Where to stand and when for the best photo, e.g. \"Stand at the south end of the courtyard in the late afternoon\" (optional). See photoTipOf."
+        },
+        "photoTipAr": {
+          "type": "string"
+        },
+        "photoTipFr": {
+          "type": "string"
+        },
+        "photoTipEs": {
+          "type": "string"
+        },
+        "era": {
+          "$ref": "#/definitions/EraId",
+          "description": "When it was built and in which era (Through the ages); all optional. See lib/eras."
+        },
+        "builtFrom": {
+          "type": "integer",
+          "description": "A year; negative for BC."
+        },
+        "builtTo": {
+          "type": "integer"
+        },
+        "hours": {
+          "$ref": "#/definitions/OpeningHours",
+          "description": "Weekly opening hours, in Cairo time. Optional: without them the app shows nothing rather than a guess."
+        },
+        "feeEn": {
+          "type": "string",
+          "description": "Entry fee as written for visitors, e.g. \"EGP 60 · students EGP 30\". Other languages fall back to English."
+        },
+        "feeAr": {
+          "type": "string"
+        },
+        "feeFr": {
+          "type": "string"
+        },
+        "feeEs": {
+          "type": "string"
+        },
+        "image": {
+          "type": "string"
+        },
+        "photo": {
+          "$ref": "#/definitions/Photo",
+          "description": "Uploaded in the admin dashboard; replaces the built-in photo."
+        },
+        "photoAltEn": {
+          "type": "string",
+          "description": "What the photo shows, for screen readers, in each language (optional). See photoAltOf."
+        },
+        "photoAltAr": {
+          "type": "string"
+        },
+        "photoAltFr": {
+          "type": "string"
+        },
+        "photoAltEs": {
+          "type": "string"
+        },
+        "gallery": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/GalleryPhoto"
+          },
+          "description": "Up to 4 more uploaded photos, in order, each with what it shows (see MAX_GALLERY)."
+        },
+        "drafted": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Fields Gemini drafted that no one has checked yet (admin only). See drafted.ts."
+        },
+        "pinChecked": {
+          "type": "object",
+          "properties": {
+            "lat": {
+              "type": "number"
+            },
+            "lng": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "lat",
+            "lng"
+          ],
+          "description": "The position the admin confirmed as right although it's far from the rest of its route (admin only). See admin/pin-check."
+        }
+      },
+      "required": [
+        "id",
+        "routeId",
+        "nameEn",
+        "nameAr",
+        "category",
+        "lat",
+        "lng"
+      ]
+    },
+    "Category": {
+      "type": "string",
+      "enum": [
+        "monument",
+        "coffee",
+        "restaurant",
+        "workshop",
+        "stationary",
+        "meeting"
+      ]
+    },
+    "VisitorTips": {
+      "type": "object",
+      "properties": {
+        "dress": {
+          "type": "boolean",
+          "description": "Modest dress: shoulders and knees covered, headscarves for women."
+        },
+        "shoesOff": {
+          "type": "boolean"
+        },
+        "photos": {
+          "$ref": "#/definitions/PhotoRule"
+        },
+        "wheelchair": {
+          "$ref": "#/definitions/Access"
+        },
+        "toilets": {
+          "type": "boolean"
+        },
+        "noteEn": {
+          "type": "string"
+        },
+        "noteAr": {
+          "type": "string"
+        },
+        "noteFr": {
+          "type": "string"
+        },
+        "noteEs": {
+          "type": "string"
+        }
+      }
+    },
+    "PhotoRule": {
+      "type": "string",
+      "enum": [
+        "yes",
+        "no",
+        "noFlash",
+        "fee"
+      ]
+    },
+    "Access": {
+      "type": "string",
+      "enum": [
+        "yes",
+        "partial",
+        "no"
+      ]
+    },
+    "EraId": {
+      "type": "string",
+      "enum": [
+        "roman",
+        "early-islamic",
+        "tulunid",
+        "fatimid",
+        "ayyubid",
+        "mamluk",
+        "ottoman",
+        "modern"
+      ]
+    },
+    "OpeningHours": {
+      "type": "object",
+      "properties": {
+        "days": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/TimeRange"
+            }
+          },
+          "description": "Seven entries, Sunday first (as Date.getDay()). An empty list means closed that day."
+        },
+        "noteEn": {
+          "type": "string",
+          "description": "Optional note, e.g. \"Closed for Friday prayers 11:30–13:30\". Other languages fall back to English."
+        },
+        "noteAr": {
+          "type": "string"
+        },
+        "noteFr": {
+          "type": "string"
+        },
+        "noteEs": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "days"
+      ]
+    },
+    "TimeRange": {
+      "type": "object",
+      "properties": {
+        "open": {
+          "type": "string"
+        },
+        "close": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "open",
+        "close"
+      ]
+    },
+    "GalleryPhoto": {
+      "type": "object",
+      "properties": {
+        "photoAltEn": {
+          "type": "string"
+        },
+        "photoAltAr": {
+          "type": "string"
+        },
+        "photoAltFr": {
+          "type": "string"
+        },
+        "photoAltEs": {
+          "type": "string"
+        },
+        "src": {
+          "type": "string",
+          "description": "Path under public/, e.g. /images/photos/place-1.webp"
+        },
+        "width": {
+          "type": "integer",
+          "description": "In pixels."
+        },
+        "height": {
+          "type": "integer"
+        },
+        "author": {
+          "type": "string"
+        },
+        "license": {
+          "type": "string"
+        },
+        "licenseUrl": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sourceUrl": {
+          "type": "string",
+          "description": "The file's page on Wikimedia Commons."
+        }
+      },
+      "required": [
+        "author",
+        "height",
+        "license",
+        "licenseUrl",
+        "sourceUrl",
+        "src",
+        "width"
+      ],
+      "description": "One of a place's extra photos (an upload), with what it shows in each language for screen readers."
+    },
+    "GlossaryTerm": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Lowercase letters, numbers and dashes, e.g. \"sabil-kuttab\"."
+        },
+        "termEn": {
+          "type": "string"
+        },
+        "termAr": {
+          "type": "string"
+        },
+        "termFr": {
+          "type": "string"
+        },
+        "termEs": {
+          "type": "string"
+        },
+        "defEn": {
+          "type": "string",
+          "description": "One line explaining it. French and Spanish fall back to English."
+        },
+        "defAr": {
+          "type": "string"
+        },
+        "defFr": {
+          "type": "string"
+        },
+        "defEs": {
+          "type": "string"
+        },
+        "match": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The spellings to find in descriptions, in any language (e.g. \"sabil\", \"sebil\", \"سبيل\"). Matching ignores case, accents, Arabic vowel marks and letter variants, and allows \"al-\"-style Arabic prefixes and plural endings."
+        },
+        "drafted": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Fields Gemini drafted that no one has checked yet (admin only). See drafted.ts."
+        }
+      },
+      "required": [
+        "id",
+        "termEn",
+        "termAr",
+        "defEn",
+        "defAr",
+        "match"
+      ]
+    },
+    "SpecialPeriod": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Lowercase letters, numbers and dashes, e.g. \"ramadan-2027\"."
+        },
+        "nameEn": {
+          "type": "string"
+        },
+        "nameAr": {
+          "type": "string"
+        },
+        "nameFr": {
+          "type": "string"
+        },
+        "nameEs": {
+          "type": "string"
+        },
+        "from": {
+          "type": "string",
+          "description": "First and last day, inclusive, as YYYY-MM-DD in Cairo."
+        },
+        "to": {
+          "type": "string"
+        },
+        "places": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/PeriodEntry"
+          },
+          "description": "By place ID: different weekly hours, or closed. Places not listed keep their usual hours."
+        },
+        "drafted": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Fields Gemini drafted that no one has checked yet (admin only). See drafted.ts."
+        }
+      },
+      "required": [
+        "id",
+        "nameEn",
+        "nameAr",
+        "from",
+        "to",
+        "places"
+      ]
+    },
+    "PeriodEntry": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "closed": {
+              "type": "boolean",
+              "const": true
+            }
+          },
+          "required": [
+            "closed"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "days": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/TimeRange"
+                }
+              }
+            }
+          },
+          "required": [
+            "days"
+          ]
+        }
+      ]
+    },
+    "HelpContent": {
+      "type": "object",
+      "properties": {
+        "contacts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/HelpContact"
+          }
+        },
+        "tips": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/HelpTip"
+          }
+        },
+        "phrases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/HelpPhrase"
+          }
+        }
+      },
+      "required": [
+        "contacts",
+        "tips",
+        "phrases"
+      ]
+    },
+    "HelpContact": {
+      "type": "object",
+      "properties": {
+        "nameEn": {
+          "type": "string"
+        },
+        "nameAr": {
+          "type": "string"
+        },
+        "nameFr": {
+          "type": "string"
+        },
+        "nameEs": {
+          "type": "string"
+        },
+        "phone": {
+          "type": "string",
+          "description": "As written (\"+20 100 123 4567\"); called with the digits only."
+        },
+        "drafted": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "nameEn",
+        "nameAr",
+        "phone"
+      ]
+    },
+    "HelpTip": {
+      "type": "object",
+      "properties": {
+        "textEn": {
+          "type": "string"
+        },
+        "textAr": {
+          "type": "string"
+        },
+        "textFr": {
+          "type": "string"
+        },
+        "textEs": {
+          "type": "string"
+        },
+        "drafted": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "textEn",
+        "textAr"
+      ]
+    },
+    "HelpPhrase": {
+      "type": "object",
+      "properties": {
+        "ar": {
+          "type": "string",
+          "description": "Shown large, to someone who reads Arabic."
+        },
+        "meaningEn": {
+          "type": "string",
+          "description": "What it says, for the visitor (no Arabic: the phrase itself is)."
+        },
+        "meaningFr": {
+          "type": "string"
+        },
+        "meaningEs": {
+          "type": "string"
+        },
+        "drafted": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "ar",
+        "meaningEn"
+      ]
+    },
+    "Notice": {
+      "type": "object",
+      "properties": {
+        "textEn": {
+          "type": "string"
+        },
+        "textAr": {
+          "type": "string"
+        },
+        "textFr": {
+          "type": "string"
+        },
+        "textEs": {
+          "type": "string"
+        },
+        "from": {
+          "type": "string",
+          "description": "First and last Cairo day it shows (YYYY-MM-DD), each optional."
+        },
+        "until": {
+          "type": "string"
+        },
+        "routeId": {
+          "type": "string",
+          "description": "Where it shows: one route, one place, or (neither) everywhere."
+        },
+        "placeId": {
+          "type": "integer"
+        },
+        "important": {
+          "type": "boolean",
+          "description": "A safety notice: shown first, and can't be dismissed."
+        },
+        "drafted": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "textEn",
+        "textAr"
+      ]
+    },
+    "AudioUrls": {
+      "type": "object",
+      "properties": {
+        "en": {
+          "type": "string"
+        },
+        "ar": {
+          "type": "string"
+        },
+        "fr": {
+          "type": "string"
+        },
+        "es": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

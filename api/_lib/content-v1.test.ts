@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { bundledContent, normalizeContent, type Content } from '../../src/data/content';
+import { DEFAULT_GLOSSARY } from '../../src/data/glossary';
 import { LANGS, descriptionOf } from '../../src/i18n/lang';
 import { audioGuideUrl } from '../../src/lib/offline-pack';
 import { narrationSource } from '../../src/lib/guide-kind';
@@ -17,8 +18,17 @@ describe('contentV1', () => {
     const v1 = contentV1(served);
     expect(v1.schemaVersion).toBe(SCHEMA_VERSION);
     expect(v1.minAppVersion).toBe(MIN_APP_VERSION);
-    expect(v1.content).toBe(served);
+    expect(v1.content).toEqual({ ...served, glossary: DEFAULT_GLOSSARY });
     expect(v1.contentVersion).toMatch(/^[0-9a-f]{16}$/);
+  });
+
+  it('sends the built-in glossary until the admin saves one, and the admin\'s after', () => {
+    expect(served.glossary).toBeUndefined();
+    expect(contentV1(served).content.glossary).toEqual(DEFAULT_GLOSSARY);
+    const own = [{ ...DEFAULT_GLOSSARY[0], defEn: 'Our own wording' }];
+    const saved = contentV1({ ...served, glossary: own });
+    expect(saved.content.glossary).toEqual(own);
+    expect(saved.contentVersion).not.toBe(contentV1(served).contentVersion);
   });
 
   it('gives each place the same audio URLs the web builds, in every language with a description', () => {
@@ -46,7 +56,7 @@ describe('contentV1', () => {
   it('changes the content version when only the audio URLs change (a new audio recipe)', () => {
     const before = contentV1(served);
     const after = contentV1(served, place => ({ en: `/api/audio-guide?id=${place.id}&lang=en&v=00000000` }));
-    expect(after.content).toBe(before.content);
+    expect(after.content).toEqual(before.content);
     expect(after.contentVersion).not.toBe(before.contentVersion);
   });
 
