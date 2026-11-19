@@ -6,6 +6,8 @@ Files the website and the native apps (Cairo Walks, Android and iOS) share, so t
   - The schema allows extra properties: while `schemaVersion` is 1, the content only gains fields, and the apps decode leniently (ignore what they don't know).
   - Audio URLs (`audio`) are relative to the API's origin; use them as they are.
 
+- `vectors/prayer-times-cairo.json`: the web's prayer and sun times for every Cairo day from 2026 to 2028, as minutes since the Unix epoch. The apps' prayer times are checked against it to the minute (see `mobile/spikes/adhan-parity`). Regenerate it with `npm run gen:vectors`; a test fails while it's out of date.
+
 ## Decoding rules for the apps
 
 While `schemaVersion` is 1 the server only adds; these rules make an addition safe for app builds already installed.
