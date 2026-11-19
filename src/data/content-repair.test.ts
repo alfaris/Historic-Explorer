@@ -61,6 +61,17 @@ describe('blockingProblems', () => {
     next.specialPeriods![0] = { ...next.specialPeriods![0], to: '2027-03-02' };
     expect(blockingProblems(next, s)).not.toEqual([]);
   });
+  it('lets the admin delete or move a notice while a later one keeps an older problem', () => {
+    const s = stored();
+    const notice = (id: string, textEn: string) => ({ id, textEn, textAr: 'إعلان', scope: 'all' });
+    s.notices = normalizeContent({ ...s, notices: [notice('a', 'Clean'), notice('b', 'x'.repeat(300))] }).notices;
+    expect(s.notices).toHaveLength(2);
+    expect(validateContent(s).some(p => p.startsWith('Notice 2'))).toBe(true);
+    expect(blockingProblems({ ...s, notices: [s.notices![1]] }, s)).toEqual([]);
+    expect(blockingProblems({ ...s, notices: [s.notices![1], s.notices![0]] }, s)).toEqual([]);
+    // Editing the flagged one without fixing it is still refused.
+    expect(blockingProblems({ ...s, notices: [{ ...s.notices![1], textEn: 'y'.repeat(300) }] }, s)).not.toEqual([]);
+  });
   it('lets a renumbered repeat that is otherwise unchanged keep its older problem', () => {
     const s = stored();
     s.places.push({ ...s.places[0] });

@@ -10,16 +10,20 @@ const stable = (v: unknown): string =>
 
 const withoutId = ({ id: _id, ...rest }: { id: unknown }) => stable(rest);
 
-/** Problems found in `withIt` and not in `without`, counting repeats. */
-function extraProblems(withIt: string[], without: string[]): string[] {
+/** Problems found in `withIt` and not in `without`, counting repeats, compared by `key`. */
+function extraProblems(withIt: string[], without: string[], key = (p: string) => p): string[] {
   const counts = new Map<string, number>();
-  for (const p of without) counts.set(p, (counts.get(p) ?? 0) + 1);
+  for (const p of without) counts.set(key(p), (counts.get(key(p)) ?? 0) + 1);
   return withIt.filter(p => {
-    const n = counts.get(p) ?? 0;
-    if (n > 0) counts.set(p, n - 1);
+    const n = counts.get(key(p)) ?? 0;
+    if (n > 0) counts.set(key(p), n - 1);
     return n === 0;
   });
 }
+
+// Notices and Help items are named by position, so deleting or moving one renames those after it:
+// compared without it, their older problems stay older. (A changed one is still checked on its own below.)
+const unpositioned = (p: string) => p.replace(/^(Notice|Help (?:contact|tip|phrase)) \d+/, '$1');
 
 const LIST_SECTIONS = ['glossary', 'specialPeriods', 'notices'] as const;
 
@@ -41,7 +45,7 @@ export function blockingProblems(next: Content, stored: Content): string[] {
   const problems = validateContent(next);
   if (problems.length === 0) return [];
   if (usableContent(next) === null) return problems;
-  const added = extraProblems(problems, validateContent(stored));
+  const added = extraProblems(problems, validateContent(stored), unpositioned);
   if (added.length) return added;
 
   const blocking: string[] = [];
