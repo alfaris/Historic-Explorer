@@ -15,6 +15,8 @@ export interface Report {
   message: string;
   suggested?: { lat: number; lng: number; source: 'gps' | 'map'; accuracy?: number };
   lang: Lang;
+  client?: 'web' | 'android' | 'ios';
+  appVersion?: number;
   adminNote?: string;
   updatedAt?: string;
 }

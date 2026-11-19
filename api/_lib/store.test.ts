@@ -250,6 +250,16 @@ describe('reports', () => {
     expect(reports[0]).toMatchObject({ type: 'location', placeId: 35, status: 'open', placeName: 'Sayyida Nafisa Square' });
   });
 
+  it('keeps which app and build a report came from, and drops values it does not know', async () => {
+    await report({ type: 'text', placeId: 3, message: 'Typo in the name', client: 'android', appVersion: 4 });
+    await report({ type: 'text', placeId: 3, message: 'Another typo', client: 'toaster', appVersion: 4 });
+    const { reports } = await (await admin('reports')).json();
+    const byMessage = Object.fromEntries(reports.map((r: { message: string }) => [r.message, r]));
+    expect(byMessage['Typo in the name']).toMatchObject({ client: 'android', appVersion: 4 });
+    expect(byMessage['Another typo'].client).toBeUndefined();
+    expect(byMessage['Another typo'].appVersion).toBeUndefined();
+  });
+
   it('updates a report’s status', async () => {
     await report({ type: 'photo', placeId: 3, message: 'Photo shows the wrong building' });
     const { reports } = await (await admin('reports')).json();

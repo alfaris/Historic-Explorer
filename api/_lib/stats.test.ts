@@ -62,7 +62,7 @@ describe('POST /api/stats', () => {
     const res = await send({ events: [{ t: 'play', id: 1 }, { t: 'route', id: 'ahl-al-bayt' }, { t: 'play', id: 999999 }, { t: 'route', id: 'x' }] });
     expect(res.status).toBe(204);
     const { total } = await readStats(7);
-    expect(total).toEqual({ plays: { 1: 1 }, routes: { 'ahl-al-bayt': 1 }, arrivals: {}, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {}, langs: {}, listens: {}, misses: {}, quiz: {} });
+    expect(total).toEqual({ plays: { 1: 1 }, routes: { 'ahl-al-bayt': 1 }, arrivals: {}, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {}, langs: {}, listens: {}, misses: {}, quiz: {}, clients: {} });
   });
 
   it('stores nothing about the visitor', async () => {
@@ -106,6 +106,16 @@ describe('POST /api/stats', () => {
     } finally {
       warn.mockRestore();
     }
+  });
+});
+
+describe('where events come from', () => {
+  it('counts events by client and app build, and the web says it is the web', async () => {
+    expect((await send({ events: [{ t: 'play', id: 201 }, { t: 'play', id: 201 }], client: 'android', appVersion: 3 })).status).toBe(204);
+    expect((await send({ events: [{ t: 'play', id: 201 }] })).status).toBe(204);
+    const { total } = await readStats(1);
+    expect(total.clients).toEqual({ android: 2, 'android:3': 2 });
+    expect(total.plays[201]).toBe(3);
   });
 });
 

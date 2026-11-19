@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Download, RefreshCw } from 'lucide-react';
 import type { Content } from '../data/content';
 import { walkStops } from '../lib/walk';
-import { helpfulness, languageShares, listening, topMisses, mostStopEarly, MIN_LISTENS, quizStats, REASONS, ROUTE_REASONS, routeRatings, type HelpfulRow, type ListenRow, type Reason, type RouteReason } from '../lib/stats';
+import { clientShares, helpfulness, languageShares, listening, topMisses, mostStopEarly, MIN_LISTENS, quizStats, REASONS, ROUTE_REASONS, routeRatings, type HelpfulRow, type ListenRow, type Reason, type RouteReason } from '../lib/stats';
 import { api, ApiError, type StatsResponse } from './api';
 import { downloadFile } from './backup';
 import { dailySeries, statsCsv } from './stats-csv';
@@ -84,6 +84,38 @@ function Languages({ total }: { total: StatsResponse['total'] }) {
           )}
         </>
       )}
+    </div>
+  );
+}
+
+const CLIENT_NAMES = { web: 'Website', android: 'Android app', ios: 'iOS app' } as const;
+
+/** Where events came from: the website or the native apps (and which builds). Shown once anything recorded it. */
+function Clients({ total }: { total: StatsResponse['total'] }) {
+  const rows = clientShares(total);
+  if (rows.length === 0) return null;
+  return (
+    <div className="bg-white rounded-2xl border border-sand/50 p-5">
+      <h2 className="text-sm font-bold text-stone-700 mb-1">Website and apps</h2>
+      <p className="text-[11px] text-stone-400 mb-3">Counted events (plays, route opens, arrivals, votes…) by where they came from, for the events that said so. Days before this was recorded, and older cached copies of the website, aren't included.</p>
+      <ul className="text-sm divide-y divide-sand/40">
+        {rows.map(r => (
+          <li key={r.client} className="py-1.5 flex flex-wrap justify-between gap-x-4">
+            <span className="text-stone-700">{CLIENT_NAMES[r.client]}</span>
+            <span className="tabular-nums text-ink">
+              {fmt(r.events)} · {r.pct}%
+            </span>
+            {r.builds.length > 0 && (
+              <span className="w-full text-[11px] text-stone-400">
+                {[
+                  ...r.builds.slice(0, 5).map(b => `build ${b.build}: ${fmt(b.events)}`),
+                  ...(r.builds.length > 5 ? [`older builds: ${fmt(r.builds.slice(5).reduce((n, b) => n + b.events, 0))}`] : []),
+                ].join(' · ')}
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -240,6 +272,7 @@ export function StatsTab({ content, onSignedOut, onEditPlace }: { content: Conte
           </div>
 
           <Languages total={data.total} />
+          <Clients total={data.total} />
 
           <div className="bg-white rounded-2xl border border-sand/50 p-5">
             <h2 className="text-sm font-bold text-stone-700 mb-3">Most-played audio guides</h2>

@@ -251,6 +251,7 @@ function ReportCard({ report, content, save, setStatus, onEditPlace, onUsePositi
           <p className="capitalize">
             {report.status}
             {report.lang !== 'en' && LANGUAGES[report.lang] ? ` · sent in ${LANGUAGES[report.lang].english}` : ''}
+            {report.client && report.client !== 'web' ? ` · from the ${report.client === 'ios' ? 'iOS' : 'Android'} app${report.appVersion ? ` (build ${report.appVersion})` : ''}` : ''}
           </p>
         </div>
       </div>

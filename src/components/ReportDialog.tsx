@@ -67,6 +67,7 @@ export default function ReportDialog({ place, isArabic, onClose }: { place: Loca
           placeId: place.id,
           message,
           lang: currentLang(),
+          client: 'web',
           website,
           ...(type === 'location' ? { suggested: { ...spot, source, accuracy } } : {}),
         }),
