@@ -1,5 +1,6 @@
 package io.github.alfaris.walks.data
 
+import io.github.alfaris.walks.model.ContentJson
 import io.github.alfaris.walks.model.ContentV1
 import io.github.alfaris.walks.model.decodeContent
 import io.ktor.client.HttpClient
@@ -8,6 +9,9 @@ import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 /** What a content check found. */
 sealed interface ContentResult {
@@ -35,9 +39,12 @@ class ContentClient(
         }
         if (response.status == HttpStatusCode.NotModified) return ContentResult.NotModified
         check(response.status == HttpStatusCode.OK) { "Content request failed: ${response.status}" }
-        val content = decodeContent(response.bodyAsText())
-        if (content.minAppVersion > appVersion) return ContentResult.UpdateRequired(content.minAppVersion)
-        return ContentResult.Fresh(content, response.headers[HttpHeaders.ETag])
+        val text = response.bodyAsText()
+        // The version check comes before decoding the content: content an old app can't
+        // read is exactly why minAppVersion was raised, so decoding it first could fail.
+        val minAppVersion = ContentJson.parseToJsonElement(text).jsonObject["minAppVersion"]?.jsonPrimitive?.intOrNull ?: 0
+        if (minAppVersion > appVersion) return ContentResult.UpdateRequired(minAppVersion)
+        return ContentResult.Fresh(decodeContent(text), response.headers[HttpHeaders.ETag])
     }
 }
 

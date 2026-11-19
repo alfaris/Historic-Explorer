@@ -45,4 +45,11 @@ class ContentClientTest {
         val newer = sample.replace("\"minAppVersion\":1", "\"minAppVersion\":7")
         assertEquals(ContentResult.UpdateRequired(7), client(appVersion = 3, body = newer).fetch())
     }
+
+    @Test
+    fun anOldAppIsToldToUpdateEvenWhenItCantReadTheContent() = runTest {
+        // minAppVersion was raised because the content changed in a way old apps can't decode.
+        val incompatible = """{"schemaVersion":2,"contentVersion":"x","minAppVersion":9,"content":"a new shape","audio":[]}"""
+        assertEquals(ContentResult.UpdateRequired(9), client(appVersion = 3, body = incompatible).fetch())
+    }
 }
