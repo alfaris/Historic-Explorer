@@ -111,7 +111,9 @@ export async function handleStats(request: Request): Promise<Response> {
   });
   if (events.length === 0) return noContent();
   const deadline = Date.now() + STATS_DEADLINE_MS;
-  for (const [key, group] of byDay(events)) {
+  // Today's batch first (the newest day sorts first), so the deadline never costs it to a correction for yesterday.
+  const batches = [...byDay(events)].sort(([a], [b]) => b.localeCompare(a));
+  for (const [key, group] of batches) {
     // Past the deadline, a later batch isn't started at all. (A Blob read or write
     // already under way isn't cut short: aborting a conditional write that may have
     // landed could count its events twice on the retry. The deadline leaves most of

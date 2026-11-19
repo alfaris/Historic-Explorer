@@ -140,9 +140,10 @@ describe('recordEvents', () => {
       const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
       const days = byDay([{ t: 'play', id: 201 }, { t: 'listen', id: 201, b: 'done', w: 'q1', d: yesterday }]);
       expect([...days.keys()].sort()).toEqual([yesterday, today].sort());
-      expect((await send({ events: [{ t: 'play', id: 201 }, { t: 'listen', id: 201, b: 'done', w: 'q1', d: yesterday }] })).status).toBe(204);
-      expect(warn).toHaveBeenCalledWith(expect.stringMatching(/dropped 1 event\(s\) for .*no time left/));
-      expect(store.size).toBe(1); // only the first day's file was written
+      // Yesterday's correction comes first in the batch, but today's events are recorded first.
+      expect((await send({ events: [{ t: 'listen', id: 201, b: 'done', w: 'q1', d: yesterday }, { t: 'play', id: 201 }] })).status).toBe(204);
+      expect(warn).toHaveBeenCalledWith(`Stats: dropped 1 event(s) for ${yesterday}: no time left after the other day's batch.`);
+      expect([...store.keys()]).toEqual([`stats/days/${today}.json`]); // only today's file was written
     } finally {
       hooks.afterPut = () => {};
       now.mockRestore();
