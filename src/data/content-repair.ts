@@ -72,10 +72,12 @@ export function blockingProblems(next: Content, stored: Content): string[] {
     // A changed item with an ID (a special period, a glossary term) may keep the problems it had (deleting a
     // place edits each period that lists it); one without (a notice) must pass its checks.
     const byId = new Map(old.flatMap(o => (o && typeof o === 'object' && 'id' in o ? [[(o as { id: unknown }).id, o] as const] : [])));
-    const own = now.map(item => {
+    const own = now.map((item, i) => {
       if (before.has(stable(item))) return [];
       const prior = item && typeof item === 'object' && 'id' in item ? byId.get((item as { id: unknown }).id) : undefined;
-      return extraProblems(sectionProblems(key, [item]), prior === undefined ? [] : sectionProblems(key, [prior]));
+      const found = extraProblems(sectionProblems(key, [item]), prior === undefined ? [] : sectionProblems(key, [prior]));
+      // Checked on its own, a notice is "Notice 1": give it its real number.
+      return found.map(p => p.replace(/^Notice 1\b/, `Notice ${i + 1}`));
     });
     blocking.push(...own.flat());
     if (now.length > old.length) {

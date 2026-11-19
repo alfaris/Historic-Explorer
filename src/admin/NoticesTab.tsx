@@ -52,6 +52,15 @@ function status(n: Notice, today: string): { text: string; tone: string } {
   return { text: `Starts ${n.from}`, tone: 'text-stone-500' };
 }
 
+/** What blocks saving the tab: problems the saved notices didn't have, and every problem of an edited notice. */
+function noticeTabProblems(now: Notice[], saved: Notice[], check: (list: Notice[]) => string[]): string[] {
+  const all = check(now);
+  const before = new Set(saved.map(n => JSON.stringify(n)));
+  const edited = now.flatMap((n, i) => (before.has(JSON.stringify(n)) ? [] : [`Notice ${i + 1}`]));
+  const ofEdited = all.filter(p => edited.some(label => p.startsWith(`${label} `) || p.startsWith(`${label}:`)));
+  return [...new Set([...newProblems(all, check(saved)), ...ofEdited])];
+}
+
 /**
  * Notices for visitors: closures, works, events. Each shows everywhere, on one
  * route or on one place, optionally between two Cairo dates.
@@ -67,7 +76,8 @@ export function NoticesTab({ content, save }: { content: Content; save: SaveFn }
   const changed = !sameValue(normalized ?? [], saved);
   const check = (list: Notice[]) => noticeProblems(list, new Set(content.routes.map(r => r.id)), new Set(content.places.map(p => p.id)));
   // Problems the saved notices already had (a check added since) don't block other edits: the save checks those (blockingProblems).
-  const problems = normalized ? newProblems(check(normalized), check(saved)) : [];
+  // A notice that was edited must pass every check, as the save requires (blockingProblems).
+  const problems = normalized ? noticeTabProblems(normalized, saved, check) : [];
   const today = cairoDate(new Date());
 
   const update = (i: number, n: Notice) => setDraft(d => d.map((x, j) => (j === i ? n : x)));

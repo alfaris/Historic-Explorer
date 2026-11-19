@@ -71,8 +71,11 @@ describe('blockingProblems', () => {
     expect(validateContent(s).some(p => p.startsWith('Notice 2'))).toBe(true);
     expect(blockingProblems({ ...s, notices: [s.notices![1]] }, s)).toEqual([]);
     expect(blockingProblems({ ...s, notices: [s.notices![1], s.notices![0]] }, s)).toEqual([]);
-    // Editing the flagged one without fixing it is still refused.
+    // Editing the flagged one without fixing it is still refused, naming it by its place in the list.
     expect(blockingProblems({ ...s, notices: [{ ...s.notices![1], textEn: 'y'.repeat(300) }] }, s)).not.toEqual([]);
+    const edited = blockingProblems({ ...s, notices: [s.notices![0], { ...s.notices![1], textEn: 'z'.repeat(300) }] }, s);
+    expect(edited.length).toBeGreaterThan(0);
+    expect(edited.every(p => p.startsWith('Notice 2'))).toBe(true);
   });
   it('lets a renumbered repeat that is otherwise unchanged keep its older problem', () => {
     const s = stored();
