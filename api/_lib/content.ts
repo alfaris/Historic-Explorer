@@ -122,8 +122,10 @@ export async function saveContent(next: Content, expectedEtag: string | null, no
     if (!expectedEtag && /already exists/i.test(String((err as Error).message))) throw new ContentConflictError();
     throw err;
   }
-  // What visitors are served (a save may keep problems the stored copy already had).
-  memory = { content: usableContent(next) ?? bundledContent, at: Date.now() };
+  // What visitors are served (a save may keep problems the stored copy already had),
+  // read back from the stored text exactly as another instance reads it, so every
+  // instance serves the same bytes (and /api/v1's ETag and content version agree).
+  memory = { content: usableContent(normalizeContent(JSON.parse(body))) ?? bundledContent, at: Date.now() };
   await writeHistory(body, now);
   return { etag: result.etag };
 }

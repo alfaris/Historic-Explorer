@@ -27,6 +27,7 @@ const devApi = (): Plugin => ({
         '/api/audio-guide': ['/api/_lib/gemini.ts', 'handleAudioGuide'],
         '/api/live-info': ['/api/_lib/gemini.ts', 'handleLiveInfo'],
         '/api/content': ['/api/content.ts', 'default'],
+        '/api/v1/content': ['/api/v1/content.ts', 'default'],
         '/api/report': ['/api/_lib/reports.ts', 'handleReport'],
         '/api/stats': ['/api/_lib/stats.ts', 'handleStats'],
         '/api/share': ['/api/_lib/share.ts', 'handleShare'],
