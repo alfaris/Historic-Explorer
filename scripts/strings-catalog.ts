@@ -37,8 +37,20 @@ const TABLE_KEY_OVERRIDES: Record<string, string> = {
   directions: 'get_directions',
 };
 
+/** Java and Kotlin keywords: Android makes each key a field of R.string, so these can't be keys. */
+export const RESERVED = new Set(
+  ('abstract as assert boolean break byte case catch char class const continue default do double else enum extends false final finally float for fun goto if ' +
+    'implements import in instanceof int interface is long native new null object package private protected public return short static strictfp super switch ' +
+    'synchronized this throw throws transient true try typealias typeof val var void volatile when while').split(' '),
+);
+
 export function keyOf(en: string): string {
   if (en in KEY_OVERRIDES) return KEY_OVERRIDES[en];
+  const key = baseKey(en);
+  return RESERVED.has(key) ? `${key}_text` : key;
+}
+
+function baseKey(en: string): string {
   const words = en
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -68,18 +80,40 @@ function sourceFiles(dir: string): string[] {
 const literal = (n: ts.Expression | undefined): string | null =>
   n && (ts.isStringLiteral(n) || ts.isNoSubstitutionTemplateLiteral(n)) ? n.text : null;
 
+/** A template's text with each ${…} as a numbered placeholder ({0}, {1}…), and the source of each. Null when it isn't a string or template. */
+function template(n: ts.Expression): { text: string; args: string[] } | null {
+  const plain = literal(n);
+  if (plain !== null) return { text: plain, args: [] };
+  if (!ts.isTemplateExpression(n)) return null;
+  const args: string[] = [];
+  let text = n.head.text;
+  for (const span of n.templateSpans) {
+    text += `{${args.length}}${span.literal.text}`;
+    args.push(span.expression.getText());
+  }
+  return { text, args };
+}
+
 export function scan() {
-  const strings: { en: string; ar: string; file: string; at: string }[] = [];
-  const templates: { at: string; texts: Record<string, string | null> }[] = [];
+  const strings: { en: string; ar: string; fr?: string; es?: string; file: string; at: string }[] = [];
+  const templates: { at: string; texts: Record<string, string | null>; args: Record<string, string[]> }[] = [];
   const problems: Problem[] = [];
   for (const path of sourceFiles(SRC)) {
     const file = relative(ROOT, path).split('\\').join('/');
     if (file === 'src/i18n/lang.ts') continue; // where L is defined
+    if (file.startsWith('src/data/')) continue; // content, served by the API
     const text = readFileSync(path, 'utf8');
     const source = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true, path.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
     // Names bound to L in this file: L itself, and aliases like `const t = L`.
     const names = new Set(['L']);
     const findAliases = (n: ts.Node) => {
+      // import { L as T } from '../i18n/lang'
+      if (ts.isImportDeclaration(n) && ts.isStringLiteral(n.moduleSpecifier) && /(^|\/)(i18n\/)?lang(\.js)?$/.test(n.moduleSpecifier.text)) {
+        const bindings = n.importClause?.namedBindings;
+        if (bindings && ts.isNamedImports(bindings)) {
+          for (const el of bindings.elements) if ((el.propertyName ?? el.name).text === 'L') names.add(el.name.text);
+        }
+      }
       if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.initializer && ts.isIdentifier(n.initializer) && n.initializer.text === 'L') names.add(n.name.text);
       ts.forEachChild(n, findAliases);
     };
@@ -96,37 +130,39 @@ export function scan() {
           const fromObject =
             n.arguments.length === 2 && enArg && arArg && ts.isPropertyAccessExpression(enArg) && ts.isPropertyAccessExpression(arArg) &&
             enArg.name.text === 'en' && arArg.name.text === 'ar' && enArg.expression.getText() === arArg.expression.getText();
-          if (fromObject) objectCalls = true;
-          else if (en === null || ar === null || n.arguments.length !== 2) problems.push({ at: where(n), problem: `${callee}() takes two string literals, or (x.en, x.ar)` });
+          if (fromObject) {
+            // The text is in the {en, ar} objects, collected below.
+          } else if (en === null || ar === null || n.arguments.length !== 2) problems.push({ at: where(n), problem: `${callee}() takes two string literals, or (x.en, x.ar)` });
           else strings.push({ en, ar, file, at: where(n) });
         } else if (callee === 'byLang') {
           inByLang.add(n.arguments[0]);
           const arg = n.arguments[0];
           const texts: Record<string, string | null> = {};
+          const args: Record<string, string[]> = {};
           if (arg && ts.isObjectLiteralExpression(arg)) {
             for (const p of arg.properties) {
-              if (ts.isPropertyAssignment(p) && ts.isIdentifier(p.name)) texts[p.name.text] = literal(p.initializer as ts.Expression);
+              if (!ts.isPropertyAssignment(p) || !ts.isIdentifier(p.name)) continue;
+              const t = template(p.initializer);
+              texts[p.name.text] = t?.text ?? null;
+              if (t?.args.length) args[p.name.text] = t.args;
             }
           }
-          templates.push({ at: where(n), texts });
+          templates.push({ at: where(n), texts, args });
         }
       }
-      // {en: '…', ar: '…'} objects outside byLang(): options passed to L(x.en, x.ar).
+      // {en: '…', ar: '…'} objects outside byLang(): options passed to L(x.en, x.ar), and text
+      // tables that carry their own French and Spanish (era names, visitor tips).
       if (ts.isObjectLiteralExpression(n) && !inByLang.has(n)) {
         const props = new Map<string, string | null>();
         for (const p of n.properties) if (ts.isPropertyAssignment(p) && ts.isIdentifier(p.name)) props.set(p.name.text, literal(p.initializer));
         const en = props.get('en');
         const ar = props.get('ar');
-        if (en && ar) options.push({ en, ar, file, at: where(n) });
+        if (en && ar) strings.push({ en, ar, fr: props.get('fr') ?? undefined, es: props.get('es') ?? undefined, file, at: where(n) });
       }
       ts.forEachChild(n, visit);
     };
-    let objectCalls = false;
     const inByLang = new Set<ts.Node | undefined>();
-    const options: { en: string; ar: string; file: string; at: string }[] = [];
     visit(source);
-    // Option objects count only in a file that passes them to L().
-    if (objectCalls) strings.push(...options);
   }
   return { strings, templates, problems };
 }
@@ -159,10 +195,12 @@ export function keyedTable(): Record<string, Record<string, string>> {
 
 export function buildCatalog() {
   const { strings, templates, problems } = scan();
-  const byEn = new Map<string, { ar: Set<string>; files: Set<string>; at: string[] }>();
+  const byEn = new Map<string, { ar: Set<string>; fr?: string; es?: string; files: Set<string>; at: string[] }>();
   for (const s of strings) {
     const e = byEn.get(s.en) ?? { ar: new Set(), files: new Set(), at: [] };
     e.ar.add(s.ar);
+    e.fr ??= s.fr;
+    e.es ??= s.es;
     e.files.add(s.file);
     e.at.push(s.at);
     byEn.set(s.en, e);
@@ -178,7 +216,7 @@ export function buildCatalog() {
       continue;
     }
     owner.set(key, en);
-    entries[key] = { en, ar: [...e.ar][0], fr: FR[en] ?? null, es: ES[en] ?? null, files: [...e.files].sort() };
+    entries[key] = { en, ar: [...e.ar][0], fr: e.fr ?? FR[en] ?? null, es: e.es ?? ES[en] ?? null, files: [...e.files].sort() };
   }
   for (const [tKey, texts] of Object.entries(keyedTable())) {
     const key = TABLE_KEY_OVERRIDES[tKey] ?? tKey.replace(/[^a-z0-9]+/gi, '_').toLowerCase();
@@ -198,8 +236,9 @@ export function buildCatalog() {
         'The web\'s interface text, for the native apps\' string resources. Each entry is an L(en, ar) string from src, under a stable key (from the English: ' +
         'lowercase letters, digits and underscores), with French and Spanish from src/i18n/fr.ts and es.ts (null: not translated yet, the web shows English). ' +
         'The older keyed table read with t(\'app.title\') (src/i18n/LanguageContext.tsx) is included under its own keys, dots made underscores. ' +
+        'Interface text kept in {en, ar} objects (options, era names, visitor tips) is included, with its own French and Spanish where it has them. ' +
         '`files` lists where it is used. `templates` lists the byLang({...}) texts, built around numbers or names, which move to keyed templates as each app ' +
-        'screen is built. Generated by npm run gen:strings; do not edit by hand.',
+        'screen is built: each language\'s text with numbered placeholders ({0}, {1}…), and `args`, the web\'s expression for each (null: not a plain template). Generated by npm run gen:strings; do not edit by hand.',
       entries: sortedEntries,
       templates: templates.sort((a, b) => (a.at < b.at ? -1 : 1)),
     },
