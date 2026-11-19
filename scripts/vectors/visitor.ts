@@ -1,7 +1,6 @@
 // Pure visitor logic, beyond hours: walking times and pace, distances and
 // arrival, nearby places, notices, the quiz and passport stamps.
 
-import { bundledContent } from '../../src/data/content.js';
 import { distanceMeters, nearest, updateArrival, type ArrivalState } from '../../src/lib/geo.js';
 import { nearbyOnOtherRoutes } from '../../src/lib/nearby.js';
 import { noticesFor, type Notice } from '../../src/lib/notices.js';
@@ -12,8 +11,21 @@ import { beats, mergeBests, parseBests } from '../../src/lib/quiz-best.js';
 import { atPace, walkMinutes } from '../../src/lib/walk.js';
 import { seeded, type VectorSet } from './common.js';
 
-const places = bundledContent.places;
-const point = (p: { id: number; lat: number; lng: number }) => ({ id: p.id, lat: p.lat, lng: p.lng });
+/** Places for nearby: a cluster on three routes around Bab Zuweila, metres apart (north = +lat), plus one far away. */
+const north = (m: number) => m / 111_320;
+const east = (m: number) => m / (111_320 * Math.cos((30.043 * Math.PI) / 180));
+const NEARBY_PLACES = [
+  { id: 1, routeId: 'a', lat: 30.043, lng: 31.257 },
+  { id: 2, routeId: 'a', lat: 30.043 + north(150), lng: 31.257 },
+  { id: 3, routeId: 'b', lat: 30.043 + north(100), lng: 31.257 + east(50) },
+  { id: 4, routeId: 'b', lat: 30.043 - north(300), lng: 31.257 },
+  { id: 5, routeId: 'c', lat: 30.043, lng: 31.257 + east(200) },
+  { id: 6, routeId: 'c', lat: 30.043, lng: 31.257 - east(200) }, // the same distance from 1 as 5: lower ID first
+  { id: 7, routeId: 'c', lat: 30.043 + north(420), lng: 31.257 }, // 420 m: just within 7 minutes? (straight line × 1.3 at 75 m/min)
+  { id: 8, routeId: 'c', lat: 30.043 + north(410), lng: 31.257 + east(20) },
+  { id: 9, routeId: 'd', lat: 30.06, lng: 31.26 }, // far away
+];
+
 
 export const walkVectors: VectorSet = {
   name: 'walk-pace',
@@ -36,7 +48,7 @@ export const walkVectors: VectorSet = {
 export const geoVectors: VectorSet = {
   name: 'geo',
   build: () => {
-    const sample = places.slice(0, 12).map(point);
+    const sample = NEARBY_PLACES.map(({ id, lat, lng }) => ({ id, lat, lng }));
     // A walk past the first place: far, approaching, at it, jittering at the edge, leaving, and an imprecise fix.
     const p0 = sample[0];
     const offset = (m: number) => ({ lat: p0.lat + m / 111_320, lng: p0.lng }); // m metres north
@@ -53,7 +65,7 @@ export const geoVectors: VectorSet = {
     });
     return {
       about:
-        'Distances and arrival (src/lib/geo.ts). distanceMeters is the haversine distance with Earth radius 6,371,000 m; compare to 0.01 m. ' +
+        'Distances and arrival (src/lib/geo.ts). distanceMeters is the haversine distance with Earth radius 6,371,000 m. Distances are stored rounded to 2 decimals: a port\'s unrounded value must be within 0.005 m. ' +
         '`nearest` picks the closest place (lowest distance, first on a tie). `arrival` is one walk of GPS fixes fed in order to updateArrival, starting from {atId: null}: ' +
         'arriving needs ≤ 30 m, leaving needs > 60 m from the place arrived at, and fixes less precise than 50 m are ignored.',
       places: sample,
@@ -73,11 +85,12 @@ export const nearbyVectors: VectorSet = {
   name: 'nearby',
   build: () => ({
     about:
-      'Places on other routes a short walk away (nearbyOnOtherRoutes in src/lib/nearby.ts), for every built-in place: at most 3, within 7 minutes at the usual pace, ' +
-      'nearest first (then lowest ID). `minutes` is at the usual pace (factor 1). Places are the built-in content\'s.',
-    cases: places.map(p => ({
+      'Places on other routes a short walk away (nearbyOnOtherRoutes in src/lib/nearby.ts): at most 3, within 7 minutes at the usual pace (straight-line metres × 1.3, ' +
+      'at 75 m a minute, rounded up), nearest first, then lowest ID. `minutes` is at the usual pace (factor 1).',
+    places: NEARBY_PLACES,
+    cases: NEARBY_PLACES.map(p => ({
       place: p.id,
-      nearby: nearbyOnOtherRoutes(p, places).map(n => ({ id: n.place.id, minutes: n.minutes })),
+      nearby: nearbyOnOtherRoutes(p, NEARBY_PLACES).map(n => ({ id: n.place.id, minutes: n.minutes })),
     })),
   }),
 };
@@ -105,11 +118,31 @@ export const noticeVectors: VectorSet = {
   },
 };
 
+/** Places with build years: equal years, overlapping ranges, a pair exactly 20 years apart, and a route with too few dated places. */
+export const QUIZ_PLACES = [
+  { id: 1, routeId: 'old', builtFrom: 642 },
+  { id: 2, routeId: 'old', builtFrom: 876, builtTo: 879 },
+  { id: 3, routeId: 'old', builtFrom: 970, builtTo: 972 },
+  { id: 4, routeId: 'old', builtFrom: 992 }, // exactly 20 years after 3 ends: fair
+  { id: 5, routeId: 'old', builtFrom: 1085, builtTo: 1092 },
+  { id: 6, routeId: 'old', builtFrom: 1085 }, // the same year as 5: never paired with it
+  { id: 7, routeId: 'old', builtFrom: 1356, builtTo: 1363 },
+  { id: 8, routeId: 'old', builtFrom: 1360 }, // inside 7's range: overlap
+  { id: 9, routeId: 'old', builtFrom: 1504, builtTo: 1505 },
+  { id: 10, routeId: 'old' }, // no year: not in the quiz
+  { id: 11, routeId: 'new', builtFrom: 1869 },
+  { id: 12, routeId: 'new', builtFrom: 1880 }, // 11 years from 11: not fair
+  { id: 13, routeId: 'new' },
+  { id: 14, routeId: 'few', builtFrom: 1200 },
+  { id: 15, routeId: 'few', builtFrom: 1500 }, // only two dated places: no quiz
+];
+
 export const quizVectors: VectorSet = {
   name: 'quiz',
   build: () => {
-    const scopes = [null, ...bundledContent.routes.map(r => r.id)];
-    const games = scopes.map((scope, i) => {
+    const places = QUIZ_PLACES;
+    const scopes = [null, 'old', 'new', 'few', 'none'];
+    const games = [null, 'old', null, 'old'].map((scope, i) => {
       const random = seeded(1000 + i);
       const rounds = quizRounds(places, scope, random.next);
       return { scope, random: random.drawn, rounds: rounds.map(r => ({ a: r.a.id, b: r.b.id, older: r.older.id })) };
@@ -117,9 +150,10 @@ export const quizVectors: VectorSet = {
     const dated = datedPlaces(places, null);
     return {
       about:
-        'The "Which came first?" quiz (src/lib/quiz.ts) and best scores (src/lib/quiz-best.ts) over the built-in places. A scope is a route ID, or null for all of Cairo. ' +
+        'The "Which came first?" quiz (src/lib/quiz.ts) and best scores (src/lib/quiz-best.ts) over `places`. A scope is a route ID, or null for all of Cairo. ' +
         '`dated` lists the IDs with a build year; `pairs` the fair pairs in order (≥ 20 years apart, no overlap). Each game lists the random numbers quizRounds drew, ' +
         'in order, and the rounds it made from them: feed the same numbers to get the same rounds. `beats` compares best scores by share, then by rounds.',
+      places,
       cases: [
         ...scopes.map(scope => ({
           scope,
@@ -127,7 +161,7 @@ export const quizVectors: VectorSet = {
           pairs: fairPairs(datedPlaces(places, scope)).map(([a, b]) => [a.id, b.id]),
           hasQuiz: hasQuiz(places, scope),
         })),
-        ...dated.slice(0, 6).flatMap((a, i) => dated.slice(i + 1, 6).map(b => ({ yearsApart: [a.id, b.id], out: yearsApart(a, b) }))),
+        ...dated.flatMap((a, i) => dated.slice(i + 1).map(b => ({ yearsApart: [a.id, b.id], out: yearsApart(a, b) }))),
         ...games.map(game => ({ game })),
         ...[
           [{ score: 3, of: 5 }, undefined], [{ score: 3, of: 5 }, { score: 3, of: 5 }], [{ score: 4, of: 4 }, { score: 3, of: 3 }],

@@ -40,7 +40,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        tz: [Africa/Cairo, UTC, America/Los_Angeles, Asia/Tokyo]
+        # UTC is the check job's own run.
+        tz: [Africa/Cairo, America/Los_Angeles, Asia/Tokyo]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

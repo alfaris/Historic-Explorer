@@ -5,6 +5,7 @@
 import { cairoTime, openStatus, type OpeningHours } from '../../src/lib/opening-hours.js';
 import { effectiveHours, openStatusAt, type SpecialPeriod } from '../../src/lib/special-hours.js';
 import { routeOpenNow } from '../../src/lib/open-now.js';
+import { PAUSE_MINUTES, pausesAround, prayerOnArrival, prayerStatus } from '../../src/lib/prayer-times.js';
 import { at, iso, type VectorSet } from './common.js';
 
 const r = (open: string, close: string) => ({ open, close });
@@ -29,16 +30,16 @@ export const HOURS: Record<string, OpeningHours> = {
 /** Instants (UTC). Cairo is UTC+2, and UTC+3 in summer (from the last Friday of April to the last Thursday of October). */
 export const INSTANTS = [
   // An ordinary winter week, Sunday 2026-01-04 to Saturday 2026-01-10, at telling times.
-  '2026-01-04T06:59Z', '2026-01-04T07:00Z', '2026-01-04T14:59Z', '2026-01-04T15:00Z', // 08:59, 09:00, 16:59, 17:00 Cairo
-  '2026-01-04T22:30Z', '2026-01-05T00:30Z', '2026-01-05T16:00Z', '2026-01-05T23:59Z',
-  '2026-01-09T09:29Z', '2026-01-09T09:30Z', '2026-01-09T11:30Z', '2026-01-09T11:31Z', // Friday 11:29 … 13:31
-  '2026-01-10T17:59Z', '2026-01-10T18:00Z', '2026-01-10T23:00Z', '2026-01-11T00:59Z', '2026-01-11T01:00Z', // Saturday night into Sunday
+  '2026-01-04T06:59:00Z', '2026-01-04T07:00:00Z', '2026-01-04T14:59:00Z', '2026-01-04T15:00:00Z', // 08:59, 09:00, 16:59, 17:00 Cairo
+  '2026-01-04T22:30:00Z', '2026-01-05T00:30:00Z', '2026-01-05T16:00:00Z', '2026-01-05T23:59:00Z',
+  '2026-01-09T09:29:00Z', '2026-01-09T09:30:00Z', '2026-01-09T11:30:00Z', '2026-01-09T11:31:00Z', // Friday 11:29 … 13:31
+  '2026-01-10T17:59:00Z', '2026-01-10T18:00:00Z', '2026-01-10T23:00:00Z', '2026-01-11T00:59:00Z', '2026-01-11T01:00:00Z', // Saturday night into Sunday
   // A summer weekday (UTC+3).
-  '2026-07-15T05:59Z', '2026-07-15T06:00Z', '2026-07-15T13:59Z', '2026-07-15T14:00Z', '2026-07-15T22:59Z',
+  '2026-07-15T05:59:00Z', '2026-07-15T06:00:00Z', '2026-07-15T13:59:00Z', '2026-07-15T14:00:00Z', '2026-07-15T22:59:00Z',
   // DST starts: Friday 2026-04-24, 00:00 Cairo becomes 01:00.
-  '2026-04-23T21:30Z', '2026-04-23T21:59Z', '2026-04-23T22:00Z', '2026-04-23T22:30Z', '2026-04-23T23:00Z', '2026-04-24T06:00Z',
+  '2026-04-23T21:30:00Z', '2026-04-23T21:59:00Z', '2026-04-23T22:00:00Z', '2026-04-23T22:30:00Z', '2026-04-23T23:00:00Z', '2026-04-24T06:00:00Z',
   // DST ends: Thursday 2026-10-29, 24:00 Cairo becomes 23:00 again.
-  '2026-10-29T19:30Z', '2026-10-29T20:59Z', '2026-10-29T21:00Z', '2026-10-29T21:30Z', '2026-10-29T22:00Z', '2026-10-29T22:30Z', '2026-10-30T06:00Z',
+  '2026-10-29T19:30:00Z', '2026-10-29T20:59:00Z', '2026-10-29T21:00:00Z', '2026-10-29T21:30:00Z', '2026-10-29T22:00:00Z', '2026-10-29T22:30:00Z', '2026-10-30T06:00:00Z',
 ];
 
 /** Special periods for place 1 (and 2 for "may differ"). */
@@ -49,9 +50,9 @@ export const PERIODS: SpecialPeriod[] = [
 ];
 
 export const PERIOD_INSTANTS = [
-  '2027-02-07T12:00Z', '2027-02-07T22:30Z', // the day before Ramadan; a late evening with Ramadan starting tomorrow
-  '2027-02-08T07:59Z', '2027-02-08T08:00Z', '2027-02-08T13:00Z', '2027-02-08T18:00Z', '2027-02-08T22:30Z', '2027-02-08T23:30Z',
-  '2027-03-09T22:30Z', '2027-03-10T09:00Z', '2027-03-12T21:59Z', '2027-03-12T22:00Z', '2027-03-13T09:00Z', '2027-05-01T09:00Z',
+  '2027-02-07T12:00:00Z', '2027-02-07T22:30:00Z', // the day before Ramadan; a late evening with Ramadan starting tomorrow
+  '2027-02-08T07:59:00Z', '2027-02-08T08:00:00Z', '2027-02-08T13:00:00Z', '2027-02-08T18:00:00Z', '2027-02-08T22:30:00Z', '2027-02-08T23:30:00Z',
+  '2027-03-09T22:30:00Z', '2027-03-10T09:00:00Z', '2027-03-12T21:59:00Z', '2027-03-12T22:00:00Z', '2027-03-13T09:00:00Z', '2027-05-01T09:00:00Z',
 ];
 
 export const hoursVectors: VectorSet = {
@@ -116,4 +117,32 @@ export const openNowVectors: VectorSet = {
   }),
 };
 
-export { iso };
+/** Instants around prayers: before the 5-minute lead, in it, during, at the end, Friday's jumuah, and late at night (yesterday's isha, tomorrow's fajr). */
+const PRAYER_INSTANTS = [
+  '2026-12-01T09:00:00Z', '2026-12-01T09:30:00Z', '2026-12-01T09:39:00Z', '2026-12-01T09:40:00Z', '2026-12-01T10:14:00Z', '2026-12-01T10:15:00Z', // dhuhr 09:45Z: the pause is 09:40–10:15
+  '2026-12-04T09:00:00Z', '2026-12-04T09:40:00Z', '2026-12-04T10:30:00Z', '2026-12-04T10:42:00Z', // a Friday
+  '2026-12-01T21:59:00Z', '2026-12-01T22:01:00Z', '2026-12-02T02:30:00Z', '2026-12-02T03:00:00Z',
+  '2026-07-03T10:00:00Z', '2026-07-03T16:30:00Z', '2026-04-23T21:59:00Z', '2026-04-23T22:00:00Z', // a summer Friday; the night summer time starts
+];
+
+export const prayerPauseVectors: VectorSet = {
+  name: 'prayer-pauses',
+  build: () => ({
+    about:
+      'Whether mosque visits pause for prayer (prayerStatus, pausesAround and prayerOnArrival in src/lib/prayer-times.ts). Each prayer pauses visits from 5 minutes before ' +
+      'it for the minutes in `pauseMinutes` (Friday\'s midday prayer is jumuah). `status` is {state: now, name, until} during a pause, {state: soon, name, at} when the next ' +
+      'pause\'s prayer is within 90 minutes, else null. `pauses` lists the pauses from the Cairo day before to the day after, as {name, at, start, end}. `onArrival` is ' +
+      'whether a visitor arriving that many minutes later reaches a pause. Prayer times are those of prayer-times-cairo.json. Instants are UTC.',
+    pauseMinutes: PAUSE_MINUTES,
+    cases: PRAYER_INSTANTS.map(instant => {
+      const now = at(instant);
+      const status = prayerStatus(now);
+      return {
+        at: instant,
+        status: status && (status.state === 'now' ? { state: 'now', name: status.name, until: iso(status.until) } : { state: 'soon', name: status.name, at: iso(status.at) }),
+        pauses: pausesAround(now).map(p => ({ name: p.name, at: iso(p.at), start: iso(p.start), end: iso(p.end) })),
+        onArrival: Object.fromEntries([5, 15, 30, 60].map(m => [m, prayerOnArrival(m, now)])),
+      };
+    }),
+  }),
+};

@@ -110,21 +110,21 @@ const DATES_KEY = 'cairo-walks:visit-dates';
 const DATE_SEQUENCES: { name: string; ops: DateOp[] }[] = [
   {
     name: 'records the Cairo date',
-    ops: [{ op: 'record', id: 1, at: '2026-12-01T21:59Z' }, { op: 'record', id: 2, at: '2026-12-01T22:00Z' }, { op: 'record', id: 3, at: '2026-07-01T21:00Z' }, { op: 'forget', ids: [1, 9] }],
+    ops: [{ op: 'record', id: 1, at: '2026-12-01T21:59:00Z' }, { op: 'record', id: 2, at: '2026-12-01T22:00:00Z' }, { op: 'record', id: 3, at: '2026-07-01T21:00:00Z' }, { op: 'forget', ids: [1, 9] }],
   },
   {
     name: 'a failed save is kept and written later',
-    ops: [{ op: 'failWrites', on: true }, { op: 'record', id: 1, at: '2026-12-01T10:00Z' }, { op: 'external', raw: '{"7":"2026-11-30"}' }, { op: 'failWrites', on: false }, { op: 'record', id: 2, at: '2026-12-02T10:00Z' }],
+    ops: [{ op: 'failWrites', on: true }, { op: 'record', id: 1, at: '2026-12-01T10:00:00Z' }, { op: 'external', raw: '{"7":"2026-11-30"}' }, { op: 'failWrites', on: false }, { op: 'record', id: 2, at: '2026-12-02T10:00:00Z' }],
   },
   {
     name: 'an unsaved date is dropped once the place is no longer visited',
-    ops: [{ op: 'visited', ids: [1] }, { op: 'failWrites', on: true }, { op: 'record', id: 1, at: '2026-12-01T10:00Z' }, { op: 'visited', ids: [] }, { op: 'external', raw: '{}' }, { op: 'failWrites', on: false }, { op: 'record', id: 2, at: '2026-12-02T10:00Z' }],
+    ops: [{ op: 'visited', ids: [1] }, { op: 'failWrites', on: true }, { op: 'record', id: 1, at: '2026-12-01T10:00:00Z' }, { op: 'visited', ids: [] }, { op: 'external', raw: '{}' }, { op: 'failWrites', on: false }, { op: 'record', id: 2, at: '2026-12-02T10:00:00Z' }],
   },
   {
     name: 'an unsaved forget is dropped once the place is visited again',
-    ops: [{ op: 'visited', ids: [1] }, { op: 'record', id: 1, at: '2026-12-01T10:00Z' }, { op: 'failWrites', on: true }, { op: 'visited', ids: [] }, { op: 'forget', ids: [1] }, { op: 'visited', ids: [1] }, { op: 'external', raw: '{"1":"2026-12-03"}' }, { op: 'failWrites', on: false }, { op: 'record', id: 2, at: '2026-12-04T10:00Z' }],
+    ops: [{ op: 'visited', ids: [1] }, { op: 'record', id: 1, at: '2026-12-01T10:00:00Z' }, { op: 'failWrites', on: true }, { op: 'visited', ids: [] }, { op: 'forget', ids: [1] }, { op: 'visited', ids: [1] }, { op: 'external', raw: '{"1":"2026-12-03"}' }, { op: 'failWrites', on: false }, { op: 'record', id: 2, at: '2026-12-04T10:00:00Z' }],
   },
-  { name: 'malformed storage', ops: [{ op: 'external', raw: '{"1":"2026-12-01","0":"2026-12-01","x":"2026-12-01","2":"12/01/2026","3":5}' }, { op: 'record', id: 4, at: '2026-12-02T10:00Z' }] },
+  { name: 'malformed storage', ops: [{ op: 'external', raw: '{"1":"2026-12-01","0":"2026-12-01","x":"2026-12-01","2":"12/01/2026","3":5}' }, { op: 'record', id: 4, at: '2026-12-02T10:00:00Z' }] },
 ];
 
 export const visitDatesVectors: VectorSet = {

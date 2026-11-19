@@ -1,11 +1,11 @@
 // Every set of golden vectors in contracts/vectors (prayer times have their own, scripts/prayer-vectors.ts).
-import { hoursVectors, openNowVectors, specialHoursVectors } from './hours.js';
+import { hoursVectors, openNowVectors, prayerPauseVectors, specialHoursVectors } from './hours.js';
 import { idSetStoreVectors, loadStores, visitDatesVectors } from './stores.js';
 import { geoVectors, nearbyVectors, noticeVectors, passportVectors, quizVectors, walkVectors } from './visitor.js';
 import { vectorText, type VectorSet } from './common.js';
 
 export const VECTOR_SETS: VectorSet[] = [
-  hoursVectors, specialHoursVectors, openNowVectors, walkVectors, geoVectors, nearbyVectors, noticeVectors, quizVectors, passportVectors, idSetStoreVectors, visitDatesVectors,
+  hoursVectors, specialHoursVectors, openNowVectors, prayerPauseVectors, walkVectors, geoVectors, nearbyVectors, noticeVectors, quizVectors, passportVectors, idSetStoreVectors, visitDatesVectors,
 ];
 
 export const vectorPath = (set: VectorSet) => `contracts/vectors/${set.name}.json`;

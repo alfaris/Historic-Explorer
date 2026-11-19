@@ -160,7 +160,10 @@ const subscribe = (listener: () => void) => {
   };
 };
 
-/** Forgets this tab's state, as on a page load (for tests and the vectors' store sequences). */
+/**
+ * Forgets this tab's state, as on a page load (for tests and the vectors' store sequences).
+ * It doesn't remove a window "storage" handler a subscriber added: unsubscribe first.
+ */
 export const _resetVisitDates = () => {
   dates = null;
   pending.clear();

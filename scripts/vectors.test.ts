@@ -13,4 +13,12 @@ describe('golden vectors', () => {
       expect(JSON.parse(checkedIn)).toEqual(JSON.parse(await vectorFileText(set)));
     });
   }
+
+  it('quiz.json has real games and fair pairs (a quiz port is checked on something)', async () => {
+    const quiz = JSON.parse(readFileSync(new URL('../contracts/vectors/quiz.json', import.meta.url), 'utf8'));
+    const games = quiz.cases.filter((c: { game?: unknown }) => c.game);
+    expect(games.length).toBeGreaterThan(0);
+    for (const { game } of games) expect(game.rounds.length).toBeGreaterThan(0);
+    expect(quiz.cases.some((c: { pairs?: unknown[] }) => c.pairs?.length)).toBe(true);
+  });
 });

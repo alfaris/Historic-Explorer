@@ -1,7 +1,7 @@
 // Shared helpers for the golden vectors in contracts/vectors: JSON files of
 // inputs and the web's outputs, which the native apps' ports are checked
 // against. Each file has `about`, its inputs, then `cases`. Only semantic values
-// (instants, minutes, IDs, enums, states) are recorded; formatted text differs
+// (instants as YYYY-MM-DDTHH:MM:SSZ in UTC, minutes, IDs, enums, states) are recorded; formatted text differs
 // by platform and isn't part of these files.
 
 export interface VectorFile {
@@ -15,8 +15,8 @@ export interface VectorSet {
   build: () => VectorFile | Promise<VectorFile>;
 }
 
-/** An instant as written in the vectors: ISO 8601 in UTC, to the minute. */
-export const iso = (d: Date) => d.toISOString().replace(':00.000Z', 'Z');
+/** An instant as written in the vectors: ISO 8601 in UTC with seconds, YYYY-MM-DDTHH:MM:SSZ. */
+export const iso = (d: Date) => d.toISOString().replace('.000Z', 'Z');
 export const at = (s: string) => new Date(s);
 
 /** A seeded random source (mulberry32), so a case that takes randomness lists the numbers it drew. */
