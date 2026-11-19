@@ -5,6 +5,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const store = new Map<string, { body: string; etag: string }>();
 let etagCounter = 0;
+// Conditional writes to refuse next, as if another request had just written.
+const clash = { next: 0 };
 
 vi.mock('@vercel/blob', () => {
   class BlobNotFoundError extends Error {}
@@ -15,6 +17,10 @@ vi.mock('@vercel/blob', () => {
     async put(pathname: string, body: string, opts: { ifMatch?: string; allowOverwrite?: boolean } = {}) {
       await new Promise(r => setTimeout(r, Math.random() * 5)); // let requests overlap
       const existing = store.get(pathname);
+      if (clash.next > 0) {
+        clash.next--;
+        throw new BlobPreconditionFailedError('precondition failed');
+      }
       if (opts.ifMatch !== undefined && existing?.etag !== opts.ifMatch) throw new BlobPreconditionFailedError('precondition failed');
       if (existing && opts.ifMatch === undefined && !opts.allowOverwrite) throw new Error('Vercel Blob: This blob already exists');
       const etag = `"e${++etagCounter}"`;
@@ -35,7 +41,7 @@ vi.mock('@vercel/blob', () => {
   };
 });
 
-const { byDay, handleStats, readStats, recordEvents } = await import('./stats');
+const { MAX_TRIES, backoffMs, byDay, handleStats, readStats, recordEvents } = await import('./stats');
 const { _resetContentCache } = await import('./content');
 
 let ip = 0;
@@ -84,6 +90,36 @@ describe('POST /api/stats', () => {
 });
 
 describe('recordEvents', () => {
+  const noWait = async () => {};
+  it('waits and tries again after a clash', async () => {
+    clash.next = 5;
+    const waits: number[] = [];
+    expect(await recordEvents([{ t: 'play', id: 1 }], new Date(), undefined, async ms => void waits.push(ms))).toBe(true);
+    expect(waits).toHaveLength(5);
+    waits.forEach((ms, i) => expect(ms).toBeLessThanOrEqual(backoffMs(i)));
+    expect((await readStats(1)).total.plays[1]).toBe(1);
+  });
+  it('gives up after the last try, and the endpoint logs the dropped batch', async () => {
+    clash.next = MAX_TRIES;
+    expect(await recordEvents([{ t: 'play', id: 1 }], new Date(), undefined, noWait)).toBe(false);
+    clash.next = 1000;
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.useFakeTimers({ toFake: ['setTimeout'] });
+    try {
+      const res = send({ events: [{ t: 'play', id: 201 }, { t: 'play', id: 201 }] });
+      await vi.runAllTimersAsync();
+      expect((await res).status).toBe(204);
+    } finally {
+      vi.useRealTimers();
+      clash.next = 0;
+    }
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/dropped 2 event\(s\) .* after 8 tries/));
+    warn.mockRestore();
+  });
+  it('keeps the total wait bounded', () => {
+    const total = Array.from({ length: MAX_TRIES - 1 }, (_, i) => backoffMs(i)).reduce((a, b) => a + b, 0);
+    expect(total).toBeLessThanOrEqual(3_500);
+  });
   it('keeps every count when requests arrive at the same moment', async () => {
     const results = await Promise.all(Array.from({ length: 4 }, () => recordEvents([{ t: 'play', id: 1 }])));
     expect(results.every(Boolean)).toBe(true);
