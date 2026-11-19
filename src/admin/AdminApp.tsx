@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { BarChart3, BookOpen, CalendarDays, History, Inbox, LifeBuoy, ListChecks, LogOut, MapPinned, Megaphone, Route as RouteIcon } from 'lucide-react';
 import type { Content } from '../data/content';
-import { normalizeContent, onlyOlderProblems, validateContent, withMaxPlaceId, withUniqueIds } from '../data/content';
+import { normalizeContent, validateContent, withMaxPlaceId } from '../data/content';
+import { blockingProblems, withUniqueIds } from '../data/content-repair';
 import { api, ApiError } from './api';
 import { ReportsTab } from './ReportsTab';
 import { HelpTab } from './HelpTab';
@@ -143,8 +144,9 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
     if (content) next = withMaxPlaceId(next, content);
     const problems = validateContent(next);
     // Problems the saved copy already had (a check added since) can be fixed one save at a time.
-    if (problems.length && !(stored && onlyOlderProblems(next, stored))) {
-      setSaveError({ message: 'Fix these before saving:', problems, conflict: false });
+    const blocking = problems.length ? (stored ? blockingProblems(next, stored) : problems) : [];
+    if (blocking.length) {
+      setSaveError({ message: 'Fix these before saving:', problems: blocking, conflict: false });
       return false;
     }
     try {

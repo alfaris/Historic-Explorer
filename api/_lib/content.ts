@@ -32,7 +32,7 @@ export interface StoredContent {
   /**
    * What's wrong with the stored copy by today's checks (e.g. a rule added
    * since it was saved). The admin sees them and fixes them; a save may keep
-   * only problems the copy already had (onlyOlderProblems).
+   * only problems the copy already had (blockingProblems).
    */
   problems?: string[];
   /** Nothing in the stored copy can be shown (see usableContent), so visitors get the built-in content until it's fixed. */

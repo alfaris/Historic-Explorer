@@ -39,7 +39,8 @@ import { handleDescribePhoto } from './describe-photo.js';
 import { handleSummarize } from './summarize.js';
 import { readStats } from './stats.js';
 import { digestConfigured, sendTestEmail } from './digest.js';
-import { normalizeContent, onlyOlderProblems, validateContent } from '../../src/data/content.js';
+import { normalizeContent, validateContent } from '../../src/data/content.js';
+import { blockingProblems } from '../../src/data/content-repair.js';
 
 const cookieValue = (request: Request) =>
   request.headers.get('cookie')?.split(';').map(c => c.trim().split('=')).find(([k]) => k === 'cw_admin')?.[1];
@@ -85,8 +86,9 @@ export async function handleAdmin(request: Request): Promise<Response> {
       // A saved copy that fails a check added since it was saved can be fixed a
       // place at a time: a save that only keeps problems it already had goes
       // ahead (and returns them), one that adds a problem doesn't.
-      if (problems.length && !onlyOlderProblems(content, (await getContentWithEtag()).content)) {
-        return json({ error: 'The content has problems.', problems }, 422);
+      const blocking = problems.length ? blockingProblems(content, (await getContentWithEtag()).content) : [];
+      if (blocking.length) {
+        return json({ error: 'The content has problems.', problems: blocking }, 422);
       }
       try {
         const saved = await saveContent(content, typeof etag === 'string' ? etag : null, typeof note === 'string' ? note : '');
