@@ -159,7 +159,8 @@ export function normalizeContent(input: unknown): Content {
   const content: Content = {
     ...(help ? { help } : {}),
     ...(specialPeriods ? { specialPeriods } : {}),
-    ...(Number.isInteger(maxPlaceId) && maxPlaceId > 0 ? { maxPlaceId } : {}),
+    // Place IDs stop at 999999 (validateContent); a larger value is a bad edit and would make every new ID the same.
+    ...(Number.isInteger(maxPlaceId) && maxPlaceId > 0 && maxPlaceId <= 999_999 ? { maxPlaceId } : {}),
     ...(glossary ? { glossary } : {}),
     routes: routesIn.map((r: any): Route => ({
       id: str(r?.id),
@@ -212,6 +213,32 @@ export function normalizeContent(input: unknown): Content {
 }
 
 /**
+ * The content as visitors can be shown it: places that can't be shown at all
+ * (on a route that doesn't exist, an unknown category, no position, no name
+ * in any language, or an ID already used, the first one kept) are left out,
+ * and routes with no name or an ID already used too. Null when no route or no place is left. Looser than
+ * validateContent on purpose: content saved before a check was added (a new
+ * length limit, say) fails validateContent, but visitors keep seeing it, less
+ * any place that can't be shown, rather than lose everything the admin added
+ * (the admin is asked to fix it).
+ */
+export function usableContent(content: Content): Content | null {
+  const routeIds = new Set<string>();
+  const routes = content.routes.filter(r => !!(r.nameEn || r.nameAr) && !routeIds.has(r.id) && routeIds.add(r.id));
+  const placeIds = new Set<number>();
+  const places = content.places.filter(
+    p =>
+      Number.isInteger(p.id) && !placeIds.has(p.id) && routeIds.has(p.routeId) && CATEGORY_IDS.includes(p.category) && !!(p.nameEn || p.nameAr) &&
+      Number.isFinite(p.lat) && Number.isFinite(p.lng) && placeIds.add(p.id),
+  );
+  if (routes.length === 0 || places.length === 0) return null;
+  return routes.length === content.routes.length && places.length === content.places.length ? content : { ...content, routes, places };
+}
+
+/** Whether every route and place can be shown as it is (usableContent leaves nothing out). */
+export const isUsableContent = (content: Content) => usableContent(content) === content;
+
+/**
  * Checks content before it's published. Returns human-readable problems; an
  * empty list means it's valid. The server refuses to save content with
  * problems, and the tests run this against the bundled data.
@@ -221,6 +248,8 @@ export function validateContent(content: Content): string[] {
   const routeIds = new Set<string>();
 
   if (content.routes.length === 0) problems.push('There must be at least one route.');
+  // Content with no place can't be shown (isUsableContent), so it can't be saved either.
+  if (content.places.length === 0) problems.push('There must be at least one place.');
 
   for (const r of content.routes) {
     const label = `Route "${r.nameEn || r.id || '(unnamed)'}"`;

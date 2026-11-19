@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { BarChart3, BookOpen, CalendarDays, History, Inbox, LifeBuoy, ListChecks, LogOut, MapPinned, Megaphone, Route as RouteIcon } from 'lucide-react';
 import type { Content } from '../data/content';
 import { normalizeContent, validateContent, withMaxPlaceId } from '../data/content';
+import { blockingProblems, withUniqueIds } from '../data/content-repair';
 import { api, ApiError } from './api';
 import { ReportsTab } from './ReportsTab';
 import { HelpTab } from './HelpTab';
@@ -95,6 +96,10 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
   const [tab, setTab] = useState<Tab>('reports');
   const [content, setContent] = useState<Content | null>(null);
   const [etag, setEtag] = useState<string | null>(null);
+  // What the stored content fails by today's checks, as loaded (see getContentWithEtag).
+  const [storedIssue, setStoredIssue] = useState<{ problems: string[]; unusable: boolean } | null>(null);
+  // The stored copy as loaded or last saved: what a save with older problems is judged against.
+  const [stored, setStored] = useState<Content | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<{ message: string; problems: string[]; conflict: boolean } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -111,10 +116,16 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
     try {
       const data = await api.content();
       // The server already normalizes; doing it here too keeps the editors on the current model.
-      setContent(normalizeContent(data.content));
+      const loaded = normalizeContent(data.content);
+      // Repeated IDs would make an edit or a delete hit two items: renumber them (saved on the next save).
+      const unique = withUniqueIds(loaded);
+      setStored(loaded);
+      setContent(unique.content);
       setEtag(data.etag);
+      setStoredIssue(data.problems?.length || data.unusable ? { problems: data.problems ?? [], unusable: !!data.unusable } : null);
       setLoadError(null);
       setSaveError(null);
+      setNotice(unique.changed.length ? `${unique.changed.join(' ')} Save any change to keep it.` : null);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) return onSignedOut();
       setLoadError((err as Error).message);
@@ -132,14 +143,19 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
     // Remember the highest place ID ever used, so a deleted place's ID isn't reused.
     if (content) next = withMaxPlaceId(next, content);
     const problems = validateContent(next);
-    if (problems.length) {
-      setSaveError({ message: 'Fix these before saving:', problems, conflict: false });
+    // Problems the saved copy already had (a check added since) can be fixed one save at a time.
+    const blocking = problems.length ? (stored ? blockingProblems(next, stored) : problems) : [];
+    if (blocking.length) {
+      setSaveError({ message: 'Fix these before saving:', problems: blocking, conflict: false });
       return false;
     }
     try {
-      const { etag: newEtag } = await api.saveContent(next, etag, note);
+      const { etag: newEtag, problems: left } = await api.saveContent(next, etag, note);
       setContent(next);
+      setStored(next);
       setEtag(newEtag);
+      // What's left of the saved copy's older problems, if any.
+      setStoredIssue(left?.length ? { problems: left, unusable: false } : null);
       setSaveError(null);
       setNotice(`Saved: ${note}. Visitors see it within about a minute.`);
       return true;
@@ -217,6 +233,16 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
           </ErrorBox>
         )}
         {notice && <div className="rounded-2xl bg-nile/10 text-nile text-sm p-4">{notice}</div>}
+        {storedIssue && (
+          <ErrorBox
+            message={
+              storedIssue.unusable
+                ? 'Nothing in the saved content can be shown (no route or place left that visitors could see), so visitors are seeing the built-in content. Fix it here, or restore a version from History:'
+                : `The saved content fails ${storedIssue.problems.length === 1 ? 'a check' : `${storedIssue.problems.length} checks`} added since it was saved. Visitors still see it, less any place that can’t be shown; fix them one place at a time (each save must not add a new problem):`
+            }
+            problems={storedIssue.problems}
+          />
+        )}
         {etag === null && content && (
           <div className="rounded-2xl bg-gold/10 text-stone-700 text-sm p-4">
             You’re seeing the built-in content. Your first save stores a live copy that the site will use from then on.

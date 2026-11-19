@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bundledContent, nextPlaceId, normalizeContent, validateContent, withMaxPlaceId, type Content } from './content';
+import { bundledContent, isUsableContent, usableContent, nextPlaceId, normalizeContent, validateContent, withMaxPlaceId, type Content } from './content';
 
 const clone = (): Content => structuredClone(bundledContent);
 
@@ -165,5 +165,60 @@ describe('mosque setting', () => {
     const c = normalizeContent({ routes: [], places: [{ ...bundledContent.places[0], mosque: false }, { ...bundledContent.places[1], mosque: 'yes' }] });
     expect(c.places[0].mosque).toBe(false);
     expect(c.places[1]).not.toHaveProperty('mosque');
+  });
+});
+
+describe('isUsableContent', () => {
+  const base = () => normalizeContent(structuredClone(bundledContent));
+  it('accepts content that only fails a newer check', () => {
+    const c = base();
+    c.places[0].descriptionEn = 'x'.repeat(5000);
+    expect(validateContent(c).length).toBeGreaterThan(0);
+    expect(isUsableContent(c)).toBe(true);
+  });
+  it('rejects content that can’t be shown', () => {
+    expect(isUsableContent({ ...base(), places: [] })).toBe(false);
+    expect(isUsableContent({ ...base(), routes: [] })).toBe(false);
+    const orphan = base();
+    orphan.places[0] = { ...orphan.places[0], routeId: 'nowhere' };
+    expect(isUsableContent(orphan)).toBe(false);
+    const dup = base();
+    dup.places[1] = { ...dup.places[1], id: dup.places[0].id };
+    expect(isUsableContent(dup)).toBe(false);
+  });
+});
+
+describe('validateContent: places', () => {
+  it('makes an empty place list a problem', () => {
+    const c = normalizeContent(structuredClone(bundledContent));
+    expect(validateContent({ ...c, places: [] })).toContain('There must be at least one place.');
+  });
+  it('drops an impossible maxPlaceId', () => {
+    expect(normalizeContent({ ...structuredClone(bundledContent), maxPlaceId: 1e300 }).maxPlaceId).toBeUndefined();
+  });
+});
+
+describe('usableContent', () => {
+  const base = () => normalizeContent(structuredClone(bundledContent));
+  it('leaves out only what can’t be shown', () => {
+    const c = base();
+    c.places[0] = { ...c.places[0], routeId: 'nowhere' };
+    c.places[2] = { ...c.places[2], id: c.places[1].id };
+    const u = usableContent(c)!;
+    expect(u.places).toHaveLength(c.places.length - 2);
+    expect(u.places.some(p => p.routeId === 'nowhere')).toBe(false);
+  });
+  it('leaves out a place or route with no name in any language', () => {
+    const c = base();
+    c.places[0] = { ...c.places[0], nameEn: '', nameAr: '' };
+    expect(usableContent(c)!.places).toHaveLength(c.places.length - 1);
+    c.places[1] = { ...c.places[1], nameEn: '' };
+    expect(usableContent(c)!.places).toHaveLength(c.places.length - 1);
+  });
+  it('is the same object when nothing is left out, and null when nothing is left', () => {
+    const c = base();
+    expect(usableContent(c)).toBe(c);
+    expect(usableContent({ ...c, places: [] })).toBeNull();
+    expect(usableContent({ ...c, places: c.places.map(p => ({ ...p, routeId: 'nowhere' })) })).toBeNull();
   });
 });

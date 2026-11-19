@@ -18,6 +18,13 @@ describe('tile maths', () => {
 });
 
 describe('tilesForPlaces', () => {
+  it('stays quick and capped when a stop is placed far off (a typo in its position)', () => {
+    const t0 = Date.now();
+    const tiles = tilesForPlaces([{ lat: 30.0444, lng: 31.2357 }, { lat: 30.0444, lng: 3123 }]);
+    expect(tiles.length).toBeLessThanOrEqual(MAX_TILES);
+    expect(Date.now() - t0).toBeLessThan(1000);
+  });
+
   it('stays within the zoom levels the tile policy allows, up to the cap', () => {
     for (const route of routes) {
       const tiles = tilesForPlaces(locations.filter(l => l.routeId === route.id));

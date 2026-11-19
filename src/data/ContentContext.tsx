@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { bundledContent, normalizeContent, validateContent, type Content } from './content';
+import { bundledContent, normalizeContent, usableContent, type Content } from './content';
 
 const ContentContext = createContext<Content>(bundledContent);
 
@@ -17,9 +17,11 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
       .then(res => (res.ok ? res.json() : null))
       .then(data => {
         if (cancelled || !data) return;
-        const live = normalizeContent(data);
-        // Keep the bundled copy if the response is somehow unusable.
-        if (validateContent(live).length === 0) setContent(live);
+        // Content that fails a check added since it was saved is still shown, less any
+        // place that can't be (the admin is asked to fix it); the bundled copy stays only
+        // when nothing could be shown at all. (The server sends it this way already.)
+        const live = usableContent(normalizeContent(data));
+        if (live) setContent(live);
       })
       .catch(() => {});
     return () => {

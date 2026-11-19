@@ -60,9 +60,14 @@ export function tilesForPlaces(places: Pick<Location, 'lat' | 'lng'>[]): string[
   const [minLng, maxLng] = [Math.min(...lngs) - AREA_MARGIN, Math.max(...lngs) + AREA_MARGIN];
 
   const urls = new Set<string>();
-  for (const z of AREA_ZOOMS) {
+  // Stop at the cap while adding, not after: a stop placed far off (a typo in its
+  // position) would otherwise list millions of tiles before the cap applied.
+  area: for (const z of AREA_ZOOMS) {
     for (let x = lngToTileX(minLng, z); x <= lngToTileX(maxLng, z); x++) {
-      for (let y = latToTileY(maxLat, z); y <= latToTileY(minLat, z); y++) urls.add(tileUrl(z, x, y));
+      for (let y = latToTileY(maxLat, z); y <= latToTileY(minLat, z); y++) {
+        urls.add(tileUrl(z, x, y));
+        if (urls.size >= MAX_TILES) break area;
+      }
     }
   }
   // The tile each stop is on and its eight neighbours, so the street around

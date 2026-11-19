@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import type { Content } from '../data/content';
+import { newProblems } from '../data/content-repair';
 import { NOTICE_LIMITS, isActive, isExpired, noticeProblems, normalizeNotices, type Notice } from '../lib/notices';
 import { cairoDate } from '../lib/special-hours';
 import { withoutDrafted } from '../lib/drafted';
@@ -51,6 +52,15 @@ function status(n: Notice, today: string): { text: string; tone: string } {
   return { text: `Starts ${n.from}`, tone: 'text-stone-500' };
 }
 
+/** What blocks saving the tab: problems the saved notices didn't have, and every problem of an edited notice. */
+function noticeTabProblems(now: Notice[], saved: Notice[], check: (list: Notice[]) => string[]): string[] {
+  const all = check(now);
+  const before = new Set(saved.map(n => JSON.stringify(n)));
+  const edited = now.flatMap((n, i) => (before.has(JSON.stringify(n)) ? [] : [`Notice ${i + 1}`]));
+  const ofEdited = all.filter(p => edited.some(label => p.startsWith(`${label} `) || p.startsWith(`${label}:`)));
+  return [...new Set([...newProblems(all, check(saved)), ...ofEdited])];
+}
+
 /**
  * Notices for visitors: closures, works, events. Each shows everywhere, on one
  * route or on one place, optionally between two Cairo dates.
@@ -64,7 +74,10 @@ export function NoticesTab({ content, save }: { content: Content; save: SaveFn }
 
   const normalized = normalizeNotices(draft);
   const changed = !sameValue(normalized ?? [], saved);
-  const problems = normalized ? noticeProblems(normalized, new Set(content.routes.map(r => r.id)), new Set(content.places.map(p => p.id))) : [];
+  const check = (list: Notice[]) => noticeProblems(list, new Set(content.routes.map(r => r.id)), new Set(content.places.map(p => p.id)));
+  // Problems the saved notices already had (a check added since) don't block other edits: the save checks those (blockingProblems).
+  // A notice that was edited must pass every check, as the save requires (blockingProblems).
+  const problems = normalized ? noticeTabProblems(normalized, saved, check) : [];
   const today = cairoDate(new Date());
 
   const update = (i: number, n: Notice) => setDraft(d => d.map((x, j) => (j === i ? n : x)));
@@ -134,7 +147,7 @@ export function NoticesTab({ content, save }: { content: Content; save: SaveFn }
                   Important (safety): can't be closed
                 </label>
                 <Field label="First day (optional)"><input type="date" value={n.from ?? ''} onChange={e => setDate(i, n, 'from', e.target.value)} className={inputClass} /></Field>
-                <Field label="Last day (optional)"><input type="date" value={n.until ?? ''} min={n.from} onChange={e => setDate(i, n, 'until', e.target.value)} className={inputClass} /></Field>
+                <Field label="Last day (optional)"><input type="date" value={n.until ?? ''} onChange={e => setDate(i, n, 'until', e.target.value)} className={inputClass} /></Field>
               </div>
               <button type="button" onClick={() => setDraft(d => d.filter((_, j) => j !== i))} aria-label={`Remove notice ${i + 1}`} className="min-w-11 min-h-11 flex items-center justify-center rounded-lg text-stone-500 hover:bg-red-50 hover:text-red-700">
                 <Trash2 className="w-4 h-4" />
