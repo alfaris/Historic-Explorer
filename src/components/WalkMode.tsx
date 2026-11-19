@@ -380,7 +380,7 @@ export function WalkMode({ route, places, walkPlaces = places, nearMe, isArabic,
               <div id="walk-map" className="mt-2">
                 <LazyBoundary
                   loading={<div className="h-52 rounded-2xl bg-chalk animate-pulse" />}
-                  failed={<p className="px-2 py-4 text-xs text-stone-500">{L("The map couldn't load. Check your connection.", 'تعذر تحميل الخريطة. تحقق من اتصالك.')}</p>}
+                  failed={<p className="px-2 py-4 text-xs text-stone-500">{L("The map couldn't load. Check your connection.", 'تعذّر تحميل الخريطة. تحقق من اتصالك بالإنترنت.')}</p>}
                 >
                   <WalkMiniMap stops={stops} current={stop} next={next} fix={fix} />
                 </LazyBoundary>

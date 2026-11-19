@@ -14,7 +14,8 @@
     "test": "vitest run",
     "check:bundle": "node scripts/check-bundle.mjs",
     "gen:schema": "tsx scripts/gen-schema.ts",
-    "gen:vectors": "tsx scripts/export-vectors.ts"
+    "gen:vectors": "tsx scripts/export-vectors.ts",
+    "gen:strings": "tsx scripts/gen-strings.ts"
   },
   "dependencies": {
     "@google/genai": "^1.50.1",
