@@ -5,6 +5,7 @@ import { isLang, type Lang } from '../../src/i18n/lang.js';
 import { randomUUID } from 'node:crypto';
 import { del, get, list, put } from '@vercel/blob';
 import { CAIRO_BOUNDS } from '../../src/data/content.js';
+import { cleanClient, type Client } from '../../src/lib/stats.js';
 import { getContent } from './content.js';
 import { createRateLimiter } from './guard.js';
 import { hasBlobStore, json, readJson } from './http.js';
@@ -23,6 +24,9 @@ export interface Report {
   message: string;
   suggested?: { lat: number; lng: number; source: 'gps' | 'map'; accuracy?: number };
   lang: Lang;
+  /** Where it was sent from (the web, or a native app and its build), when the sender said. */
+  client?: Client;
+  appVersion?: number;
   adminNote?: string;
   updatedAt?: string;
 }
@@ -68,6 +72,7 @@ export async function buildReport(input: any, now = new Date()): Promise<Report 
     message,
     ...(suggested ? { suggested } : {}),
     lang: isLang(input?.lang) ? input.lang : 'en',
+    ...(cleanClient(input) ?? {}),
   };
 }
 

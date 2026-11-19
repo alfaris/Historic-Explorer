@@ -8,7 +8,7 @@
 // the rate limit.
 
 import { BlobNotFoundError, BlobPreconditionFailedError, get, list, put } from '@vercel/blob';
-import { addEvents, cleanEvents, dayKey, emptyDay, parseDay, sumDays, type DayStats, type StatEvent } from '../../src/lib/stats.js';
+import { addEvents, cleanClient, cleanEvents, dayKey, emptyDay, parseDay, sumDays, type ClientInfo, type DayStats, type StatEvent } from '../../src/lib/stats.js';
 import { getContent } from './content.js';
 import { createRateLimiter } from './guard.js';
 import { hasBlobStore, json, readJson } from './http.js';
@@ -58,7 +58,7 @@ export const STATS_DEADLINE_MS = 4_000;
  * moment, re-reads and tries again, up to MAX_TRIES or until `deadline` (a
  * Date.now() time). False when every try clashed.
  */
-export async function recordEvents(events: Parameters<typeof addEvents>[1], now = new Date(), key = dayKey(now), wait = sleep, deadline = Infinity) {
+export async function recordEvents(events: Parameters<typeof addEvents>[1], now = new Date(), key = dayKey(now), wait = sleep, deadline = Infinity, from: ClientInfo | null = null) {
   for (let attempt = 0; attempt < MAX_TRIES; attempt++) {
     if (attempt > 0) {
       const ms = Math.random() * backoffMs(attempt - 1);
@@ -67,7 +67,7 @@ export async function recordEvents(events: Parameters<typeof addEvents>[1], now 
     }
     const { day, etag } = await readDay(key);
     try {
-      await put(dayPath(key), JSON.stringify(addEvents(day, events)), {
+      await put(dayPath(key), JSON.stringify(addEvents(day, events, from)), {
         access: 'private',
         contentType: 'application/json',
         ...(etag ? { ifMatch: etag, allowOverwrite: true } : { allowOverwrite: false }),
@@ -117,6 +117,8 @@ export async function handleStats(request: Request): Promise<Response> {
     routeIds: new Set(content.routes.map(r => r.id)),
   });
   if (events.length === 0) return noContent();
+  // Which app sent them (the web, or a native app and its build), when it says.
+  const from = cleanClient(body);
   const deadline = Date.now() + STATS_DEADLINE_MS;
   // Today's batch first (the newest day sorts first), so the deadline never costs it to a correction for yesterday.
   const batches = [...byDay(events)].sort(([a], [b]) => b.localeCompare(a));
@@ -131,7 +133,7 @@ export async function handleStats(request: Request): Promise<Response> {
     }
     try {
       // Still clashing at the last try or the deadline: say so in the runtime logs rather than lose the counts silently.
-      if (!(await recordEvents(group, new Date(), key, sleep, deadline))) console.warn(`Stats: dropped ${group.length} event(s) for ${key}: still clashing after retries (too many at once).`);
+      if (!(await recordEvents(group, new Date(), key, sleep, deadline, from))) console.warn(`Stats: dropped ${group.length} event(s) for ${key}: still clashing after retries (too many at once).`);
     } catch (err) {
       // Stats are best-effort: never show visitors an error for them. Another day's batch still goes ahead.
       console.warn('Recording stats failed:', err);

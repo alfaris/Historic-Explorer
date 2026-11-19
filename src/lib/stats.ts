@@ -90,6 +90,20 @@ export type StatEvent =
   /** A finished "Which came first?" game on a route: right answers `s` of `n` rounds (first game per route per visit). */
   | { t: 'quiz'; id: string; s: number; n: number };
 
+/** Where a batch of events (or a report) came from: the web app, or a native app and its build. */
+export const CLIENTS = ['web', 'android', 'ios'] as const;
+export type Client = (typeof CLIENTS)[number];
+export type ClientInfo = { client: Client; appVersion?: number };
+
+/** The client a request names (`client`, and `appVersion` for the apps), or null for older requests that don't say. */
+export function cleanClient(raw: unknown): ClientInfo | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const { client, appVersion } = raw as { client?: unknown; appVersion?: unknown };
+  if (!(CLIENTS as readonly unknown[]).includes(client)) return null;
+  const ok = client !== 'web' && Number.isInteger(appVersion) && (appVersion as number) >= 1 && (appVersion as number) <= 999_999;
+  return ok ? { client: client as Client, appVersion: appVersion as number } : { client: client as Client };
+}
+
 /** One day's totals, keyed by place ID or route ID. */
 export interface DayStats {
   plays: Record<string, number>;
@@ -115,9 +129,14 @@ export interface DayStats {
    * (right answers) and "routeId:n" (rounds). Absent on days before it was recorded.
    */
   quiz: Record<string, number>;
+  /**
+   * Events by where they came from, keyed "web", "android", "ios", and by app
+   * build, keyed "android:12". Absent on days before it was recorded.
+   */
+  clients: Record<string, number>;
 }
 
-const FIELDS = ['plays', 'routes', 'arrivals', 'helpful', 'unhelpful', 'reasons', 'ratings', 'routeReasons', 'langs', 'listens', 'misses', 'quiz'] as const;
+const FIELDS = ['plays', 'routes', 'arrivals', 'helpful', 'unhelpful', 'reasons', 'ratings', 'routeReasons', 'langs', 'listens', 'misses', 'quiz', 'clients'] as const;
 const REASON_KEY = new RegExp(`^\\d+:(${REASONS.join('|')})$`);
 const ROUTE_ID = '[a-z0-9]+(?:-[a-z0-9]+)*';
 const RATING_KEY = new RegExp(`^${ROUTE_ID}:[1-5]$`);
@@ -126,10 +145,11 @@ const LANG_KEY = new RegExp(`^(play|route):(${LANGS.join('|')})$`);
 const DAY_KEY = /^\d{4}-\d{2}-\d{2}$/;
 const LISTEN_KEY = new RegExp(`^\\d+:(${LISTEN_BANDS.join('|')})$`);
 const QUIZ_KEY = new RegExp(`^${ROUTE_ID}:[grn]$`);
+const CLIENT_KEY = /^(web|android|ios)(:[1-9]\d{0,5})?$/;
 /** The most rounds a game has (see quiz.ts); anything more is made up. */
 export const QUIZ_MAX_ROUNDS = 5;
 
-export const emptyDay = (): DayStats => ({ plays: {}, routes: {}, arrivals: {}, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {}, langs: {}, listens: {}, misses: {}, quiz: {} });
+export const emptyDay = (): DayStats => ({ plays: {}, routes: {}, arrivals: {}, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {}, langs: {}, listens: {}, misses: {}, quiz: {}, clients: {} });
 
 /** The most events one request may carry. */
 export const MAX_EVENTS_PER_REQUEST = 50;
@@ -178,8 +198,8 @@ export function cleanEvents(raw: unknown, known: { placeIds: Set<number>; routeI
   return out;
 }
 
-/** Adds events to a day's totals (returns a new object). */
-export function addEvents(day: DayStats, events: StatEvent[]): DayStats {
+/** Adds events to a day's totals (returns a new object), counting them under the client that sent them, if it said. */
+export function addEvents(day: DayStats, events: StatEvent[], from?: ClientInfo | null): DayStats {
   const next = Object.fromEntries(FIELDS.map(f => [f, { ...day[f] }])) as unknown as DayStats;
   for (const e of events) {
     if (e.t === 'miss') {
@@ -213,6 +233,10 @@ export function addEvents(day: DayStats, events: StatEvent[]): DayStats {
       else next.listens[was] = n;
     }
   }
+  if (from && events.length) {
+    next.clients[from.client] = (next.clients[from.client] ?? 0) + events.length;
+    if (from.appVersion) next.clients[`${from.client}:${from.appVersion}`] = (next.clients[`${from.client}:${from.appVersion}`] ?? 0) + events.length;
+  }
   return next;
 }
 
@@ -231,6 +255,7 @@ export function parseDay(raw: unknown): DayStats {
       if (field === 'listens' && !LISTEN_KEY.test(k)) continue;
       if (field === 'misses' && missQuery(k) !== k) continue;
       if (field === 'quiz' && !QUIZ_KEY.test(k)) continue;
+      if (field === 'clients' && !CLIENT_KEY.test(k)) continue;
       // Listens can be below zero for a while (a correction ahead of its listen); everything else is a count.
       if (Number.isInteger(v) && ((v as number) > 0 || (field === 'listens' && (v as number) < 0))) day[field][k] = v as number;
     }
@@ -369,4 +394,23 @@ export function topMisses(total: DayStats, n = 20): { q: string; count: number }
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .slice(0, n)
     .map(([q, count]) => ({ q, count }));
+}
+
+export type ClientRow = { client: Client; events: number; pct: number; builds: { build: number; events: number }[] };
+
+/** Events by where they came from, most first, with each app's builds (newest first). Days before this was recorded aren't counted. */
+export function clientShares(total: DayStats): ClientRow[] {
+  const counts = total.clients ?? {};
+  const all = CLIENTS.reduce((n, c) => n + (counts[c] ?? 0), 0);
+  return CLIENTS.filter(c => counts[c])
+    .map(client => ({
+      client,
+      events: counts[client],
+      pct: Math.round((counts[client] / all) * 100),
+      builds: Object.entries(counts)
+        .filter(([k]) => k.startsWith(`${client}:`))
+        .map(([k, events]) => ({ build: Number(k.slice(client.length + 1)), events }))
+        .sort((a, b) => b.build - a.build),
+    }))
+    .sort((a, b) => b.events - a.events);
 }

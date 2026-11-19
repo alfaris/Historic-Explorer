@@ -82,7 +82,7 @@ export function flush() {
 }
 
 function send(events: StatEvent[]) {
-  const body = JSON.stringify({ events });
+  const body = JSON.stringify({ events, client: 'web' });
   try {
     const blob = new Blob([body], { type: 'application/json' });
     if (navigator.sendBeacon?.(ENDPOINT, blob)) return;

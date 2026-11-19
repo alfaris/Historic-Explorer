@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addEvents, cleanEvents, dayKey, emptyDay, helpfulness, languageShares, MAX_EVENTS_PER_REQUEST, parseDay, routeRatings, sumDays, listenBand, furtherBand, listening, mostStopEarly, missQuery, topMisses, MAX_MISSES_PER_DAY, quizStats } from './stats';
+import { addEvents, cleanClient, cleanEvents, clientShares, dayKey, emptyDay, helpfulness, languageShares, MAX_EVENTS_PER_REQUEST, parseDay, routeRatings, sumDays, listenBand, furtherBand, listening, mostStopEarly, missQuery, topMisses, MAX_MISSES_PER_DAY, quizStats } from './stats';
 
 const known = { placeIds: new Set([1, 2]), routeIds: new Set(['ahl-al-bayt']) };
 
@@ -29,7 +29,7 @@ describe('cleanEvents', () => {
 describe('addEvents / sumDays / parseDay', () => {
   it('counts events into the right totals', () => {
     const day = addEvents(emptyDay(), [{ t: 'play', id: 1 }, { t: 'play', id: 1 }, { t: 'route', id: 'r' }, { t: 'arrive', id: 2 }]);
-    expect(day).toEqual({ plays: { 1: 2 }, routes: { r: 1 }, arrivals: { 2: 1 }, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {}, langs: {}, listens: {}, misses: {}, quiz: {} });
+    expect(day).toEqual({ plays: { 1: 2 }, routes: { r: 1 }, arrivals: { 2: 1 }, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {}, langs: {}, listens: {}, misses: {}, quiz: {}, clients: {} });
   });
 
   it('adds days together', () => {
@@ -39,7 +39,7 @@ describe('addEvents / sumDays / parseDay', () => {
   });
 
   it('drops malformed stored values', () => {
-    expect(parseDay({ plays: { 1: 3, 2: -1, 3: 1.5, 4: 'x' }, routes: 'bad' })).toEqual({ plays: { 1: 3 }, routes: {}, arrivals: {}, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {}, langs: {}, listens: {}, misses: {}, quiz: {} });
+    expect(parseDay({ plays: { 1: 3, 2: -1, 3: 1.5, 4: 'x' }, routes: 'bad' })).toEqual({ plays: { 1: 3 }, routes: {}, arrivals: {}, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {}, langs: {}, listens: {}, misses: {}, quiz: {}, clients: {} });
     expect(parseDay(null)).toEqual(emptyDay());
   });
 
@@ -48,7 +48,7 @@ describe('addEvents / sumDays / parseDay', () => {
     const events = cleanEvents([{ t: 'up', id: 1 }, { t: 'down', id: 1 }, { t: 'up', id: 9 }, { t: 'up', id: '1' }], known);
     expect(events).toEqual([{ t: 'up', id: 1 }, { t: 'down', id: 1 }]);
     expect(addEvents(emptyDay(), events)).toMatchObject({ helpful: { 1: 1 }, unhelpful: { 1: 1 } });
-    expect(parseDay({ plays: { 1: 2 } })).toEqual({ plays: { 1: 2 }, routes: {}, arrivals: {}, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {}, langs: {}, listens: {}, misses: {}, quiz: {} });
+    expect(parseDay({ plays: { 1: 2 } })).toEqual({ plays: { 1: 2 }, routes: {}, arrivals: {}, helpful: {}, unhelpful: {}, reasons: {}, ratings: {}, routeReasons: {}, langs: {}, listens: {}, misses: {}, quiz: {}, clients: {} });
   });
 
   it('lists helpfulness per place, most disliked or most voted first', () => {
@@ -289,5 +289,43 @@ describe('quiz games', () => {
     expect(quizStats(day, ['a', 'b'])).toEqual([{ id: 'a', games: 2, right: 4, rounds: 8, pct: 50 }]);
     // Days stored before games were counted have none.
     expect(quizStats({ ...emptyDay(), quiz: undefined as never }, ['a'])).toEqual([]);
+  });
+});
+
+describe('clients', () => {
+  it('reads the client a request names, with a build only for the apps', () => {
+    expect(cleanClient({ client: 'android', appVersion: 12 })).toEqual({ client: 'android', appVersion: 12 });
+    expect(cleanClient({ client: 'ios' })).toEqual({ client: 'ios' });
+    expect(cleanClient({ client: 'web', appVersion: 3 })).toEqual({ client: 'web' });
+    expect(cleanClient({ client: 'android', appVersion: 0 })).toEqual({ client: 'android' });
+    expect(cleanClient({ client: 'android', appVersion: '12' })).toEqual({ client: 'android' });
+    expect(cleanClient({ client: 'windows' })).toBeNull();
+    expect(cleanClient({ events: [] })).toBeNull();
+    expect(cleanClient(null)).toBeNull();
+  });
+
+  it('counts events under their client and build, and leaves older requests uncounted', () => {
+    const play = { t: 'play' as const, id: 1 };
+    let day = addEvents(emptyDay(), [play, play], { client: 'android', appVersion: 12 });
+    day = addEvents(day, [play], { client: 'web' });
+    day = addEvents(day, [play]);
+    expect(day.clients).toEqual({ android: 2, 'android:12': 2, web: 1 });
+    expect(day.plays[1]).toBe(4);
+    expect(addEvents(emptyDay(), [], { client: 'web' }).clients).toEqual({});
+  });
+
+  it('keeps only well-formed client keys from storage, and older days without them still read', () => {
+    expect(parseDay({ clients: { web: 3, 'android:7': 2, ios: 0, 'ios:x': 1, mac: 4 } }).clients).toEqual({ web: 3, 'android:7': 2 });
+    expect(parseDay({ plays: { 1: 2 } }).clients).toEqual({});
+    expect(sumDays([{ ...emptyDay(), clients: { web: 1 } }, { ...emptyDay(), clients: undefined as never }]).clients).toEqual({ web: 1 });
+  });
+
+  it('shares events by client, most first, with builds newest first', () => {
+    const total = { ...emptyDay(), clients: { web: 30, android: 10, 'android:12': 6, 'android:9': 4 } };
+    expect(clientShares(total)).toEqual([
+      { client: 'web', events: 30, pct: 75, builds: [] },
+      { client: 'android', events: 10, pct: 25, builds: [{ build: 12, events: 6 }, { build: 9, events: 4 }] },
+    ]);
+    expect(clientShares(emptyDay())).toEqual([]);
   });
 });
