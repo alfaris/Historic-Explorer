@@ -1,0 +1,113 @@
+{
+  "routes": [
+    {
+      "id": "ahl-al-bayt",
+      "nameEn": "Ahl al-Bayt Route",
+      "nameAr": "مسار آل البيت",
+      "descriptionEn": "A journey through history and spirituality in the heart of Cairo",
+      "descriptionAr": "رحلة عبر التاريخ والروحانية في قلب القاهرة",
+      "image": "",
+      "highlightsEn": [
+        "20+ Spiritual sites",
+        "Unique Spiral Minaret",
+        "Traditional Handicrafts"
+      ],
+      "highlightsAr": [
+        "أكثر من ٢٠ موقعاً روحياً",
+        "مئذنة ملتوية فريدة",
+        "حرف يدوية تقليدية"
+      ],
+      "nameFr": "Parcours d'Ahl al-Bayt",
+      "descriptionFr": "Un voyage entre histoire et spiritualité au cœur du Caire",
+      "highlightsFr": [
+        "Plus de 20 sites spirituels",
+        "Un minaret en spirale unique",
+        "Artisanat traditionnel"
+      ],
+      "nameEs": "Ruta de Ahl al-Bayt",
+      "descriptionEs": "Un viaje por la historia y la espiritualidad en el corazón de El Cairo",
+      "highlightsEs": [
+        "Más de 20 lugares espirituales",
+        "Un minarete en espiral único",
+        "Artesanía tradicional"
+      ],
+      "distanceKm": 2.5,
+      "hoursMin": 2,
+      "hoursMax": 3,
+      "distance": "2.5 km",
+      "duration": "2-3 hours"
+    },
+    {
+      "id": "al-muizz",
+      "nameEn": "Al-Muizz Street Route",
+      "nameAr": "مسار شارع المعز",
+      "descriptionEn": "The greatest concentration of medieval architectural treasures in the Islamic world",
+      "descriptionAr": "أكبر تجمع للكنوز المعمارية في العالم الإسلامي",
+      "image": "",
+      "highlightsEn": [
+        "Medieval Architecture",
+        "Khan el-Khalili Bazaar",
+        "Ancient City Gates"
+      ],
+      "highlightsAr": [
+        "عمارة العصور الوسطى",
+        "بازار خان الخليلي",
+        "بوابات المدينة القديمة"
+      ],
+      "nameFr": "Rue Al-Muizz",
+      "descriptionFr": "La plus grande concentration de trésors architecturaux médiévaux du monde islamique",
+      "highlightsFr": [
+        "Architecture médiévale",
+        "Le bazar de Khan el-Khalili",
+        "Les anciennes portes de la ville"
+      ],
+      "nameEs": "Calle Al-Muizz",
+      "descriptionEs": "La mayor concentración de tesoros arquitectónicos medievales del mundo islámico",
+      "highlightsEs": [
+        "Arquitectura medieval",
+        "Bazar de Jan el-Jalili",
+        "Antiguas puertas de la ciudad"
+      ],
+      "distanceKm": 1.8,
+      "hoursMin": 3,
+      "hoursMax": 4,
+      "distance": "1.8 km",
+      "duration": "3-4 hours"
+    }
+  ],
+  "places": [
+    {
+      "id": 1,
+      "routeId": "ahl-al-bayt",
+      "nameEn": "Ahmad Ibn Tulun Mosque",
+      "nameAr": "جامع أحمد بن طولون",
+      "category": "monument",
+      "lat": 30.02871,
+      "lng": 31.25024,
+      "descriptionEn": "The oldest mosque in Cairo in its original form, and the largest in terms of land area. Famous for its unique spiral minaret, inspired by the Mosque of Samarra.",
+      "descriptionAr": "أقدم مساجد القاهرة التي بقيت على حالتها الأصلية، وأكبرها مساحة. يشتهر بمئذنته الملوية الفريدة المستوحاة من ملوية سامراء."
+    },
+    {
+      "id": 2,
+      "routeId": "ahl-al-bayt",
+      "nameEn": "Sarghatmish Mosque",
+      "nameAr": "جامع صرغتمش",
+      "category": "monument",
+      "lat": 30.0294,
+      "lng": 31.249,
+      "descriptionEn": "A stunning Mamluk-era complex featuring a mosque, madrasa, and mausoleum with an architectural style dominated by a large dome.",
+      "descriptionAr": "مجمع مملوكي رائع يضم مسجداً ومدرسة وضريحاً، يتميز بطرازه المعماري الذي تهيمن عليه قبة ضخمة."
+    },
+    {
+      "id": 3,
+      "routeId": "ahl-al-bayt",
+      "nameEn": "Bayt Al-Kritliyya (Gayer-Anderson Museum)",
+      "nameAr": "بيت الكريتلية",
+      "category": "monument",
+      "lat": 30.0283,
+      "lng": 31.2498,
+      "descriptionEn": "Two historic houses joined by a bridge, housing a vast collection of oriental and egyptian artifacts collected by Major Gayer-Anderson.",
+      "descriptionAr": "منزلان تاريخيان يربطهما جسر، يضمان مجموعة واسعة من القطع الأثرية الشرقية والمصرية التي جمعها الميجور جاير أندرسون."
+    }
+  ]
+}
