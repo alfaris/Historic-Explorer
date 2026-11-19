@@ -214,9 +214,9 @@ export function normalizeContent(input: unknown): Content {
 
 /**
  * The content as visitors can be shown it: places that can't be shown at all
- * (on a route that doesn't exist, an unknown category, no position, or an ID
- * already used, the first one kept) are left out, and routes with an ID
- * already used too. Null when no route or no place is left. Looser than
+ * (on a route that doesn't exist, an unknown category, no position, no name
+ * in any language, or an ID already used, the first one kept) are left out,
+ * and routes with no name or an ID already used too. Null when no route or no place is left. Looser than
  * validateContent on purpose: content saved before a check was added (a new
  * length limit, say) fails validateContent, but visitors keep seeing it, less
  * any place that can't be shown, rather than lose everything the admin added
@@ -224,11 +224,11 @@ export function normalizeContent(input: unknown): Content {
  */
 export function usableContent(content: Content): Content | null {
   const routeIds = new Set<string>();
-  const routes = content.routes.filter(r => !routeIds.has(r.id) && routeIds.add(r.id));
+  const routes = content.routes.filter(r => !!(r.nameEn || r.nameAr) && !routeIds.has(r.id) && routeIds.add(r.id));
   const placeIds = new Set<number>();
   const places = content.places.filter(
     p =>
-      Number.isInteger(p.id) && !placeIds.has(p.id) && routeIds.has(p.routeId) && CATEGORY_IDS.includes(p.category) &&
+      Number.isInteger(p.id) && !placeIds.has(p.id) && routeIds.has(p.routeId) && CATEGORY_IDS.includes(p.category) && !!(p.nameEn || p.nameAr) &&
       Number.isFinite(p.lat) && Number.isFinite(p.lng) && placeIds.add(p.id),
   );
   if (routes.length === 0 || places.length === 0) return null;

@@ -208,6 +208,13 @@ describe('usableContent', () => {
     expect(u.places).toHaveLength(c.places.length - 2);
     expect(u.places.some(p => p.routeId === 'nowhere')).toBe(false);
   });
+  it('leaves out a place or route with no name in any language', () => {
+    const c = base();
+    c.places[0] = { ...c.places[0], nameEn: '', nameAr: '' };
+    expect(usableContent(c)!.places).toHaveLength(c.places.length - 1);
+    c.places[1] = { ...c.places[1], nameEn: '' };
+    expect(usableContent(c)!.places).toHaveLength(c.places.length - 1);
+  });
   it('is the same object when nothing is left out, and null when nothing is left', () => {
     const c = base();
     expect(usableContent(c)).toBe(c);

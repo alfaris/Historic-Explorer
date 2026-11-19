@@ -57,8 +57,10 @@ describe('blockingProblems', () => {
     const next = structuredClone(s);
     next.specialPeriods![1] = { ...next.specialPeriods![1], nameEn: 'Eid al-Fitr' };
     expect(blockingProblems(next, s)).toEqual([]);
-    // Changing A without fixing it doesn't.
+    // Changing A may keep its older problem (deleting a place it lists edits it), but not add one.
     next.specialPeriods![0] = { ...next.specialPeriods![0], to: '2027-03-02' };
+    expect(blockingProblems(next, s)).toEqual([]);
+    next.specialPeriods![0] = { ...next.specialPeriods![0], nameAr: '' };
     expect(blockingProblems(next, s)).not.toEqual([]);
   });
   it('lets the admin delete or move a notice while a later one keeps an older problem', () => {
@@ -90,17 +92,18 @@ describe('withUniqueIds', () => {
     expect(changed).toHaveLength(2);
     expect(new Set(content.places.map(p => p.id)).size).toBe(c.places.length);
     expect(content.places[2].id).toBe(nextPlaceId(c));
-    expect(content.routes[1].id).toBe(`${c.routes[0].id}-2`);
+    expect(content.routes).toHaveLength(c.routes.length - 1);
     expect(validateContent(content).some(p => p.includes('used twice'))).toBe(false);
     // Deleting the renumbered place removes it alone.
     expect(content.places.filter(p => p.id !== content.places[2].id)).toHaveLength(c.places.length - 1);
   });
-  it('never gives a repeat the ID of another route', () => {
+  it('keeps the other routes and their places when it drops a repeated route', () => {
     const c = normalizeContent(structuredClone(bundledContent));
     const [a, b, d] = c.routes;
     c.routes = [{ ...a, id: 'walk' }, { ...b, id: 'walk' }, { ...d, id: 'walk-2' }, ...c.routes.slice(3)];
     const { content } = withUniqueIds(c);
-    expect(content.routes.slice(0, 3).map(r => r.id)).toEqual(['walk', 'walk-3', 'walk-2']);
+    expect(content.routes.slice(0, 2).map(r => r.id)).toEqual(['walk', 'walk-2']);
+    expect(content.routes[0].nameEn).toBe(a.nameEn);
   });
   it('returns the same content when nothing repeats', () => {
     const c = normalizeContent(structuredClone(bundledContent));

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import type { Content } from '../data/content';
+import { newProblems } from '../data/content-repair';
 import { NOTICE_LIMITS, isActive, isExpired, noticeProblems, normalizeNotices, type Notice } from '../lib/notices';
 import { cairoDate } from '../lib/special-hours';
 import { withoutDrafted } from '../lib/drafted';
@@ -64,7 +65,9 @@ export function NoticesTab({ content, save }: { content: Content; save: SaveFn }
 
   const normalized = normalizeNotices(draft);
   const changed = !sameValue(normalized ?? [], saved);
-  const problems = normalized ? noticeProblems(normalized, new Set(content.routes.map(r => r.id)), new Set(content.places.map(p => p.id))) : [];
+  const check = (list: Notice[]) => noticeProblems(list, new Set(content.routes.map(r => r.id)), new Set(content.places.map(p => p.id)));
+  // Problems the saved notices already had (a check added since) don't block other edits: the save checks those (blockingProblems).
+  const problems = normalized ? newProblems(check(normalized), check(saved)) : [];
   const today = cairoDate(new Date());
 
   const update = (i: number, n: Notice) => setDraft(d => d.map((x, j) => (j === i ? n : x)));

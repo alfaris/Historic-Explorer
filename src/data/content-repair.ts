@@ -21,6 +21,9 @@ function extraProblems(withIt: string[], without: string[], key = (p: string) =>
   });
 }
 
+/** Problems in `now` that `before` didn't have, ignoring the position of notices and Help items. */
+export const newProblems = (now: string[], before: string[]) => extraProblems(now, before, unpositioned);
+
 // Notices and Help items are named by position, so deleting or moving one renames those after it:
 // compared without it, their older problems stay older. (A changed one is still checked on its own below.)
 const unpositioned = (p: string) => p.replace(/^(Notice|Help (?:contact|tip|phrase)) \d+/, '$1');
@@ -66,7 +69,14 @@ export function blockingProblems(next: Content, stored: Content): string[] {
     const old = (stored[key] ?? []) as unknown[];
     if (!now || stable(now) === stable(stored[key])) continue;
     const before = new Set(old.map(stable));
-    const own = now.map(item => (before.has(stable(item)) ? [] : sectionProblems(key, [item])));
+    // A changed item with an ID (a special period, a glossary term) may keep the problems it had (deleting a
+    // place edits each period that lists it); one without (a notice) must pass its checks.
+    const byId = new Map(old.flatMap(o => (o && typeof o === 'object' && 'id' in o ? [[(o as { id: unknown }).id, o] as const] : [])));
+    const own = now.map(item => {
+      if (before.has(stable(item))) return [];
+      const prior = item && typeof item === 'object' && 'id' in item ? byId.get((item as { id: unknown }).id) : undefined;
+      return extraProblems(sectionProblems(key, [item]), prior === undefined ? [] : sectionProblems(key, [prior]));
+    });
     blocking.push(...own.flat());
     if (now.length > old.length) {
       blocking.push(...extraProblems(sectionProblems(key, now), now.flatMap(item => sectionProblems(key, [item]))));
@@ -77,25 +87,21 @@ export function blockingProblems(next: Content, stored: Content): string[] {
 }
 
 /**
- * Gives every repeated place or route ID after the first a new one, so the
+ * Gives every repeated place ID after the first a new one, and drops repeated routes, so the
  * admin's editors (which find, change and delete by ID) touch one item only.
  * A saved copy can have repeats only from before the check existed, or a
  * hand edit; visitors never see the repeats (usableContent). Returns what was
- * renumbered, for a notice. A repeated route's places stay on the first one.
+ * changed, for a notice. A repeated route is dropped instead: its places are the first one's.
  */
 export function withUniqueIds(content: Content): { content: Content; changed: string[] } {
   const changed: string[] = [];
-  // Every ID in use is reserved first, so a new one never takes another route's (and its places').
-  const taken = new Set(content.routes.map(r => r.id));
-  const seen = new Set<string>();
-  const routes = content.routes.map(r => {
-    if (!seen.has(r.id)) return seen.add(r.id), r;
-    let n = 2;
-    while (taken.has(`${r.id}-${n}`)) n++;
-    const id = `${r.id}-${n}`;
-    taken.add(id);
-    changed.push(`Route "${r.nameEn || r.id}" had a repeated ID; it's now "${id}".`);
-    return { ...r, id };
+  // A repeated route can't have places of its own (places name their route by ID, so they show on the
+  // first) and visitors never saw it: drop it rather than add an empty route. History keeps it.
+  const routeIds = new Set<string>();
+  const routes = content.routes.filter(r => {
+    if (!routeIds.has(r.id)) return routeIds.add(r.id);
+    changed.push(`Route "${r.nameEn || r.id}" repeated the ID "${r.id}" and had no places of its own; it's removed (History keeps it).`);
+    return false;
   });
   let next = nextPlaceId(content);
   const placeIds = new Set<number>();
