@@ -56,9 +56,31 @@ export function audioUrlsFor(place: Content['places'][number]): AudioUrls {
   return urls;
 }
 
+const sized = (photo: { width: number; height: number } | undefined) =>
+  !!photo && Number.isInteger(photo.width) && Number.isInteger(photo.height) && photo.width >= 1 && photo.height >= 1;
+
+/**
+ * Leaves out photos whose size isn't whole pixels. validateContent refuses them,
+ * but a restored old version could still hold one, and the apps decode sizes as
+ * integers (one bad size would fail the whole response).
+ */
+function withSizedPhotos(content: Content): Content {
+  const routes = content.routes.map(r => (r.photo && !sized(r.photo) ? (({ photo: _bad, ...rest }) => rest)(r) : r));
+  const places = content.places.map(p => {
+    let place = p;
+    if (place.photo && !sized(place.photo)) place = (({ photo: _bad, ...rest }) => rest)(place);
+    if (place.gallery?.some(g => !sized(g))) {
+      const gallery = place.gallery.filter(sized);
+      place = gallery.length ? { ...place, gallery } : (({ gallery: _none, ...rest }) => rest)(place);
+    }
+    return place;
+  });
+  return { ...content, routes, places };
+}
+
 export function contentV1(stored: Content, audioFor: (place: Content['places'][number]) => AudioUrls = audioUrlsFor): ContentV1 {
   // What the web falls back to on its own (glossaryOf), sent filled in.
-  const content: Content = { ...stored, glossary: glossaryOf(stored) };
+  const content: Content = withSizedPhotos({ ...stored, glossary: glossaryOf(stored) });
   const audio: Record<string, AudioUrls> = {};
   for (const place of content.places) audio[place.id] = audioFor(place);
   // The version covers everything an app keeps, not only the content: audio URLs

@@ -45,6 +45,19 @@ describe('content schema', () => {
     const fractionalVersion = fresh();
     fractionalVersion.minAppVersion = 1.5;
     expect(validate(fractionalVersion)).toBe(false);
+    // A stored photo with a size that isn't whole pixels (a restored old version) is left out, not sent.
+    const stored = structuredClone(bundledContent);
+    const upload = { src: `/api/photo?id=${'a'.repeat(64)}`, width: 640, height: 480, author: 'Admin', license: 'Own photo', licenseUrl: null, sourceUrl: '' };
+    const withPhoto = stored.places[0];
+    withPhoto.photo = { ...upload, width: 640.5 };
+    withPhoto.gallery = [upload, { ...upload, height: Number.NaN }];
+    stored.routes[0].photo = { ...upload, height: 0.5 };
+    const served = JSON.parse(JSON.stringify(contentV1(normalizeContent(stored))));
+    expect(validate(served), JSON.stringify(validate.errors)).toBe(true);
+    const place = served.content.places.find((p: { id: number }) => p.id === withPhoto.id);
+    expect(place.photo).toBeUndefined();
+    expect(place.gallery).toHaveLength(1);
+    expect(served.content.routes[0].photo).toBeUndefined();
     const fractionalLat = fresh();
     fractionalLat.content.places[0].lat = 30.0459;
     expect(validate(fractionalLat)).toBe(true);
