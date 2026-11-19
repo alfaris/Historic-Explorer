@@ -9,4 +9,9 @@ class FlavorTest {
     fun theFlavorsApplicationIdIsItsCitys() {
         assertEquals(flavorCity.applicationId, BuildConfig.APPLICATION_ID)
     }
+
+    @Test
+    fun theFlavorsAppNameIsItsCitys() {
+        assertEquals(flavorCity.appName, BuildConfig.APP_NAME)
+    }
 }

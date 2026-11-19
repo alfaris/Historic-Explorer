@@ -62,6 +62,17 @@ class OpeningHoursVectorsTest {
     }
 
     @Test
+    fun skipsAMalformedRangeInsteadOfFailing() {
+        val bad = io.github.alfaris.walks.model.TimeRange(open = "9am", close = "17:00")
+        val good = io.github.alfaris.walks.model.TimeRange(open = "09:00", close = "17:00")
+        val hours = OpeningHours(days = List(7) { listOf(bad, io.github.alfaris.walks.model.TimeRange("9:00", "x"), good) })
+        // Sunday 2026-01-04 10:00 in Cairo: open until 17:00 by the good range alone.
+        assertEquals(OpenStatus.Open(When(0, 17 * 60)), openStatus(hours, Instant.parse("2026-01-04T08:00:00Z"), zone))
+        val onlyBad = OpeningHours(days = List(7) { listOf(bad) })
+        assertEquals(OpenStatus.Closed(null), openStatus(onlyBad, Instant.parse("2026-01-04T08:00:00Z"), zone))
+    }
+
+    @Test
     fun noHoursIsUnknown() {
         assertEquals(null, openStatus(null, Instant.parse("2026-01-04T10:00:00Z"), zone))
         assertTrue(encode(null) is JsonNull)

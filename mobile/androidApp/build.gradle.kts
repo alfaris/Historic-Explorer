@@ -22,8 +22,11 @@ android {
     productFlavors {
         create("cairo") {
             dimension = "city"
-            applicationId = "io.github.alfaris.walks.cairo" // must equal Cities.CAIRO.applicationId (tested)
-            resValue("string", "app_name", "Cairo Walks")
+            // Both must equal Cities.CAIRO's (FlavorTest checks them).
+            applicationId = "io.github.alfaris.walks.cairo"
+            val appName = "Cairo Walks"
+            resValue("string", "app_name", appName)
+            buildConfigField("String", "APP_NAME", "\"$appName\"")
         }
     }
 

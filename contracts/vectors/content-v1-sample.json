@@ -2,7 +2,7 @@
   "about": "A GET /api/v1/content response (contracts/content-v1.schema.json), made by the server's own contentV1() from fixed content with every optional part filled (hours, era and years, visitor tips, a gallery photo, a notice, a special period with both kinds of entry, the built-in glossary and help). The apps' decoding tests read `response`.",
   "response": {
     "schemaVersion": 1,
-    "contentVersion": "bd4f0916fcd67919",
+    "contentVersion": "4e534ab98e1ea35e",
     "minAppVersion": 1,
     "content": {
       "specialPeriods": [
@@ -160,6 +160,11 @@
             "noteEn": "Quiet, please",
             "noteAr": "برجاء الهدوء"
           },
+          "era": "fatimid",
+          "lat": 30.02871,
+          "lng": 31.25024,
+          "builtFrom": 1125,
+          "builtTo": 1126,
           "hours": {
             "days": [
               [
@@ -205,12 +210,7 @@
                 }
               ]
             ]
-          },
-          "era": "fatimid",
-          "lat": 30.02871,
-          "lng": 31.25024,
-          "builtFrom": 1125,
-          "builtTo": 1126
+          }
         },
         {
           "id": 2,

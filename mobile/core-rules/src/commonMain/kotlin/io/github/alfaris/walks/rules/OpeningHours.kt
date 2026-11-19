@@ -30,15 +30,20 @@ sealed interface OpenStatus {
     data class Closed(val opens: When?) : OpenStatus
 }
 
-private fun toMinutes(time: String) = time.substring(0, 2).toInt() * 60 + time.substring(3, 5).toInt()
+private val TIME = Regex("^([01]\\d|2[0-3]):([0-5]\\d)$")
+
+/** Minutes since midnight of an HH:MM time; null for anything else (the server sends only HH:MM, but never crash on one). */
+private fun toMinutes(time: String): Int? = TIME.find(time)?.destructured?.let { (h, m) -> h.toInt() * 60 + m.toInt() }
 
 // Every opening as [start, end) in minutes from Sunday 00:00, merged where ranges touch.
 private fun intervals(hours: OpeningHours): List<LongArray> {
     val list = mutableListOf<LongArray>()
     hours.days.forEachIndexed { day, ranges ->
         for (r in ranges) {
-            val start = (day * DAY + toMinutes(r.open)).toLong()
-            var end = (day * DAY + toMinutes(r.close)).toLong()
+            val open = toMinutes(r.open) ?: continue
+            val close = toMinutes(r.close) ?: continue
+            val start = (day * DAY + open).toLong()
+            var end = (day * DAY + close).toLong()
             if (end <= start) end += DAY
             list += longArrayOf(start, end)
         }

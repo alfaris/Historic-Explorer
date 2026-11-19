@@ -9,6 +9,7 @@ import { createHash } from 'node:crypto';
 import type { Content } from '../../src/data/content.js';
 import { glossaryOf } from '../../src/data/glossary-of.js';
 import { YEAR_MAX, YEAR_MIN } from '../../src/lib/eras.js';
+import { isTime, type TimeRange } from '../../src/lib/opening-hours.js';
 import { descriptionOf, LANGS, type Lang } from '../../src/i18n/lang.js';
 import { narrationSource } from '../../src/lib/guide-kind.js';
 import { audioVersion } from '../../src/lib/text-hash.js';
@@ -65,9 +66,13 @@ const sized = (photo: { width: number; height: number } | undefined) => !!photo 
  * already sets: validation refuses these on save, but a restored old version
  * could still hold one, and the apps decode these fields as 32-bit integers
  * (one bad value would fail the whole response). Leaves out photos whose size
- * isn't whole pixels, years and metro minutes out of range, and a route start
- * (startId) that isn't one of the places sent.
+ * isn't whole pixels, years and metro minutes out of range, a route start
+ * (startId) that isn't one of the places sent, and opening-time ranges that
+ * aren't HH:MM.
  */
+/** A week's ranges with only well-formed times (HH:MM): the web skips a bad one, an app would fail on it. */
+const timedDays = (days: TimeRange[][]) => days.map(ranges => ranges.filter(r => isTime(r.open) && isTime(r.close)));
+
 export function forApps(content: Content): Content {
   const placeIds = new Set(content.places.map(p => p.id));
   const routes = content.routes.map(r => {
@@ -80,7 +85,7 @@ export function forApps(content: Content): Content {
     };
   });
   const places = content.places.map(p => {
-    const { photo, gallery, builtFrom, builtTo, ...rest } = p;
+    const { photo, gallery, builtFrom, builtTo, hours, ...rest } = p;
     const sizedGallery = gallery?.filter(sized);
     const from = within(builtFrom, YEAR_MIN, YEAR_MAX) ? builtFrom : undefined;
     const to = from !== undefined && within(builtTo, YEAR_MIN, YEAR_MAX) ? builtTo : undefined;
@@ -90,9 +95,14 @@ export function forApps(content: Content): Content {
       ...(sizedGallery?.length ? { gallery: sizedGallery } : {}),
       ...(from !== undefined ? { builtFrom: from } : {}),
       ...(to !== undefined ? { builtTo: to } : {}),
+      ...(hours ? { hours: { ...hours, days: timedDays(hours.days) } } : {}),
     };
   });
-  return { ...content, routes, places };
+  const specialPeriods = content.specialPeriods?.map(period => ({
+    ...period,
+    places: Object.fromEntries(Object.entries(period.places).map(([id, entry]) => [id, 'days' in entry ? { ...entry, days: timedDays(entry.days) } : entry])),
+  }));
+  return { ...content, routes, places, ...(specialPeriods ? { specialPeriods } : {}) };
 }
 
 export function contentV1(stored: Content, audioFor: (place: Content['places'][number]) => AudioUrls = audioUrlsFor): ContentV1 {
