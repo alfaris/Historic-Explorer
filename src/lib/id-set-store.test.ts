@@ -55,6 +55,48 @@ describe('createIdSetStore', () => {
     expect(data.get('test:ids')).toBe('[5,6,7]');
   });
 
+  it('drops changes it couldn’t save once another tab saves', () => {
+    const data = fakeWindow();
+    let onStorage: ((e: { key: string | null }) => void) | null = null;
+    (window as unknown as { addEventListener: (t: string, f: typeof onStorage) => void }).addEventListener = (_t, f) => {
+      onStorage = f;
+    };
+    data.set('test:ids', '[201]');
+    const storage = (window as unknown as { localStorage: { setItem: (k: string, v: string) => void } }).localStorage;
+    const setItem = storage.setItem;
+    storage.setItem = () => {
+      throw new Error('QuotaExceededError');
+    };
+    const store = createIdSetStore('test:ids');
+    store.subscribe(() => {});
+    store.remove([201]); // this tab unmarks 201, but can't save it
+    expect(store.latest().has(201)).toBe(false);
+    // Another tab unmarks and marks 201 again: the stored text ends up the same, but it saved.
+    data.set('test:ids', '[]');
+    onStorage!({ key: 'test:ids' });
+    data.set('test:ids', '[201]');
+    onStorage!({ key: 'test:ids' });
+    storage.setItem = setItem;
+    store.add(204); // this tab's next save keeps the other tab's visit
+    expect(data.get('test:ids')).toBe('[201,204]');
+  });
+
+  it('drops changes it couldn’t save when the stored set has changed since', () => {
+    const data = fakeWindow();
+    data.set('test:ids', '[1]');
+    const storage = (window as unknown as { localStorage: { setItem: (k: string, v: string) => void } }).localStorage;
+    const setItem = storage.setItem;
+    storage.setItem = () => {
+      throw new Error('QuotaExceededError');
+    };
+    const store = createIdSetStore('test:ids');
+    store.remove([1]);
+    data.set('test:ids', '[1,2]'); // another tab saved (this tab wasn't listening)
+    storage.setItem = setItem;
+    store.add(3);
+    expect(data.get('test:ids')).toBe('[1,2,3]');
+  });
+
   it('keeps working in memory when storage is blocked', () => {
     fakeWindow(true);
     const store = createIdSetStore('test:ids');
