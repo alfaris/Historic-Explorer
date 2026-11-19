@@ -38,10 +38,11 @@ class AdhanParityTest {
                 "sunset" to t.maghrib, "maghrib" to t.maghrib, "isha" to t.isha,
             )
             fields.forEachIndexed { i, name ->
-                val expected = cells[i + 1].jsonPrimitive.long
-                val actual = ours.getValue(name).toEpochMilliseconds() / 60_000
+                // Exact milliseconds: a time with seconds would be a difference too, not rounded away.
+                val expected = cells[i + 1].jsonPrimitive.long * 60_000
+                val actual = ours.getValue(name).toEpochMilliseconds()
                 compared++
-                if (actual != expected) mismatches += "${cells[0].jsonPrimitive.content} $name: web $expected, adhan2 $actual (${actual - expected} min)"
+                if (actual != expected) mismatches += "${cells[0].jsonPrimitive.content} $name: web $expected ms, adhan2 $actual ms (${(actual - expected) / 1000.0} s)"
             }
         }
         println("Compared $compared times over ${days.size} days; ${mismatches.size} differ.")

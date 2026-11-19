@@ -5,6 +5,7 @@
     "lng": 31.2357
   },
   "method": "Egyptian",
+  "goldenMinutes": 60,
   "fields": [
     "date",
     "fajr",

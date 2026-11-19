@@ -1,6 +1,5 @@
 // The prayer-time vectors the native apps are checked against (contracts/vectors)
 // must be what the web computes today, whatever the phone's time zone.
-import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { PRAYER_VECTORS_PATH, prayerVectors, prayerVectorsText } from './prayer-vectors';
@@ -28,12 +27,19 @@ describe('prayer-time vectors', () => {
   });
 
   it('come out the same whatever the time zone the web runs in', () => {
-    for (const tz of ['UTC', 'America/Los_Angeles', 'Pacific/Kiritimati', 'Africa/Cairo']) {
-      const text = execFileSync('npx', ['tsx', '-e', "import('./scripts/prayer-vectors.ts').then(m => process.stdout.write(m.prayerVectorsText()))"], {
-        env: { ...process.env, TZ: tz },
-        encoding: 'utf8',
-      });
-      expect(text, tz).toBe(checkedIn);
+    // Node applies a change to TZ at once; the web reads the Cairo date through local-time Dates.
+    const original = process.env.TZ;
+    try {
+      for (const tz of ['UTC', 'America/Los_Angeles', 'Pacific/Kiritimati', 'Africa/Cairo']) {
+        process.env.TZ = tz;
+        expect(new Date(2026, 0, 1).getTimezoneOffset(), `${tz} applied`).toBe(
+          { UTC: 0, 'America/Los_Angeles': 480, 'Pacific/Kiritimati': -840, 'Africa/Cairo': -120 }[tz],
+        );
+        expect(JSON.parse(prayerVectorsText()), tz).toEqual(JSON.parse(checkedIn));
+      }
+    } finally {
+      if (original === undefined) delete process.env.TZ;
+      else process.env.TZ = original;
     }
-  }, 60_000);
+  });
 });
