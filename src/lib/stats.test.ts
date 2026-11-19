@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addEvents, cleanClient, cleanEvents, clientShares, dayKey, emptyDay, helpfulness, languageShares, MAX_EVENTS_PER_REQUEST, parseDay, routeRatings, sumDays, listenBand, furtherBand, listening, mostStopEarly, missQuery, topMisses, MAX_MISSES_PER_DAY, quizStats } from './stats';
+import { addEvents, cleanClient, cleanEvents, clientShares, MAX_BUILDS_PER_DAY, dayKey, emptyDay, helpfulness, languageShares, MAX_EVENTS_PER_REQUEST, parseDay, routeRatings, sumDays, listenBand, furtherBand, listening, mostStopEarly, missQuery, topMisses, MAX_MISSES_PER_DAY, quizStats } from './stats';
 
 const known = { placeIds: new Set([1, 2]), routeIds: new Set(['ahl-al-bayt']) };
 
@@ -312,6 +312,20 @@ describe('clients', () => {
     expect(day.clients).toEqual({ android: 2, 'android:12': 2, web: 1 });
     expect(day.plays[1]).toBe(4);
     expect(addEvents(emptyDay(), [], { client: 'web' }).clients).toEqual({});
+  });
+
+  it('keeps at most MAX_BUILDS_PER_DAY builds per client a day, and skips listen corrections', () => {
+    const play = { t: 'play' as const, id: 1 };
+    let day = emptyDay();
+    for (let b = 1; b <= MAX_BUILDS_PER_DAY + 5; b++) day = addEvents(day, [play], { client: 'android', appVersion: b });
+    expect(Object.keys(day.clients).filter(k => k.startsWith('android:'))).toHaveLength(MAX_BUILDS_PER_DAY);
+    expect(day.clients.android).toBe(MAX_BUILDS_PER_DAY + 5);
+    day = addEvents(day, [play], { client: 'android', appVersion: 3 }); // a build already counted still counts
+    expect(day.clients['android:3']).toBe(2);
+    day = addEvents(day, [play], { client: 'ios', appVersion: 99 }); // the cap is per client
+    expect(day.clients['ios:99']).toBe(1);
+    const corrected = addEvents(emptyDay(), [{ t: 'listen', id: 1, b: 'done', w: 'q1' }, play], { client: 'web' });
+    expect(corrected.clients.web).toBe(1);
   });
 
   it('keeps only well-formed client keys from storage, and older days without them still read', () => {

@@ -97,7 +97,7 @@ function Clients({ total }: { total: StatsResponse['total'] }) {
   return (
     <div className="bg-white rounded-2xl border border-sand/50 p-5">
       <h2 className="text-sm font-bold text-stone-700 mb-1">Website and apps</h2>
-      <p className="text-[11px] text-stone-400 mb-3">Where the counted events came from. Days before this was recorded aren't included.</p>
+      <p className="text-[11px] text-stone-400 mb-3">Counted events (plays, route opens, arrivals, votes…) by where they came from, for the events that said so. Days before this was recorded, and older cached copies of the website, aren't included.</p>
       <ul className="text-sm divide-y divide-sand/40">
         {rows.map(r => (
           <li key={r.client} className="py-1.5 flex flex-wrap justify-between gap-x-4">
@@ -106,7 +106,12 @@ function Clients({ total }: { total: StatsResponse['total'] }) {
               {fmt(r.events)} · {r.pct}%
             </span>
             {r.builds.length > 0 && (
-              <span className="w-full text-[11px] text-stone-400">{r.builds.map(b => `build ${b.build}: ${fmt(b.events)}`).join(' · ')}</span>
+              <span className="w-full text-[11px] text-stone-400">
+                {[
+                  ...r.builds.slice(0, 5).map(b => `build ${b.build}: ${fmt(b.events)}`),
+                  ...(r.builds.length > 5 ? [`older builds: ${fmt(r.builds.slice(5).reduce((n, b) => n + b.events, 0))}`] : []),
+                ].join(' · ')}
+              </span>
             )}
           </li>
         ))}

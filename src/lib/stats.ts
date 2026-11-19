@@ -104,6 +104,9 @@ export function cleanClient(raw: unknown): ClientInfo | null {
   return ok ? { client: client as Client, appVersion: appVersion as number } : { client: client as Client };
 }
 
+/** The most app builds a day counts for each client. */
+export const MAX_BUILDS_PER_DAY = 20;
+
 /** One day's totals, keyed by place ID or route ID. */
 export interface DayStats {
   plays: Record<string, number>;
@@ -233,9 +236,14 @@ export function addEvents(day: DayStats, events: StatEvent[], from?: ClientInfo 
       else next.listens[was] = n;
     }
   }
-  if (from && events.length) {
-    next.clients[from.client] = (next.clients[from.client] ?? 0) + events.length;
-    if (from.appVersion) next.clients[`${from.client}:${from.appVersion}`] = (next.clients[`${from.client}:${from.appVersion}`] ?? 0) + events.length;
+  // Listen corrections only move an earlier count, so they aren't new events here.
+  const counted = events.filter(e => !(e.t === 'listen' && e.w)).length;
+  if (from && counted) {
+    next.clients[from.client] = (next.clients[from.client] ?? 0) + counted;
+    const build = from.appVersion && `${from.client}:${from.appVersion}`;
+    // A day keeps at most MAX_BUILDS_PER_DAY builds per client (made-up builds can't grow the file); others count in the client total only.
+    const builds = Object.keys(next.clients).filter(k => k.startsWith(`${from.client}:`)).length;
+    if (build && (next.clients[build] !== undefined || builds < MAX_BUILDS_PER_DAY)) next.clients[build] = (next.clients[build] ?? 0) + counted;
   }
   return next;
 }
