@@ -5,6 +5,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const store = new Map<string, { body: string; etag: string }>();
 let etagCounter = 0;
+// Conditional writes to refuse next, as if another request had just written.
+const clash = { next: 0 };
+// Called after each write that lands (a test can move the clock on).
+const hooks = { afterPut: () => {} };
 
 vi.mock('@vercel/blob', () => {
   class BlobNotFoundError extends Error {}
@@ -15,10 +19,15 @@ vi.mock('@vercel/blob', () => {
     async put(pathname: string, body: string, opts: { ifMatch?: string; allowOverwrite?: boolean } = {}) {
       await new Promise(r => setTimeout(r, Math.random() * 5)); // let requests overlap
       const existing = store.get(pathname);
+      if (clash.next > 0) {
+        clash.next--;
+        throw new BlobPreconditionFailedError('precondition failed');
+      }
       if (opts.ifMatch !== undefined && existing?.etag !== opts.ifMatch) throw new BlobPreconditionFailedError('precondition failed');
       if (existing && opts.ifMatch === undefined && !opts.allowOverwrite) throw new Error('Vercel Blob: This blob already exists');
       const etag = `"e${++etagCounter}"`;
       store.set(pathname, { body, etag });
+      hooks.afterPut();
       return { pathname, etag };
     },
     async get(pathname: string) {
@@ -35,7 +44,7 @@ vi.mock('@vercel/blob', () => {
   };
 });
 
-const { byDay, handleStats, readStats, recordEvents } = await import('./stats');
+const { MAX_TRIES, backoffMs, byDay, handleStats, readStats, recordEvents } = await import('./stats');
 const { _resetContentCache } = await import('./content');
 
 let ip = 0;
@@ -84,6 +93,67 @@ describe('POST /api/stats', () => {
 });
 
 describe('recordEvents', () => {
+  const noWait = async () => {};
+  it('waits and tries again after a clash', async () => {
+    clash.next = 5;
+    const waits: number[] = [];
+    expect(await recordEvents([{ t: 'play', id: 1 }], new Date(), undefined, async ms => void waits.push(ms))).toBe(true);
+    expect(waits).toHaveLength(5);
+    waits.forEach((ms, i) => expect(ms).toBeLessThanOrEqual(backoffMs(i)));
+    expect((await readStats(1)).total.plays[1]).toBe(1);
+  });
+  it('gives up after the last try, and the endpoint logs the dropped batch', async () => {
+    clash.next = MAX_TRIES;
+    expect(await recordEvents([{ t: 'play', id: 1 }], new Date(), undefined, noWait)).toBe(false);
+    clash.next = 1000;
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.useFakeTimers({ toFake: ['setTimeout'] });
+    try {
+      const res = send({ events: [{ t: 'play', id: 201 }, { t: 'play', id: 201 }] });
+      await vi.runAllTimersAsync();
+      expect((await res).status).toBe(204);
+    } finally {
+      vi.useRealTimers();
+      clash.next = 0;
+    }
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/dropped 2 event\(s\) for .*still clashing/));
+    warn.mockRestore();
+  });
+  it('stops retrying at the deadline', async () => {
+    clash.next = MAX_TRIES;
+    let waited = 0;
+    const ok = await recordEvents([{ t: 'play', id: 1 }], new Date(), undefined, async () => void waited++, Date.now() - 1);
+    expect(ok).toBe(false);
+    expect(waited).toBe(0); // one try, no wait past the deadline
+    clash.next = 0;
+  });
+  it("doesn't start another day's batch past the deadline, and logs it", async () => {
+    const realNow = Date.now.bind(Date);
+    let offset = 0;
+    const now = vi.spyOn(Date, 'now').mockImplementation(() => realNow() + offset);
+    hooks.afterPut = () => {
+      offset = 60_000; // the first batch took far too long
+    };
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+      const days = byDay([{ t: 'play', id: 201 }, { t: 'listen', id: 201, b: 'done', w: 'q1', d: yesterday }]);
+      expect([...days.keys()].sort()).toEqual([yesterday, today].sort());
+      // Yesterday's correction comes first in the batch, but today's events are recorded first.
+      expect((await send({ events: [{ t: 'listen', id: 201, b: 'done', w: 'q1', d: yesterday }, { t: 'play', id: 201 }] })).status).toBe(204);
+      expect(warn).toHaveBeenCalledWith(`Stats: dropped 1 event(s) for ${yesterday}: no time left after the other day's batch.`);
+      expect([...store.keys()]).toEqual([`stats/days/${today}.json`]); // only today's file was written
+    } finally {
+      hooks.afterPut = () => {};
+      now.mockRestore();
+      warn.mockRestore();
+    }
+  });
+  it('keeps the total wait bounded', () => {
+    const total = Array.from({ length: MAX_TRIES - 1 }, (_, i) => backoffMs(i)).reduce((a, b) => a + b, 0);
+    expect(total).toBeLessThanOrEqual(3_500);
+  });
   it('keeps every count when requests arrive at the same moment', async () => {
     const results = await Promise.all(Array.from({ length: 4 }, () => recordEvents([{ t: 'play', id: 1 }])));
     expect(results.every(Boolean)).toBe(true);

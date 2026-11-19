@@ -32,13 +32,32 @@ async function readDay(key: string): Promise<{ day: DayStats; etag: string | nul
   }
 }
 
+// A tour group's phones can all send at the same moment: each clash waits a
+// little longer (with jitter, so they don't clash again in step) before
+// re-reading. The waits add up to under 2.5 s, and a request stops retrying at
+// its deadline (STATS_DEADLINE_MS for all its batches), so it stays well inside
+// the function's time limit.
+export const MAX_TRIES = 8;
+const BASE_WAIT_MS = 25;
+const MAX_WAIT_MS = 800;
+/** The longest wait after the given failed try (0-based); the actual wait is a random part of it. */
+export const backoffMs = (attempt: number) => Math.min(MAX_WAIT_MS, BASE_WAIT_MS * 2 ** attempt);
+const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+export const STATS_DEADLINE_MS = 4_000;
+
 /**
- * Adds events to today's totals. Uses the file's ETag so two requests at the
- * same moment can't overwrite each other's counts; on a clash it re-reads and
- * tries again.
+ * Adds events to a day's totals. Uses the file's ETag so two requests at the
+ * same moment can't overwrite each other's counts; on a clash it waits a
+ * moment, re-reads and tries again, up to MAX_TRIES or until `deadline` (a
+ * Date.now() time). False when every try clashed.
  */
-export async function recordEvents(events: Parameters<typeof addEvents>[1], now = new Date(), key = dayKey(now)) {
-  for (let attempt = 0; attempt < 5; attempt++) {
+export async function recordEvents(events: Parameters<typeof addEvents>[1], now = new Date(), key = dayKey(now), wait = sleep, deadline = Infinity) {
+  for (let attempt = 0; attempt < MAX_TRIES; attempt++) {
+    if (attempt > 0) {
+      const ms = Math.random() * backoffMs(attempt - 1);
+      if (Date.now() + ms > deadline) return false;
+      await wait(ms);
+    }
     const { day, etag } = await readDay(key);
     try {
       await put(dayPath(key), JSON.stringify(addEvents(day, events)), {
@@ -91,11 +110,25 @@ export async function handleStats(request: Request): Promise<Response> {
     routeIds: new Set(content.routes.map(r => r.id)),
   });
   if (events.length === 0) return noContent();
-  try {
-    for (const [key, group] of byDay(events)) await recordEvents(group, new Date(), key);
-  } catch (err) {
-    // Stats are best-effort: never show visitors an error for them.
-    console.warn('Recording stats failed:', err);
+  const deadline = Date.now() + STATS_DEADLINE_MS;
+  // Today's batch first (the newest day sorts first), so the deadline never costs it to a correction for yesterday.
+  const batches = [...byDay(events)].sort(([a], [b]) => b.localeCompare(a));
+  for (const [key, group] of batches) {
+    // Past the deadline, a later batch isn't started at all. (A Blob read or write
+    // already under way isn't cut short: aborting a conditional write that may have
+    // landed could count its events twice on the retry. The deadline leaves most of
+    // the function's time limit for it.)
+    if (Date.now() > deadline) {
+      console.warn(`Stats: dropped ${group.length} event(s) for ${key}: no time left after the other day's batch.`);
+      continue;
+    }
+    try {
+      // Still clashing at the last try or the deadline: say so in the runtime logs rather than lose the counts silently.
+      if (!(await recordEvents(group, new Date(), key, sleep, deadline))) console.warn(`Stats: dropped ${group.length} event(s) for ${key}: still clashing after retries (too many at once).`);
+    } catch (err) {
+      // Stats are best-effort: never show visitors an error for them. Another day's batch still goes ahead.
+      console.warn('Recording stats failed:', err);
+    }
   }
   return noContent();
 }
