@@ -49,4 +49,12 @@ describe('string catalog', () => {
     const resume = templates.find(t => t.texts.en === 'Resume from {0}');
     expect(resume?.args.en).toEqual(['clockLabel(resumeAt)']);
   });
+
+  it('says how many templates number their placeholders differently by language (so none is fed to a generator as is)', () => {
+    const { templates } = buildCatalog().catalog;
+    const misaligned = templates.filter(t => Object.values(t.args).some(a => JSON.stringify(a) !== JSON.stringify(t.args.en ?? [])));
+    // Most do: plurals and agreement live in each language's own expressions.
+    expect(misaligned.length).toBeGreaterThan(20);
+    expect(buildCatalog().catalog.about).toMatch(/not generator input/);
+  });
 });
