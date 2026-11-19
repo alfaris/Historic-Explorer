@@ -137,6 +137,17 @@ describe('marking visits', () => {
     expect(getVisitDates()).toEqual({ 5: '2026-11-17', 6: '2026-11-17' });
   });
 
+  it('replays changes it couldn\'t save as they are until the visited check is set', async () => {
+    const { recordVisitDate, forgetVisitDates } = await import('./visit-dates'); // visited.ts never loaded
+    const restore = failDateWrites();
+    recordVisitDate(5);
+    forgetVisitDates([5]);
+    recordVisitDate(6);
+    restore();
+    recordVisitDate(7);
+    expect(stored()).toEqual({ 6: '2026-11-17', 7: '2026-11-17' });
+  });
+
   it("doesn't replay a date it couldn't save for a place another tab unmarked since", async () => {
     const { toggleVisited } = await import('./visited');
     const restore = failDateWrites();

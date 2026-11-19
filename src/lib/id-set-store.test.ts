@@ -67,8 +67,7 @@ describe('createIdSetStore', () => {
     storage.setItem = () => {
       throw new Error('QuotaExceededError');
     };
-    const store = createIdSetStore('test:ids');
-    store.subscribe(() => {});
+    const store = createIdSetStore('test:ids'); // nothing subscribed: the store listens anyway
     store.remove([201]); // this tab unmarks 201, but can't save it
     expect(store.latest().has(201)).toBe(false);
     // Another tab unmarks and marks 201 again: the stored text ends up the same, but it saved.
@@ -79,6 +78,30 @@ describe('createIdSetStore', () => {
     storage.setItem = setItem;
     store.add(204); // this tab's next save keeps the other tab's visit
     expect(data.get('test:ids')).toBe('[201,204]');
+  });
+
+  it('tells every subscriber once per storage event from another tab', () => {
+    const data = fakeWindow();
+    let onStorage: ((e: { key: string | null }) => void) | null = null;
+    let added = 0;
+    (window as unknown as { addEventListener: (t: string, f: typeof onStorage) => void }).addEventListener = (_t, f) => {
+      added++;
+      onStorage = f;
+    };
+    const store = createIdSetStore('test:ids');
+    let a = 0;
+    let b = 0;
+    const offA = store.subscribe(() => a++);
+    store.subscribe(() => b++);
+    expect(added).toBe(1); // one listener for the store, not one per subscriber
+    data.set('test:ids', '[3]');
+    onStorage!({ key: 'test:ids' });
+    onStorage!({ key: 'other:key' });
+    expect([a, b]).toEqual([1, 1]);
+    offA();
+    onStorage!({ key: null });
+    expect([a, b]).toEqual([1, 2]);
+    expect([...store.latest()]).toEqual([3]);
   });
 
   it('drops changes it couldn’t save when the stored set has changed since', () => {

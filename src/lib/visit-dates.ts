@@ -59,8 +59,10 @@ const current = () => (dates ??= typeof window === 'undefined' ? {} : read());
 // lost when the stored dates are read again, and written with the next save
 // that works.
 const pending = new Map<string, string | null>();
-// Whether a place is visited now (in the latest saved set): set by visited.ts.
-let isVisited: (id: number) => boolean = () => true;
+// Whether a place is visited now (in the latest saved set): set by visited.ts,
+// which records and forgets the dates. Until it's set, unsaved changes are
+// replayed as they are (nothing is dropped for want of a check).
+let isVisited: ((id: number) => boolean) | null = null;
 export const setVisitedCheck = (check: (id: number) => boolean) => {
   isVisited = check;
 };
@@ -70,7 +72,7 @@ const withPending = (base: VisitDates): VisitDates => {
   for (const [id, d] of pending) {
     // Another tab may have changed the visit since: a date is replayed only for a place
     // still visited, a forget only for one no longer visited (a re-marked place keeps its new date).
-    if ((d !== null) !== isVisited(Number(id))) {
+    if (isVisited && (d !== null) !== isVisited(Number(id))) {
       pending.delete(id);
       continue;
     }
