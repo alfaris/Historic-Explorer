@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
 import type { Content } from '../data/content';
-import { glossaryOf } from '../data/content';
+import { glossaryOf } from '../data/glossary-of';
 import { glossaryProblems, glossarySegments, type GlossaryTerm } from '../lib/glossary';
 import { LANGS, LANGUAGES, isOptionalLang, type Lang, type OptionalLang } from '../i18n/lang';
 import type { SaveFn } from './AdminApp';

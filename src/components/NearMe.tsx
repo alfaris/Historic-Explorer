@@ -1,14 +1,19 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CircleCheck, LocateFixed, Navigation, X } from 'lucide-react';
 import { categories, type Location } from '../data/locations';
 import { track } from '../lib/track';
 import { distanceMeters, formatDistance, MAX_ACCURACY_METERS, updateArrival, type ArrivalState } from '../lib/geo';
 import { useVisited } from '../lib/visited';
-import { AudioGuide } from './AudioGuide';
+import { LazyBoundary } from './LazyBoundary';
+
 import { useLanguage } from '../i18n/LanguageContext';
 import { VisitedToggle } from './Visited';
 
 import { L, nameOf, descriptionOf, currentLang } from '../i18n/lang';
+
+// The audio guide is only needed once a place is reached: loaded then.
+const AudioGuide = lazy(() => import('./AudioGuide').then(m => ({ default: m.AudioGuide })));
+
 type Fix = { lat: number; lng: number; accuracy: number };
 
 export interface NearMeState {
@@ -105,11 +110,13 @@ function ArrivalCard({ place, isArabic, onDismiss, onOpenPlace }: {
           <X className="w-4 h-4" />
         </button>
       </div>
-      <AudioGuide
-        locationId={place.id}
-        text={(descriptionOf(place)) ?? ''}
-        langCode={currentLang()}
-      />
+      <LazyBoundary loading={<div className="min-h-16" aria-busy="true" />} failed={null}>
+        <AudioGuide
+          locationId={place.id}
+          text={(descriptionOf(place)) ?? ''}
+          langCode={currentLang()}
+        />
+      </LazyBoundary>
       <div className="flex gap-2 mt-4">
         <VisitedToggle placeId={place.id} isArabic={isArabic} className="py-3 flex-1" />
         <button
