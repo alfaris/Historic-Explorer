@@ -237,17 +237,82 @@ export function usableContent(content: Content): Content | null {
 /** Whether every route and place can be shown as it is (usableContent leaves nothing out). */
 export const isUsableContent = (content: Content) => usableContent(content) === content;
 
+// Compares two values ignoring key order (an editor may rebuild an object in another order).
+const stable = (v: unknown): string =>
+  JSON.stringify(v, (_, x) => (x && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).sort(([a], [b]) => (a < b ? -1 : 1))) : x));
+
+/** Problems found in `with` and not in `without`, counting repeats. */
+function extraProblems(withIt: string[], without: string[]): string[] {
+  const counts = new Map<string, number>();
+  for (const p of without) counts.set(p, (counts.get(p) ?? 0) + 1);
+  return withIt.filter(p => {
+    const n = counts.get(p) ?? 0;
+    if (n > 0) counts.set(p, n - 1);
+    return n === 0;
+  });
+}
+
+const SECTIONS = ['glossary', 'specialPeriods', 'help', 'notices'] as const;
+
 /**
- * Whether a save may go ahead although the content still has problems: it
- * has something to show (usableContent), and every problem it has was already in the saved copy (one that
- * fails a check added since it was saved). That lets the admin fix those
- * problems one at a time, each save leaving fewer, without being able to add
- * a new one. `before` is the saved copy's problems.
+ * Whether a save may go ahead although the content still has problems, so a
+ * saved copy that fails a check added since it was saved can be fixed one
+ * place at a time. It may if it has something to show (usableContent) and:
+ * - no problem appears more often than in the saved copy (`stored`);
+ * - every place or route it adds or changes passes its own checks;
+ * - every other section it changes (glossary, special hours, Help, notices) passes its checks.
+ * So a save can only keep or remove older problems, never add one: not by
+ * repeating one (50 more places outside Cairo) nor by editing an item that
+ * already had one (a flagged photo address changed to another bad one).
  */
-export function onlyOlderProblems(content: Content, problems: string[], before: string[]): boolean {
+export function onlyOlderProblems(next: Content, stored: Content): boolean {
+  const problems = validateContent(next);
   if (problems.length === 0) return true;
-  const known = new Set(before);
-  return usableContent(content) !== null && problems.every(p => known.has(p));
+  if (usableContent(next) === null) return false;
+  if (extraProblems(problems, validateContent(stored)).length) return false;
+
+  const oldPlaces = new Map(stored.places.map(p => [p.id, stable(p)]));
+  const oldRoutes = new Map(stored.routes.map(r => [r.id, stable(r)]));
+  const placeOk = (p: Location) =>
+    oldPlaces.get(p.id) === stable(p) || !validateContent({ routes: next.routes, places: [p] }).some(x => x.startsWith('Place '));
+  const routeOk = (r: Route) =>
+    oldRoutes.get(r.id) === stable(r) || !validateContent({ routes: [r], places: [] }).some(x => x.startsWith('Route '));
+  if (!next.places.every(placeOk) || !next.routes.every(routeOk)) return false;
+
+  const base = { routes: next.routes, places: next.places };
+  return SECTIONS.every(
+    key => stable(next[key]) === stable(stored[key]) || extraProblems(validateContent({ ...base, [key]: next[key] }), validateContent(base)).length === 0,
+  );
+}
+
+/**
+ * Gives every repeated place or route ID after the first a new one, so the
+ * admin's editors (which find, change and delete by ID) touch one item only.
+ * A saved copy can have repeats only from before the check existed, or a
+ * hand edit; visitors never see the repeats (usableContent). Returns what was
+ * renumbered, for a notice. A repeated route's places stay on the first one.
+ */
+export function withUniqueIds(content: Content): { content: Content; changed: string[] } {
+  const changed: string[] = [];
+  const routeIds = new Set<string>();
+  const routes = content.routes.map(r => {
+    if (!routeIds.has(r.id)) return routeIds.add(r.id), r;
+    let n = 2;
+    while (routeIds.has(`${r.id}-${n}`)) n++;
+    const id = `${r.id}-${n}`;
+    routeIds.add(id);
+    changed.push(`Route "${r.nameEn || r.id}" had a repeated ID; it's now "${id}".`);
+    return { ...r, id };
+  });
+  let next = nextPlaceId(content);
+  const placeIds = new Set<number>();
+  const places = content.places.map(p => {
+    if (!placeIds.has(p.id)) return placeIds.add(p.id), p;
+    const id = next++;
+    changed.push(`Place "${p.nameEn || p.id}" had a repeated ID; it's now ${id}.`);
+    return { ...p, id };
+  });
+  return changed.length ? { content: { ...content, routes, places }, changed } : { content, changed };
 }
 
 /**

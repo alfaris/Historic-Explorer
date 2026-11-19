@@ -85,7 +85,7 @@ export async function handleAdmin(request: Request): Promise<Response> {
       // A saved copy that fails a check added since it was saved can be fixed a
       // place at a time: a save that only keeps problems it already had goes
       // ahead (and returns them), one that adds a problem doesn't.
-      if (problems.length && !onlyOlderProblems(content, problems, (await getContentWithEtag()).problems ?? [])) {
+      if (problems.length && !onlyOlderProblems(content, (await getContentWithEtag()).content)) {
         return json({ error: 'The content has problems.', problems }, 422);
       }
       try {

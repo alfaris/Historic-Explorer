@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { BarChart3, BookOpen, CalendarDays, History, Inbox, LifeBuoy, ListChecks, LogOut, MapPinned, Megaphone, Route as RouteIcon } from 'lucide-react';
 import type { Content } from '../data/content';
-import { normalizeContent, onlyOlderProblems, validateContent, withMaxPlaceId } from '../data/content';
+import { normalizeContent, onlyOlderProblems, validateContent, withMaxPlaceId, withUniqueIds } from '../data/content';
 import { api, ApiError } from './api';
 import { ReportsTab } from './ReportsTab';
 import { HelpTab } from './HelpTab';
@@ -97,6 +97,8 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
   const [etag, setEtag] = useState<string | null>(null);
   // What the stored content fails by today's checks, as loaded (see getContentWithEtag).
   const [storedIssue, setStoredIssue] = useState<{ problems: string[]; unusable: boolean } | null>(null);
+  // The stored copy as loaded or last saved: what a save with older problems is judged against.
+  const [stored, setStored] = useState<Content | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<{ message: string; problems: string[]; conflict: boolean } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -113,11 +115,16 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
     try {
       const data = await api.content();
       // The server already normalizes; doing it here too keeps the editors on the current model.
-      setContent(normalizeContent(data.content));
+      const loaded = normalizeContent(data.content);
+      // Repeated IDs would make an edit or a delete hit two items: renumber them (saved on the next save).
+      const unique = withUniqueIds(loaded);
+      setStored(loaded);
+      setContent(unique.content);
       setEtag(data.etag);
       setStoredIssue(data.problems?.length || data.unusable ? { problems: data.problems ?? [], unusable: !!data.unusable } : null);
       setLoadError(null);
       setSaveError(null);
+      setNotice(unique.changed.length ? `${unique.changed.join(' ')} Save any change to keep it.` : null);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) return onSignedOut();
       setLoadError((err as Error).message);
@@ -136,13 +143,14 @@ function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
     if (content) next = withMaxPlaceId(next, content);
     const problems = validateContent(next);
     // Problems the saved copy already had (a check added since) can be fixed one save at a time.
-    if (problems.length && !onlyOlderProblems(next, problems, storedIssue?.problems ?? [])) {
+    if (problems.length && !(stored && onlyOlderProblems(next, stored))) {
       setSaveError({ message: 'Fix these before saving:', problems, conflict: false });
       return false;
     }
     try {
       const { etag: newEtag, problems: left } = await api.saveContent(next, etag, note);
       setContent(next);
+      setStored(next);
       setEtag(newEtag);
       // What's left of the saved copy's older problems, if any.
       setStoredIssue(left?.length ? { problems: left, unusable: false } : null);
