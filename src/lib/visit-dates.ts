@@ -1,4 +1,4 @@
-// The day each place was first marked visited (a Cairo date), for "My visits"
+// The day each place was last marked visited (a Cairo date), for "My visits"
 // in the passport. Kept beside the visited set (visited.ts) in this browser's
 // localStorage, so the set itself is stored as before. Places visited before
 // dates were kept have none, and are listed under "Earlier".
@@ -59,10 +59,21 @@ const current = () => (dates ??= typeof window === 'undefined' ? {} : read());
 // lost when the stored dates are read again, and written with the next save
 // that works.
 const pending = new Map<string, string | null>();
+// Whether a place is visited now (in the latest saved set): set by visited.ts.
+let isVisited: (id: number) => boolean = () => true;
+export const setVisitedCheck = (check: (id: number) => boolean) => {
+  isVisited = check;
+};
 const withPending = (base: VisitDates): VisitDates => {
   if (!pending.size) return base;
   const out = { ...base };
   for (const [id, d] of pending) {
+    // Another tab may have changed the visit since: a date is replayed only for a place
+    // still visited, a forget only for one no longer visited (a re-marked place keeps its new date).
+    if ((d !== null) !== isVisited(Number(id))) {
+      pending.delete(id);
+      continue;
+    }
     if (d === null) delete out[id];
     else out[id] = d;
   }
@@ -102,14 +113,18 @@ const refresh = () => {
   return false;
 };
 
-/** Records today's Cairo date for a place just marked visited (the first date is kept). */
+/**
+ * Records today's Cairo date for a place just marked visited (callers record
+ * only a new visit). Any date already there is stale, left by a forget that
+ * couldn't be saved, so it's replaced.
+ */
 export function recordVisitDate(id: number, at = new Date()) {
   const base = latest();
-  if (base[id]) {
+  const day = cairoDate(at);
+  if (base[id] === day) {
     if (refresh()) listeners.forEach(l => l());
     return;
   }
-  const day = cairoDate(at);
   save({ ...base, [id]: day }, [[String(id), day]]);
 }
 

@@ -103,5 +103,7 @@ export function createIdSetStore(storageKey: string) {
     },
     /** The set now, outside React. */
     get: current,
+    /** The latest saved set (another tab's changes included), or this tab's when storage can't be read. */
+    latest,
   };
 }
