@@ -74,6 +74,14 @@ describe('content schema', () => {
     expect(oddServed.content.places[0].builtFrom).toBeUndefined();
     expect(oddServed.content.places[0].builtTo).toBeUndefined();
     expect(oddServed.content.places.find((p: { id: number }) => p.id === odd.places[1].id).photo).toBeUndefined();
+    // Times that aren't HH:MM (a restored old version) are left out of the ranges; the week keeps its seven days.
+    const badTimes = structuredClone(bundledContent);
+    badTimes.places[0].hours = { days: Array.from({ length: 7 }, (_, d) => (d === 0 ? [{ open: '9am', close: '17:00' }, { open: '18:00', close: '20:00' }] : [{ open: '09:00', close: '17:00' }])) };
+    const timed = JSON.parse(JSON.stringify(contentV1(usableContent(normalizeContent(badTimes))!)));
+    const h = timed.content.places.find((p: { id: number }) => p.id === badTimes.places[0].id).hours;
+    expect(h.days).toHaveLength(7);
+    expect(h.days[0]).toEqual([{ open: '18:00', close: '20:00' }]);
+    expect(h.days[1]).toEqual([{ open: '09:00', close: '17:00' }]);
     const fractionalLat = fresh();
     fractionalLat.content.places[0].lat = 30.0459;
     expect(validate(fractionalLat)).toBe(true);

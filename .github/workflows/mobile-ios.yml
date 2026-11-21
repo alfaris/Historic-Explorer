@@ -1,0 +1,38 @@
+name: Mobile (iOS)
+
+# The shared Kotlin must compile for iOS (#253). macOS runners are slower, so this
+# runs only when the apps' code or the contracts they're built from change.
+on:
+  pull_request:
+    paths: ['mobile/**', 'contracts/**', '.github/workflows/mobile-ios.yml']
+  push:
+    branches: [main]
+    paths: ['mobile/**', 'contracts/**', '.github/workflows/mobile-ios.yml']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compile the shared modules for iOS
+        run: >-
+          ./gradlew --console=plain
+          :core-model:compileKotlinIosSimulatorArm64 :core-model:compileKotlinIosArm64
+          :core-rules:compileKotlinIosSimulatorArm64 :core-rules:compileKotlinIosArm64
+          :core-data:compileKotlinIosSimulatorArm64 :core-data:compileKotlinIosArm64
